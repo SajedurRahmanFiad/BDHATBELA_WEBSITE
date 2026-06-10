@@ -307,50 +307,79 @@ const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val
 };
 
 const MultiImageUpload = ({ values, onChange, label }: { values: string[], onChange: (vals: string[]) => void, label: string }) => {
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                onChange([...values, reader.result as string]);
-            };
-            reader.readAsDataURL(file);
-        }
-        e.target.value = '';
-    };
+    const [isUploading, setIsUploading] = React.useState(false);
 
-    const removeImage = (index: number) => {
-        onChange(values.filter((_, i) => i !== index));
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        
+        setIsUploading(true);
+        const uploadedUrls: string[] = [];
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('http://localhost:8000/upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.url) {
+                    uploadedUrls.push(data.url);
+                } else {
+                    console.error('Upload failed:', data.error);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+            }
+        }
+        
+        if (uploadedUrls.length > 0) {
+            onChange([...values, ...uploadedUrls]);
+        }
+        setIsUploading(false);
+        e.target.value = '';
     };
 
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{label}</label>
             <div className="flex flex-wrap gap-4">
-                {values.map((url, idx) => (
-                    <div key={idx} className="relative group w-20 h-20 bg-gray-50 border-2 border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                        <img src={url} className="w-full h-full object-cover" alt="Preview" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <button 
-                                type="button"
-                                onClick={() => removeImage(idx)}
-                                className="p-2 text-white hover:text-red-400 transition-colors"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
+                {values.map((val, idx) => (
+                    <div key={idx} className="relative w-24 h-24 bg-gray-50 border rounded-2xl overflow-hidden group">
+                        {val.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video src={val} className="w-full h-full object-cover" />
+                        ) : (
+                            <img src={val} className="w-full h-full object-cover" alt="" />
+                        )}
+                        <button 
+                            type="button"
+                            onClick={() => onChange(values.filter((_, i) => i !== idx))}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                            <X size={12} />
+                        </button>
                     </div>
                 ))}
                 
-                <div className="relative group w-20 h-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
-                    <div className="flex flex-col items-center text-gray-400 group-hover:text-primary">
-                        <Upload size={20} />
-                        <span className="text-[8px] font-bold mt-1">Add More</span>
-                    </div>
+                <div className="relative w-24 h-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
+                    {isUploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    ) : (
+                        <>
+                            <Upload size={20} className="text-gray-400" />
+                            <span className="text-[10px] font-bold mt-1 text-gray-400 uppercase tracking-widest">Media</span>
+                        </>
+                    )}
                     <input 
                         type="file" 
-                        accept="image/*" 
+                        accept="image/*,video/*" 
+                        multiple 
                         onChange={handleFileChange}
+                        disabled={isUploading}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                 </div>
@@ -1004,6 +1033,7 @@ const AdminSettings = () => {
         ...settings,
         contactPhone: settings.contactPhone || '',
         email: settings.email || '',
+        address: settings.address || '',
         logo: settings.logo || '',
         shippingCharges: {
             insideDhaka: settings.shippingCharges?.insideDhaka || 0,
@@ -1098,6 +1128,15 @@ const AdminSettings = () => {
                                   onChange={e => setLocalSettings({...localSettings, email: e.target.value})}
                                   className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono" 
                                   placeholder="support@example.com"
+                                />
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Physical Address / Headquarters</label>
+                                <textarea 
+                                  value={localSettings.address}
+                                  onChange={e => setLocalSettings({...localSettings, address: e.target.value})}
+                                  className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg h-24 resize-none" 
+                                  placeholder="House 123, Road 4, Uttara, Dhaka-1230"
                                 />
                             </div>
                         </div>
@@ -1413,19 +1452,18 @@ const AdminStaff = () => {
     const [newStaff, setNewStaff] = React.useState({
         name: '',
         role: 'Editor' as 'Admin' | 'Editor' | 'Order Manager',
-        email: '',
         phone: ''
     });
 
     const handleAdd = () => {
-        if (!newStaff.name || !newStaff.email) return;
+        if (!newStaff.name) return;
         addStaff({
             id: `staff-${Date.now()}`,
             ...newStaff
         });
         showToast('Successfully added new staff member!');
         setShowModal(false);
-        setNewStaff({ name: '', role: 'Editor', email: '', phone: '' });
+        setNewStaff({ name: '', role: 'Editor', phone: '' });
     };
 
     return (
@@ -1458,7 +1496,6 @@ const AdminStaff = () => {
                            </div>
                         </div>
                         <div className="mt-6 pt-4 border-t border-gray-50 space-y-2">
-                           <p className="text-xs text-gray-500 font-medium">✉️ {s.email}</p>
                            <p className="text-xs text-gray-500 font-medium">📞 {s.phone}</p>
                         </div>
                     </div>
@@ -1474,10 +1511,6 @@ const AdminStaff = () => {
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Name *</label>
                             <input value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} className="w-full bg-gray-50 border px-4 py-2.5 rounded-xl outline-none" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email Address *</label>
-                            <input value={newStaff.email} type="email" onChange={e => setNewStaff({...newStaff, email: e.target.value})} className="w-full bg-gray-50 border px-4 py-2.5 rounded-xl outline-none" placeholder="staff@example.com" />
                         </div>
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-black text-gray-600">Dashboard Access Role *</label>
@@ -1517,7 +1550,11 @@ export const AdminBanners = () => {
     const [newBanner, setNewBanner] = React.useState({
         title: '',
         link: '',
-        image: ''
+        image: '',
+        showButton: false,
+        buttonText: 'Shop Now',
+        buttonTextColor: '#FFFFFF',
+        buttonBgColor: '#EF4444'
     });
 
     React.useEffect(() => {
@@ -1525,15 +1562,22 @@ export const AdminBanners = () => {
             setNewBanner({
                 title: editingBanner.title || '',
                 link: editingBanner.link || '',
-                image: editingBanner.image || ''
+                image: editingBanner.image || '',
+                showButton: !!editingBanner.showButton,
+                buttonText: editingBanner.buttonText || 'Shop Now',
+                buttonTextColor: editingBanner.buttonTextColor || '#FFFFFF',
+                buttonBgColor: editingBanner.buttonBgColor || '#EF4444'
             });
         } else {
-            setNewBanner({ title: '', link: '', image: '' });
+            setNewBanner({ title: '', link: '', image: '', showButton: false, buttonText: 'Shop Now', buttonTextColor: '#FFFFFF', buttonBgColor: '#EF4444' });
         }
     }, [editingBanner]);
 
     const handleSave = () => {
         if (!newBanner.image) return alert('Banner image is required');
+        if (newBanner.image.length > 6 * 1024 * 1024) {
+            return alert('Image is too large. Please use a smaller image file (under 4MB).');
+        }
         
         const bannerData = {
             id: editingBanner ? editingBanner.id : `b-${Date.now()}`,
@@ -1556,7 +1600,7 @@ export const AdminBanners = () => {
                 <button 
                     onClick={() => {
                         setEditingBanner(null);
-                        setNewBanner({ title: '', link: '', image: '' });
+                        setNewBanner({ title: '', link: '', image: '', showButton: false, buttonText: 'Shop Now', buttonTextColor: '#FFFFFF', buttonBgColor: '#EF4444' });
                         setShowModal(true);
                     }}
                     className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
@@ -1678,6 +1722,68 @@ export const AdminBanners = () => {
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* Custom Button Settings */}
+                        <div className="pt-4 border-t space-y-4">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input 
+                                    type="checkbox" 
+                                    checked={newBanner.showButton}
+                                    onChange={e => setNewBanner({...newBanner, showButton: e.target.checked})}
+                                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                                />
+                                <span className="text-sm font-bold text-gray-700 group-hover:text-black">Show Custom Button on Banner</span>
+                            </label>
+
+                            {newBanner.showButton && (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Button Text</label>
+                                        <input 
+                                            value={newBanner.buttonText}
+                                            onChange={e => setNewBanner({...newBanner, buttonText: e.target.value})}
+                                            className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-3 py-2 rounded-xl outline-none transition-all text-sm font-bold"
+                                            placeholder="e.g. Shop Now"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Text Color</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input 
+                                                type="color" 
+                                                value={newBanner.buttonTextColor}
+                                                onChange={e => setNewBanner({...newBanner, buttonTextColor: e.target.value})}
+                                                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                            />
+                                            <input 
+                                                type="text" 
+                                                value={newBanner.buttonTextColor}
+                                                onChange={e => setNewBanner({...newBanner, buttonTextColor: e.target.value})}
+                                                className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-3 py-2 rounded-xl outline-none transition-all text-sm font-bold font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Bg Color</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input 
+                                                type="color" 
+                                                value={newBanner.buttonBgColor}
+                                                onChange={e => setNewBanner({...newBanner, buttonBgColor: e.target.value})}
+                                                className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                                            />
+                                            <input 
+                                                type="text" 
+                                                value={newBanner.buttonBgColor}
+                                                onChange={e => setNewBanner({...newBanner, buttonBgColor: e.target.value})}
+                                                className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-3 py-2 rounded-xl outline-none transition-all text-sm font-bold font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <button 
                             onClick={handleSave}
                             className="bg-primary text-white w-full py-4 rounded-2xl font-black shadow-xl shadow-red-200 hover-primary-dark transition-all text-sm uppercase tracking-wider"

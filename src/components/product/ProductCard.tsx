@@ -30,14 +30,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group"
     >
       <Link to={`/product/${product.id}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
-        <img 
-          src={product.images[0]} 
-          alt={product.name} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+        {product.images[0]?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+          <video src={product.images[0]} autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />
+        ) : (
+          <img 
+            src={product.images[0]} 
+            alt={product.name} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        )}
         {product.discountPrice && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">
             {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
+          </div>
+        )}
+        {product.badge && (
+          <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase shadow-sm">
+            {product.badge}
           </div>
         )}
       </Link>

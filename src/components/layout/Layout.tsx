@@ -11,9 +11,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { totalItems, isSidebarOpen, openSidebar, closeSidebar, toast, clearToast } = useCart();
   const { settings, categories, products } = useAdmin();
   const { user } = useAuth();
-  
 
-  
+
+
   React.useEffect(() => {
     if (!settings) return;
     // Dynamic Title
@@ -36,11 +36,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [showResults, setShowResults] = React.useState(false);
   const navigate = useNavigate();
 
-  const searchResults = searchQuery.trim() 
-    ? products.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
+  const searchResults = searchQuery.trim()
+    ? products.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5)
     : [];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -83,7 +83,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           background-color: var(--color-primary-hover);
         }
       `}</style>
-      
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast?.show && (
@@ -108,10 +108,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-4 flex-wrap">
             <span className="flex items-center gap-1"><Phone size={14} /> Hotline: {settings.contactPhone}</span>
-            <span className="hidden md:inline">🚚 Cash on Delivery All Over Bangladesh</span>
           </div>
-          <div className="flex items-center gap-4 shrink-0 font-bold">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin Panel</Link>
+          <div className="flex items-center gap-4 shrink-0">
+            <span className="hidden md:inline">🚚 Cash on Delivery All Over Bangladesh</span>
           </div>
         </div>
       </div>
@@ -129,9 +128,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {/* Search Bar - Desktop */}
             <div className="hidden md:flex flex-1 max-w-xl relative">
               <form onSubmit={handleSearchSubmit} className="w-full relative">
-                <input 
-                  type="text" 
-                  placeholder="Search products..." 
+                <input
+                  type="text"
+                  placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -150,7 +149,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 {showResults && searchResults.length > 0 && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowResults(false)} />
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -158,7 +157,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     >
                       <div className="p-2">
                         {searchResults.map(product => (
-                          <button 
+                          <button
                             key={product.id}
                             onClick={() => {
                               navigate(`/product/${product.id}`);
@@ -175,7 +174,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           </button>
                         ))}
                       </div>
-                      <Link 
+                      <Link
                         to={`/products?search=${searchQuery}`}
                         onClick={() => setShowResults(false)}
                         className="block w-full py-3 bg-gray-50 text-center text-xs font-bold text-gray-400 hover:text-primary border-t"
@@ -207,7 +206,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   </>
                 )}
               </Link>
-              <button 
+              <button
                 onClick={openSidebar}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors relative group"
               >
@@ -218,7 +217,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   </span>
                 )}
               </button>
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -251,14 +250,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <AnimatePresence>
         {isMenuOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
               className="fixed inset-0 bg-black/50 z-[60] md:hidden"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -270,12 +269,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </div>
               <div className="flex flex-col gap-4">
                 <Link to="/" onClick={() => setIsMenuOpen(false)} className="py-2 border-b font-medium text-sm">Home</Link>
-                
+
                 {/* Nested Category lists under All Products per user's prompt */}
                 <div className="border-b pb-2 space-y-2">
-                  <Link 
-                    to="/products" 
-                    onClick={() => setIsMenuOpen(false)} 
+                  <Link
+                    to="/products"
+                    onClick={() => setIsMenuOpen(false)}
                     className="py-1 font-bold block text-sm text-primary hover:underline"
                   >
                     All Products
@@ -283,10 +282,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <p className="text-[10px] uppercase font-black text-gray-400 tracking-wider pl-1">All Categories</p>
                   <div className="flex flex-col gap-1 pl-3 max-h-48 overflow-y-auto border-l border-gray-100">
                     {categories.map(cat => (
-                      <Link 
-                        key={cat.id} 
-                        to={`/products?category=${encodeURIComponent(cat.name)}`} 
-                        onClick={() => setIsMenuOpen(false)} 
+                      <Link
+                        key={cat.id}
+                        to={`/products?category=${encodeURIComponent(cat.name)}`}
+                        onClick={() => setIsMenuOpen(false)}
                         className="py-1.5 text-xs text-gray-600 hover:text-primary transition-colors flex items-center gap-1.5"
                       >
                         <span className="w-1.5 h-1.5 bg-gray-300 rounded-full shrink-0" />
@@ -363,7 +362,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <img src={settings.logo} alt="Logo" className="w-8 h-8 object-contain" />
               <span className="text-2xl font-bold">{settings.companyName}</span>
             </Link>
-            <p className="text-sm text-gray-600">Your trusted partner for effortless online shopping. High-quality products and premium services delivered right to your door.</p>
+            <p className="text-sm text-gray-600">Just click & get!</p>
             <div className="flex items-center gap-4">
               <a href={settings.socialLinks.facebook} className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
               <a href={settings.socialLinks.youtube} className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
@@ -383,11 +382,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div>
             <h3 className="font-bold text-lg mb-4">Contact</h3>
             <div className="flex flex-col gap-3 text-sm text-gray-600">
-              <p>Address: Uttara, Dhaka-1230</p>
+              <p><b>Address:</b> {settings.address || 'Not Provided'}</p>
               <p className="flex items-center gap-2 bg-primary/5 text-primary p-3 rounded-xl border border-primary/10 font-bold">
                 <Phone size={16} /> Hotline: {settings.contactPhone}
               </p>
-              <p>Email: {settings.email}</p>
+              <p><b>Email:</b> {settings.email}</p>
             </div>
           </div>
         </div>
@@ -396,10 +395,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="border-t py-6">
           <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
             <p>&copy; {new Date().getFullYear()} {settings.companyName}. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Bkash_logo.png/1200px-Bkash_logo.png" alt="bkash" className="h-6 object-contain" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Nagad_Logo.svg/2560px-Nagad_Logo.svg.png" alt="nagad" className="h-6 object-contain" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Rocket_app_logo_Bangladesh.png/1200px-Rocket_app_logo_Bangladesh.png" alt="rocket" className="h-6 object-contain" />
+            <div className="flex items-center">
+              <p>
+                Developed by{' '}
+                <a
+                  href="https://sajedurrahmanfiad.me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold hover:text-primary transition-colors"
+                >
+                  Md Sajedur Rahman Fiad
+                </a>
+              </p>
             </div>
           </div>
         </div>

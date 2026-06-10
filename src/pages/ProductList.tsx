@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAdmin } from '../AdminContext';
 import { ProductCard } from '../components/product/ProductCard';
 import { Filter, SlidersHorizontal, ChevronDown, LayoutGrid, List, Search as SearchIcon } from 'lucide-react';
-import { DISTRICTS } from '../constants';
 import { useLocation, useParams } from 'react-router-dom';
 
 export const ProductList: React.FC = () => {
@@ -209,13 +208,7 @@ export const ProductList: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-            <h3 className="font-bold text-sm mb-2 font-black uppercase text-gray-400 text-xs">Delivery Zone</h3>
-            <select className="w-full bg-white border-2 border-gray-100 focus:border-primary rounded-lg text-sm px-2 py-2 outline-none">
-               <option>Select delivery zone...</option>
-               {DISTRICTS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
+          {/* Delivery Zone section removed */}
         </aside>
 
         {/* Product Grid */}

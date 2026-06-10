@@ -157,6 +157,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const saved = await res.json();
         setBanners([saved, ...banners]);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to add banner. The image might be too large.');
       }
     } catch (e) { console.error(e); }
   };
@@ -171,6 +174,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const saved = await res.json();
         setBanners(banners.map(item => item.id === b.id ? saved : item));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to update banner. The image might be too large.');
       }
     } catch (e) { console.error(e); }
   };

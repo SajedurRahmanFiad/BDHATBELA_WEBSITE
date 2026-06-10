@@ -11,15 +11,33 @@ if ($method === 'GET') {
 
 } elseif ($method === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data) {
+        http_response_code(413);
+        echo json_encode(['error' => 'Payload is empty or too large. Image might exceed server limits.']);
+        exit;
+    }
     
     $id = $data['id'] ?? 'b-' . time() . rand(100, 999);
     $title = $data['title'] ?? null;
     $link = $data['link'] ?? null;
     $image = $data['image'];
+    $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
+    $buttonText = $data['buttonText'] ?? 'Shop Now';
+    $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
+    $buttonBgColor = $data['buttonBgColor'] ?? '#EF4444';
 
-    $stmt = $pdo->prepare("INSERT INTO banners (id, image, title, link) VALUES (?, ?, ?, ?)");
-    if ($stmt->execute([$id, $image, $title, $link])) {
-        echo json_encode(['id' => $id, 'image' => $image, 'title' => $title, 'link' => $link]);
+    $stmt = $pdo->prepare("INSERT INTO banners (id, image, title, link, showButton, buttonText, buttonTextColor, buttonBgColor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt->execute([$id, $image, $title, $link, $showButton, $buttonText, $buttonTextColor, $buttonBgColor])) {
+        echo json_encode([
+            'id' => $id, 
+            'image' => $image, 
+            'title' => $title, 
+            'link' => $link,
+            'showButton' => (bool)$showButton,
+            'buttonText' => $buttonText,
+            'buttonTextColor' => $buttonTextColor,
+            'buttonBgColor' => $buttonBgColor
+        ]);
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to create banner']);
@@ -27,6 +45,11 @@ if ($method === 'GET') {
 
 } elseif ($method === 'PUT') {
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data) {
+        http_response_code(413);
+        echo json_encode(['error' => 'Payload is empty or too large. Image might exceed server limits.']);
+        exit;
+    }
     $id = $data['id'];
     
     if (!$id) {
@@ -35,8 +58,13 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE banners SET image = ?, title = ?, link = ? WHERE id = ?");
-    if ($stmt->execute([$data['image'], $data['title'] ?? null, $data['link'] ?? null, $id])) {
+    $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
+    $buttonText = $data['buttonText'] ?? 'Shop Now';
+    $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
+    $buttonBgColor = $data['buttonBgColor'] ?? '#EF4444';
+
+    $stmt = $pdo->prepare("UPDATE banners SET image = ?, title = ?, link = ?, showButton = ?, buttonText = ?, buttonTextColor = ?, buttonBgColor = ? WHERE id = ?");
+    if ($stmt->execute([$data['image'], $data['title'] ?? null, $data['link'] ?? null, $showButton, $buttonText, $buttonTextColor, $buttonBgColor, $id])) {
         echo json_encode($data);
     } else {
         http_response_code(500);

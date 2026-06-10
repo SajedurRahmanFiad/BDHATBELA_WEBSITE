@@ -1,13 +1,22 @@
 import React from 'react';
 import { useAdmin } from '../AdminContext';
 import { ProductCard } from '../components/product/ProductCard';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   const { products, banners, categories } = useAdmin();
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [currentBanner, setCurrentBanner] = React.useState(0);
+
+  React.useEffect(() => {
+    if (banners.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentBanner(prev => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
 
   React.useEffect(() => {
     const el = scrollRef.current;
@@ -22,6 +31,7 @@ export const Home: React.FC = () => {
 
     const tick = () => {
       if (isMouseDown || userInteracted) return;
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
       
       const maxScroll = el.scrollWidth - el.clientWidth;
       if (maxScroll <= 0) return;
@@ -125,28 +135,63 @@ export const Home: React.FC = () => {
       {/* Hero Slider */}
       {banners.length > 0 && (
         <section className="container mx-auto px-4 mt-4">
-          <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg">
-            <img src={banners[0].image} alt={banners[0].title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
-              <div className="max-w-xl text-white space-y-4">
-                <motion.h1 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  className="text-3xl md:text-5xl font-bold leading-tight"
-                >
-                  {banners[0].title}
-                </motion.h1>
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <Link to={banners[0].link} className="inline-block bg-primary text-white px-8 py-3 rounded-full font-bold hover-primary-dark transition-all">
-                    Shop Now
-                  </Link>
-                </motion.div>
+          <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg bg-gray-900">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentBanner}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0"
+              >
+                <img src={banners[currentBanner].image} alt={banners[currentBanner].title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
+                  <div className="max-w-xl text-white space-y-4">
+                    {banners[currentBanner].title && (
+                      <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-3xl md:text-5xl font-bold leading-tight"
+                      >
+                        {banners[currentBanner].title}
+                      </motion.h1>
+                    )}
+                    {banners[currentBanner].showButton && banners[currentBanner].link && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        <Link 
+                          to={banners[currentBanner].link} 
+                          className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
+                          style={{
+                            backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                            color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                          }}
+                        >
+                          {banners[currentBanner].buttonText || 'Shop Now'}
+                        </Link>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+            
+            {/* Slider Dots */}
+            {banners.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                {banners.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentBanner(idx)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${idx === currentBanner ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/80'}`}
+                  />
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </section>
       )}
@@ -154,22 +199,22 @@ export const Home: React.FC = () => {
       {/* Quick Access Categories */}
       <section className="container mx-auto px-4 overflow-hidden">
         <div className="relative">
-          <div 
+          {/* Mobile View */}
+          <div
             ref={scrollRef}
-            className="flex overflow-x-auto no-scrollbar gap-4 pb-4 flex-nowrap cursor-grab active:cursor-grabbing select-none"
+            className="flex md:hidden overflow-x-auto no-scrollbar gap-4 pb-4 flex-nowrap cursor-grab active:cursor-grabbing select-none"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {/* Duplicated categories list for perfect seamless horizontal scrolling on mobile viewports */}
             {[...categories, ...categories, ...categories].map((cat, idx) => (
-              <Link 
-                key={`${cat.id}-${idx}`} 
+              <Link
+                key={`${cat.id}-${idx}`}
                 to={`/products?category=${encodeURIComponent(cat.name)}`}
-                className="flex-none w-[28%] sm:w-[20%] md:w-[15%] lg:w-[12%]"
+                className="flex-none w-[28%] sm:w-[20%]"
                 draggable={false}
               >
-                <motion.div 
+                <motion.div
                   whileHover={{ y: -5 }}
-                  className="bg-white p-2 md:p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all cursor-pointer group w-full h-full justify-between"
+                  className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all cursor-pointer group w-full h-full justify-between"
                   draggable={false}
                 >
                   <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
@@ -179,7 +224,34 @@ export const Home: React.FC = () => {
                       <div className="scale-110">📦</div>
                     )}
                   </div>
-                  <span className="text-[10px] md:text-xs font-bold text-center line-clamp-1 select-none pointer-events-none">{cat.name}</span>
+                  <span className="text-[10px] font-bold text-center line-clamp-1 select-none pointer-events-none">{cat.name}</span>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:flex flex-wrap justify-center gap-6 pb-4">
+            {categories.map((cat, idx) => (
+              <Link
+                key={cat.id}
+                to={`/products?category=${encodeURIComponent(cat.name)}`}
+                className="w-32"
+                draggable={false}
+              >
+                <motion.div
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 transition-all cursor-pointer group h-full justify-between"
+                  draggable={false}
+                >
+                  <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
+                    {cat.image ? (
+                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                    ) : (
+                      <div className="scale-150">📦</div>
+                    )}
+                  </div>
+                  <span className="text-xs font-bold text-center line-clamp-2 select-none pointer-events-none">{cat.name}</span>
                 </motion.div>
               </Link>
             ))}
@@ -207,16 +279,16 @@ export const Home: React.FC = () => {
       <section className="container mx-auto px-4">
         <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-3xl p-8 md:p-12 text-white relative overflow-hidden flex items-center justify-between">
           <div className="relative z-10 space-y-4 max-w-lg">
-            <h2 className="text-3xl md:text-5xl font-extrabold uppercase italic tracking-tighter">Eid Flash Sale</h2>
+            <h2 className="text-3xl md:text-5xl font-extrabold uppercase italic tracking-tighter">Flash Sale</h2>
             <p className="text-lg opacity-90">Enjoy special discounts on our collection for a limited time!</p>
             <button className="bg-white text-primary px-8 py-3 rounded-full font-bold hover:scale-105 transition-all">
               Grab the Offer
             </button>
           </div>
           <div className="hidden md:block relative z-10">
-             <div className="text-[120px] font-black opacity-20 select-none pointer-events-none -rotate-12 translate-x-10">
-               OFFER
-             </div>
+            <div className="text-[120px] font-black opacity-20 select-none pointer-events-none -rotate-12 translate-x-10">
+              OFFER
+            </div>
           </div>
         </div>
       </section>

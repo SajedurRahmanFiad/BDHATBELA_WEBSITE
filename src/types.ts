@@ -27,7 +27,6 @@ export interface Product {
 export interface Staff {
   id: string;
   name: string;
-  email: string;
   role: 'Admin' | 'Editor' | 'Order Manager';
   phone: string;
 }
@@ -35,7 +34,6 @@ export interface Staff {
 export interface User {
   id: string;
   name: string;
-  email?: string;
   phone: string;
   address?: string;
   role: 'User' | 'Admin';
@@ -83,6 +81,10 @@ export interface Banner {
   image: string;
   title: string;
   link: string;
+  showButton?: boolean;
+  buttonText?: string;
+  buttonTextColor?: string;
+  buttonBgColor?: string;
 }
 
 export interface StoreSettings {
@@ -92,6 +94,7 @@ export interface StoreSettings {
   primaryColor: string;
   contactPhone: string;
   email: string;
+  address?: string;
   socialLinks: {
     facebook?: string;
     youtube?: string;

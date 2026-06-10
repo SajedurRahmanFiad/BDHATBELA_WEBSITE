@@ -24,7 +24,6 @@ try {
         "CREATE TABLE IF NOT EXISTS `users` (
             `id` VARCHAR(50) PRIMARY KEY,
             `name` VARCHAR(100) NOT NULL,
-            `email` VARCHAR(100),
             `phone` VARCHAR(20) NOT NULL,
             `address` TEXT,
             `role` ENUM('User', 'Admin') DEFAULT 'User',
@@ -34,7 +33,6 @@ try {
         "CREATE TABLE IF NOT EXISTS `staff` (
             `id` VARCHAR(50) PRIMARY KEY,
             `name` VARCHAR(100) NOT NULL,
-            `email` VARCHAR(100) NOT NULL,
             `phone` VARCHAR(20),
             `role` ENUM('Admin', 'Editor', 'Order Manager') DEFAULT 'Editor',
             `password` VARCHAR(255) NOT NULL
@@ -114,7 +112,11 @@ try {
             `id` VARCHAR(50) PRIMARY KEY,
             `image` LONGTEXT NOT NULL,
             `title` VARCHAR(200),
-            `link` VARCHAR(255)
+            `link` VARCHAR(255),
+            `showButton` TINYINT(1) DEFAULT 0,
+            `buttonText` VARCHAR(50) DEFAULT 'Shop Now',
+            `buttonTextColor` VARCHAR(20) DEFAULT '#FFFFFF',
+            `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444'
         );",
 
         "CREATE TABLE IF NOT EXISTS `settings` (
@@ -128,6 +130,16 @@ try {
         $pdo->exec($sql);
     }
     
+    // Drop legacy email columns if they exist
+    try { $pdo->exec("ALTER TABLE `users` DROP COLUMN `email`"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `staff` DROP COLUMN `email`"); } catch(Exception $e) {}
+
+    // Add banner columns
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `showButton` TINYINT(1) DEFAULT 0"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonText` VARCHAR(50) DEFAULT 'Shop Now'"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonTextColor` VARCHAR(20) DEFAULT '#FFFFFF'"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444'"); } catch(Exception $e) {}
+
     echo "Tables created successfully.\n";
     
     // Check if initial settings exist
@@ -165,24 +177,23 @@ try {
     }
 
     // Seed admin user
-    $adminEmail = 'admin@amardokan.com';
     $adminPhone = '01700000000';
     $adminPass = password_hash('admin123', PASSWORD_DEFAULT);
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `users` WHERE `role` = 'Admin' OR `email` = ?");
-    $stmt->execute([$adminEmail]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `users` WHERE `role` = 'Admin' OR `phone` = ?");
+    $stmt->execute([$adminPhone]);
     if ($stmt->fetchColumn() == 0) {
-        $stmt = $pdo->prepare("INSERT INTO `users` (`id`, `name`, `email`, `phone`, `address`, `role`, `password`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute(['u-admin', 'Admin User', $adminEmail, $adminPhone, 'Dhaka, Bangladesh', 'Admin', $adminPass]);
-        echo "Default admin user inserted in users table (admin@amardokan.com / admin123).\n";
+        $stmt = $pdo->prepare("INSERT INTO `users` (`id`, `name`, `phone`, `address`, `role`, `password`) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute(['u-admin', 'Admin User', $adminPhone, 'Dhaka, Bangladesh', 'Admin', $adminPass]);
+        echo "Default admin user inserted in users table (Phone: 01700000000 / Pass: admin123).\n";
     }
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `staff` WHERE `role` = 'Admin' OR `email` = ?");
-    $stmt->execute([$adminEmail]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `staff` WHERE `role` = 'Admin' OR `phone` = ?");
+    $stmt->execute([$adminPhone]);
     if ($stmt->fetchColumn() == 0) {
-        $stmt = $pdo->prepare("INSERT INTO `staff` (`id`, `name`, `email`, `phone`, `role`, `password`) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute(['s-admin', 'Admin Staff', $adminEmail, $adminPhone, 'Admin', $adminPass]);
-        echo "Default admin staff inserted in staff table (admin@amardokan.com / admin123).\n";
+        $stmt = $pdo->prepare("INSERT INTO `staff` (`id`, `name`, `phone`, `role`, `password`) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute(['s-admin', 'Admin Staff', $adminPhone, 'Admin', $adminPass]);
+        echo "Default admin staff inserted in staff table (Phone: 01700000000 / Pass: admin123).\n";
     }
 
     echo "Initialization complete.\n";

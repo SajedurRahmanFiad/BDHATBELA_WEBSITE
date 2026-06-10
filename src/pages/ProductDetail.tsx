@@ -69,16 +69,31 @@ export const ProductDetail: React.FC = () => {
         {/* Images */}
         <div className="space-y-4">
           <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border">
-            <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-contain" />
+            {product.images[activeImage]?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+              <video src={product.images[activeImage]} controls autoPlay muted className="w-full h-full object-contain bg-black" />
+            ) : (
+              <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-contain" />
+            )}
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             {product.images.map((img, idx) => (
               <button 
                 key={idx}
                 onClick={() => setActiveImage(idx)}
-                className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 ${activeImage === idx ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
+                className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                {img.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                  <>
+                    <video src={img} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center pl-0.5 shadow">
+                        ▶
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                )}
               </button>
             ))}
           </div>
@@ -88,10 +103,25 @@ export const ProductDetail: React.FC = () => {
         <div className="flex flex-col">
           <div className="mb-0">
             <div className="flex items-center justify-between gap-4 mb-2">
-              <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full">{product.category}</span>
-              <button className="text-gray-400 hover:text-gray-900"><Share2 size={20} /></button>
+              <div className="flex items-center gap-2">
+                <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full">{product.category}</span>
+                {product.badge && <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase shadow-sm tracking-wider">{product.badge}</span>}
+              </div>
+              <button 
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: product.name, url: window.location.href });
+                  } else {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert("Link copied to clipboard!");
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-900 p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
+                title="Share"
+              ><Share2 size={16} /></button>
             </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">{product.name}</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+            {product.shortDescription && <p className="text-sm text-gray-500 mb-4 leading-relaxed max-w-lg">{product.shortDescription}</p>}
             <div className="flex items-center gap-4 mb-6">
               <div className="flex items-center gap-1">
                 <Star size={18} className="fill-yellow-400 text-yellow-400" />

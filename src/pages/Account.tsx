@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, UserPlus, LogOut, Package, MapPin, Phone, Mail, User, ShieldCheck } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, Package, MapPin, Phone, Mail, User, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Account: React.FC = () => {
@@ -15,7 +15,6 @@ export const Account: React.FC = () => {
   });
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
     phone: '',
     address: '',
     password: '',
@@ -23,6 +22,7 @@ export const Account: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,15 +32,22 @@ export const Account: React.FC = () => {
     try {
       if (isLogin) {
         const success = await login(formData.loginIdentifier, formData.password);
-        if (!success) setError('Invalid email/phone number or password');
+        if (!success) {
+          setError('Invalid phone number or password');
+        } else {
+          setFormData({ name: '', phone: '', address: '', password: '', loginIdentifier: '' });
+        }
       } else {
         const success = await signup({
           name: formData.name,
-          email: formData.email || undefined,
           phone: formData.phone,
           address: formData.address
         }, formData.password);
-        if (!success) setError('This phone number or email is already registered');
+        if (!success) {
+          setError('This phone number is already registered');
+        } else {
+          setFormData({ name: '', phone: '', address: '', password: '', loginIdentifier: '' });
+        }
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
@@ -84,7 +91,6 @@ export const Account: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-gray-400 font-medium">{user.email}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -113,10 +119,6 @@ export const Account: React.FC = () => {
                      <div className="flex items-center gap-3 text-sm">
                        <Phone size={16} className="text-primary" />
                        <span className="font-medium">{user.phone}</span>
-                     </div>
-                     <div className="flex items-center gap-3 text-sm">
-                       <Mail size={16} className="text-primary" />
-                       <span className="font-medium">{user.email || 'No email provided'}</span>
                      </div>
                      <div className="flex items-center gap-3 text-sm">
                        <MapPin size={16} className="text-primary" />
@@ -254,16 +256,16 @@ export const Account: React.FC = () => {
                   className="space-y-4"
                 >
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email or Phone Number</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input 
                         type="text"
                         required
                         value={formData.loginIdentifier}
                         onChange={(e) => setFormData({...formData, loginIdentifier: e.target.value})}
                         className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-12 pr-4 py-3 rounded-2xl outline-none transition-all font-medium"
-                        placeholder="017xxxxxxxx / email@example.com"
+                        placeholder="017xxxxxxxx"
                       />
                     </div>
                   </div>
@@ -305,19 +307,6 @@ export const Account: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address (Optional)</label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                      <input 
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-12 pr-4 py-3 rounded-2xl outline-none transition-all font-medium"
-                        placeholder="name@example.com"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Address</label>
                     <div className="relative">
                       <MapPin className="absolute left-4 top-4 text-gray-400" size={18} />
@@ -336,14 +325,23 @@ export const Account: React.FC = () => {
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
-              <input 
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all font-medium"
-                placeholder="********"
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-4 pr-12 py-3 rounded-2xl outline-none transition-all font-medium"
+                  placeholder="********"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {isLogin && (

@@ -7,6 +7,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     $stmt = $pdo->query("SELECT * FROM banners");
     $banners = $stmt->fetchAll();
+    foreach ($banners as &$banner) {
+        $banner['showButton'] = (bool)$banner['showButton'];
+    }
     echo json_encode($banners);
 
 } elseif ($method === 'POST') {
@@ -22,7 +25,7 @@ if ($method === 'GET') {
         $title = $data['title'] ?? null;
         $link = $data['link'] ?? null;
         $image = $data['image'];
-        $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
+        $showButton = isset($data['showButton']) ? (bool)$data['showButton'] : false;
         $buttonText = $data['buttonText'] ?? 'Shop Now';
         $buttonLink = $data['buttonLink'] ?? null;
         $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
@@ -36,7 +39,7 @@ if ($method === 'GET') {
                 'image' => $image,
                 'title' => $title,
                 'link' => $link,
-                'showButton' => (bool)$showButton,
+                'showButton' => $showButton,
                 'buttonText' => $buttonText,
                 'buttonLink' => $buttonLink,
                 'buttonTextColor' => $buttonTextColor,
@@ -69,7 +72,7 @@ if ($method === 'GET') {
     }
 
     try {
-        $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
+        $showButton = isset($data['showButton']) ? (bool)$data['showButton'] : false;
         $buttonText = $data['buttonText'] ?? 'Shop Now';
         $buttonLink = $data['buttonLink'] ?? null;
         $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
@@ -78,6 +81,7 @@ if ($method === 'GET') {
 
         $stmt = $pdo->prepare("UPDATE banners SET image = ?, title = ?, link = ?, showButton = ?, buttonText = ?, buttonLink = ?, buttonTextColor = ?, buttonBgColor = ?, titleColor = ? WHERE id = ?");
         if ($stmt->execute([$data['image'], $data['title'] ?? null, $data['link'] ?? null, $showButton, $buttonText, $buttonLink, $buttonTextColor, $buttonBgColor, $titleColor, $id])) {
+            $data['showButton'] = $showButton;
             echo json_encode($data);
         } else {
             http_response_code(500);

@@ -50,7 +50,7 @@ export const Home: React.FC = () => {
                         {banners[currentBanner].title}
                       </motion.h1>
                     )}
-                    {banners[currentBanner].showButton && (
+                    {Boolean(banners[currentBanner].showButton) && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

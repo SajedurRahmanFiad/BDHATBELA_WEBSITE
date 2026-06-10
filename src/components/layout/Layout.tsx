@@ -15,9 +15,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 
   React.useEffect(() => {
+    document.title = settings?.companyName
+      ? `${settings.companyName} - Best Online Shopping`
+      : 'Loading...';
+
     if (!settings) return;
-    // Dynamic Title
-    document.title = `${settings.companyName} - Best Online Shopping`;
 
     // Dynamic Favicon
     if (settings.favicon) {
@@ -29,7 +31,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
       link.href = settings.favicon;
     }
-  }, [settings?.favicon, settings?.companyName, settings]);
+  }, [settings]);
 
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');

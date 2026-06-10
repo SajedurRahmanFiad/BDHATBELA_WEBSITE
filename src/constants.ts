@@ -1,6 +1,6 @@
 import { Product, Category, Banner, OrderStatus, StoreSettings } from './types';
 
-export const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const DISTRICTS = [
   'Dhaka', 'Chattogram', 'Rajshahi', 'Khulna', 'Barishal', 'Sylhet', 'Rangpur', 'Mymensingh',

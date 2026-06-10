@@ -326,7 +326,7 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
             formData.append('file', file);
 
             try {
-                const response = await fetch('http://localhost:8000/upload.php', {
+                const response = await fetch(`${API_BASE_URL}/upload.php`, {
                     method: 'POST',
                     body: formData
                 });

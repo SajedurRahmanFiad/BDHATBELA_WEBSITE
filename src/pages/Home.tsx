@@ -123,31 +123,33 @@ export const Home: React.FC = () => {
   return (
     <div className="space-y-12 pb-12">
       {/* Hero Slider */}
-      <section className="container mx-auto px-4 mt-4">
-        <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg">
-          <img src={banners[0].image} alt={banners[0].title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
-            <div className="max-w-xl text-white space-y-4">
-              <motion.h1 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                className="text-3xl md:text-5xl font-bold leading-tight"
-              >
-                {banners[0].title}
-              </motion.h1>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <Link to={banners[0].link} className="inline-block bg-primary text-white px-8 py-3 rounded-full font-bold hover-primary-dark transition-all">
-                  Shop Now
-                </Link>
-              </motion.div>
+      {banners.length > 0 && (
+        <section className="container mx-auto px-4 mt-4">
+          <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg">
+            <img src={banners[0].image} alt={banners[0].title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
+              <div className="max-w-xl text-white space-y-4">
+                <motion.h1 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  className="text-3xl md:text-5xl font-bold leading-tight"
+                >
+                  {banners[0].title}
+                </motion.h1>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <Link to={banners[0].link} className="inline-block bg-primary text-white px-8 py-3 rounded-full font-bold hover-primary-dark transition-all">
+                    Shop Now
+                  </Link>
+                </motion.div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Quick Access Categories */}
       <section className="container mx-auto px-4 overflow-hidden">

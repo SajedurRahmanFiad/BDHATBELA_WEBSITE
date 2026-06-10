@@ -1,102 +1,247 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, Category, Banner, StoreSettings, Order, OrderStatus, Staff, Review } from './types';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES, MOCK_BANNERS, INITIAL_SETTINGS } from './constants';
+import { API_BASE_URL } from './constants';
 
 interface AdminContextType {
   products: Product[];
   categories: Category[];
   banners: Banner[];
-  settings: StoreSettings;
+  settings: StoreSettings | null;
   orders: Order[];
   staff: Staff[];
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
-  updateSettings: (settings: StoreSettings) => void;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
-  deleteOrder: (id: string) => void;
-  addOrder: (order: Order) => void;
-  updateBanners: (banners: Banner[]) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  updateSettings: (settings: StoreSettings) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
+  addOrder: (order: Order) => Promise<void>;
+  updateBanners: (banners: Banner[]) => Promise<void>;
+  addBanner: (banner: Banner) => Promise<void>;
+  updateBanner: (banner: Banner) => Promise<void>;
+  deleteBanner: (id: string) => Promise<void>;
   addStaff: (staff: Staff) => void;
   removeStaff: (id: string) => void;
-  addCategory: (category: Category) => void;
-  updateCategory: (category: Category) => void;
-  deleteCategory: (id: string) => void;
-  addReview: (productId: string, review: Review) => void;
+  addCategory: (category: Category) => Promise<void>;
+  updateCategory: (category: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addReview: (productId: string, review: Review) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('admin_products');
-    return saved ? JSON.parse(saved) : MOCK_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
 
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('admin_categories');
-    return saved ? JSON.parse(saved) : MOCK_CATEGORIES;
-  });
-  
-  const [banners, setBanners] = useState<Banner[]>(() => {
-    const saved = localStorage.getItem('admin_banners');
-    return saved ? JSON.parse(saved) : MOCK_BANNERS;
-  });
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prodRes, catRes, banRes, setRes, ordRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/products.php`),
+          fetch(`${API_BASE_URL}/categories.php`),
+          fetch(`${API_BASE_URL}/banners.php`),
+          fetch(`${API_BASE_URL}/settings.php`),
+          fetch(`${API_BASE_URL}/orders.php`)
+        ]);
 
-  const [settings, setSettings] = useState<StoreSettings>(() => {
-    const saved = localStorage.getItem('admin_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
-  });
+        if (prodRes.ok) setProducts(await prodRes.json());
+        if (catRes.ok) setCategories(await catRes.json());
+        if (banRes.ok) setBanners(await banRes.json());
+        if (setRes.ok) setSettings(await setRes.json());
+        if (ordRes.ok) setOrders(await ordRes.json());
+      } catch (e) {
+        console.error('Failed to fetch admin data', e);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('admin_orders');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [staff, setStaff] = useState<Staff[]>(() => {
-    const saved = localStorage.getItem('admin_staff');
-    return saved ? JSON.parse(saved) : [
-      { id: 's1', name: 'Admin User', email: 'admin@shop.com', role: 'Admin', phone: '01XXXXXXXXX' }
-    ];
-  });
-
-  useEffect(() => localStorage.setItem('admin_products', JSON.stringify(products)), [products]);
-  useEffect(() => localStorage.setItem('admin_banners', JSON.stringify(banners)), [banners]);
-  useEffect(() => localStorage.setItem('admin_settings', JSON.stringify(settings)), [settings]);
-  useEffect(() => localStorage.setItem('admin_orders', JSON.stringify(orders)), [orders]);
-  useEffect(() => localStorage.setItem('admin_staff', JSON.stringify(staff)), [staff]);
-  useEffect(() => localStorage.setItem('admin_categories', JSON.stringify(categories)), [categories]);
-
-  const addProduct = (p: Product) => setProducts([p, ...products]);
-  const updateProduct = (p: Product) => setProducts(products.map(item => item.id === p.id ? p : item));
-  const deleteProduct = (id: string) => setProducts(products.filter(item => item.id !== id));
-  const updateSettings = (s: StoreSettings) => setSettings(s);
-  const updateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders(orders.map(o => o.id === id ? { ...o, status } : o));
+  const addProduct = async (p: Product) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+      });
+      if (res.ok) {
+        const savedProduct = await res.json();
+        setProducts([savedProduct, ...products]);
+      }
+    } catch (e) { console.error(e); }
   };
-  const deleteOrder = (id: string) => setOrders(orders.filter(o => o.id !== id));
-  const addOrder = (o: Order) => setOrders([o, ...orders]);
-  const updateBanners = (b: Banner[]) => setBanners(b);
+
+  const updateProduct = async (p: Product) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products.php`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
+      });
+      if (res.ok) {
+        const savedProduct = await res.json();
+        setProducts(products.map(item => item.id === p.id ? savedProduct : item));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteProduct = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products.php?id=${id}`, { method: 'DELETE' });
+      if (res.ok) setProducts(products.filter(item => item.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
+  const updateSettings = async (s: StoreSettings) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings.php`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(s)
+      });
+      if (res.ok) setSettings(await res.json());
+    } catch (e) { console.error(e); }
+  };
+
+  const updateOrderStatus = async (id: string, status: OrderStatus) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders.php`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOrders(orders.map(o => o.id === id ? updated : o));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteOrder = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders.php?id=${id}`, { method: 'DELETE' });
+      if (res.ok) setOrders(orders.filter(o => o.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
+  const addOrder = async (o: Order) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(o)
+      });
+      if (res.ok) {
+        const savedOrder = await res.json();
+        setOrders([savedOrder, ...orders]);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const updateBanners = async (b: Banner[]) => {
+    setBanners(b);
+  };
+
+  const addBanner = async (b: Banner) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/banners.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(b)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setBanners([saved, ...banners]);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const updateBanner = async (b: Banner) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/banners.php`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(b)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setBanners(banners.map(item => item.id === b.id ? saved : item));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteBanner = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/banners.php?id=${id}`, { method: 'DELETE' });
+      if (res.ok) setBanners(banners.filter(item => item.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
   const addStaff = (s: Staff) => setStaff([s, ...staff]);
   const removeStaff = (id: string) => setStaff(staff.filter(s => s.id !== id));
-  const addCategory = (c: Category) => setCategories([c, ...categories]);
-  const updateCategory = (c: Category) => setCategories(categories.map(item => item.id === c.id ? c : item));
-  const deleteCategory = (id: string) => setCategories(categories.filter(item => item.id !== id));
-  const addReview = (productId: string, review: Review) => {
-    setProducts(products.map(p => {
-      if (p.id === productId) {
-        const newReviews = [review, ...p.reviews];
-        const newRating = newReviews.reduce((sum, r) => sum + r.rating, 0) / newReviews.length;
-        return { ...p, reviews: newReviews, rating: Number(newRating.toFixed(1)) };
+
+  const addCategory = async (c: Category) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/categories.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(c)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setCategories([saved, ...categories]);
       }
-      return p;
-    }));
+    } catch (e) { console.error(e); }
+  };
+
+  const updateCategory = async (c: Category) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/categories.php`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(c)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setCategories(categories.map(item => item.id === c.id ? saved : item));
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/categories.php?id=${id}`, { method: 'DELETE' });
+      if (res.ok) setCategories(categories.filter(item => item.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
+  const addReview = async (productId: string, review: Review) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products.php?action=review&id=${productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(review)
+      });
+      if (res.ok) {
+        // Refetch product to get updated reviews and rating
+        const pRes = await fetch(`${API_BASE_URL}/products.php?id=${productId}`);
+        if (pRes.ok) {
+          const updatedProduct = await pRes.json();
+          setProducts(products.map(p => p.id === productId ? updatedProduct : p));
+        }
+      }
+    } catch (e) { console.error(e); }
   };
 
   return (
     <AdminContext.Provider value={{
       products, categories, banners, settings, orders, staff,
-      addProduct, updateProduct, deleteProduct, updateSettings, updateOrderStatus, addOrder, updateBanners, addStaff, removeStaff, deleteOrder,
+      addProduct, updateProduct, deleteProduct, updateSettings, updateOrderStatus, addOrder, updateBanners, addBanner, updateBanner, deleteBanner, addStaff, removeStaff, deleteOrder,
       addCategory, updateCategory, deleteCategory, addReview
     }}>
       {children}

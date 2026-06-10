@@ -4,18 +4,24 @@ import { useCart } from '../CartContext';
 import { 
     LayoutDashboard, ShoppingBag, ListOrdered, Settings, 
     Users, AlertCircle, TrendingUp, 
-    Package, Clock, CheckCircle, Search, Filter, 
+    Package, Clock, CheckCircle, CheckCircle2, Search, Filter, 
     Trash2, Edit3, Eye, ArrowUpDown, ChevronDown, ChevronUp,
-    Phone, Mail, MapPin, CreditCard, Upload, X, Menu
+    Phone, Mail, MapPin, CreditCard, Upload, X, Menu, MonitorPlay
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { OrderStatus } from '../types';
 
 export const AdminDashboard: React.FC = () => {
   const { products, orders, settings } = useAdmin();
+  const { toast } = useCart();
   const location = useLocation();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+
+  if (!settings) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold uppercase tracking-widest text-sm animate-pulse">Loading Admin Panel...</div>;
+  }
 
   const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING).length;
 
@@ -42,9 +48,26 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
       <style>{`
         :root {
-          --color-primary: ${settings.primaryColor || '#ef4444'};
+          --color-primary: ${settings?.primaryColor || '#ef4444'};
         }
       `}</style>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast?.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            className="fixed top-4 left-1/2 z-[200] bg-white border border-green-100 shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 min-w-[300px]"
+          >
+            <div className="w-8 h-8 bg-green-50 text-green-500 rounded-full flex items-center justify-center shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <p className="text-sm font-bold text-gray-800">{toast.message}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Top Header for Admin */}
       <header className="lg:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
@@ -88,6 +111,7 @@ export const AdminDashboard: React.FC = () => {
           <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
           <NavItem to="/admin/categories" icon={Filter} label="Categories" />
           <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
+          <NavItem to="/admin/banners" icon={MonitorPlay} label="Banners" />
           <NavItem to="/admin/settings" icon={Settings} label="Settings" />
           <NavItem to="/admin/staff" icon={Users} label="Staff Management" />
         </nav>
@@ -115,6 +139,7 @@ export const AdminDashboard: React.FC = () => {
             <Route path="/orders" element={<AdminOrders />} />
             <Route path="/categories" element={<AdminCategories />} />
             <Route path="/products" element={<AdminProducts />} />
+            <Route path="/banners" element={<AdminBanners />} />
             <Route path="/settings" element={<AdminSettings />} />
             <Route path="/staff" element={<AdminStaff />} />
           </Routes>
@@ -291,6 +316,7 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
             };
             reader.readAsDataURL(file);
         }
+        e.target.value = '';
     };
 
     const removeImage = (index: number) => {
@@ -484,8 +510,18 @@ const AdminOrders = () => {
                                         <p className="text-sm font-bold">Payment Method: <span className="text-primary uppercase font-black">{selectedOrder.paymentMethod}</span></p>
                                         {selectedOrder.note && (
                                             <div className="pt-2">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Note:</p>
-                                                <p className="text-sm italic text-gray-600">"{selectedOrder.note}"</p>
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Note & Payment Info:</p>
+                                                <p className="text-sm italic text-gray-600 font-bold p-3 bg-white rounded-xl mt-1 border shadow-inner">
+                                                    {selectedOrder.note.includes('TrxID:') ? (
+                                                        <>
+                                                            <span>{selectedOrder.note.split('|')[0]}</span>
+                                                            <br />
+                                                            <span className="text-primary not-italic tracking-wider uppercase">{selectedOrder.note.split('|')[1]}</span>
+                                                        </>
+                                                    ) : (
+                                                        selectedOrder.note
+                                                    )}
+                                                </p>
                                             </div>
                                         )}
                                     </div>
@@ -601,7 +637,11 @@ const AdminCategories = () => {
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Category Management</h1>
                 <button 
-                    onClick={() => {setEditingCategory(null); setShowModal(true)}}
+                    onClick={() => {
+                        setEditingCategory(null); 
+                        setNewCategory({ name: '', image: '', icon: 'Package' });
+                        setShowModal(true);
+                    }}
                     className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
                 >+ Add Category</button>
             </div>
@@ -771,7 +811,11 @@ const AdminProducts = () => {
                         />
                     </div>
                     <button 
-                        onClick={() => {setEditingProduct(null); setShowModal(true)}}
+                        onClick={() => {
+                            setEditingProduct(null); 
+                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', images: [], badge: '' });
+                            setShowModal(true);
+                        }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
                     >+ Add Product</button>
                 </div>
@@ -1460,6 +1504,189 @@ const AdminStaff = () => {
                 title="Remove Staff?"
                 message="Are you sure you want to remove this staff member? They will instantly lose access to the administrative dashboard."
             />
+        </div>
+    );
+};
+
+export const AdminBanners = () => {
+    const { banners, addBanner, updateBanner, deleteBanner } = useAdmin();
+    const { toast } = useCart();
+    const [showModal, setShowModal] = React.useState(false);
+    const [editingBanner, setEditingBanner] = React.useState<any>(null);
+    const [bannerToDelete, setBannerToDelete] = React.useState<string | null>(null);
+    const [newBanner, setNewBanner] = React.useState({
+        title: '',
+        link: '',
+        image: ''
+    });
+
+    React.useEffect(() => {
+        if (editingBanner) {
+            setNewBanner({
+                title: editingBanner.title || '',
+                link: editingBanner.link || '',
+                image: editingBanner.image || ''
+            });
+        } else {
+            setNewBanner({ title: '', link: '', image: '' });
+        }
+    }, [editingBanner]);
+
+    const handleSave = () => {
+        if (!newBanner.image) return alert('Banner image is required');
+        
+        const bannerData = {
+            id: editingBanner ? editingBanner.id : `b-${Date.now()}`,
+            ...newBanner
+        };
+
+        if (editingBanner) {
+            updateBanner(bannerData);
+        } else {
+            addBanner(bannerData);
+        }
+        setShowModal(false);
+        setEditingBanner(null);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Banners Management</h1>
+                <button 
+                    onClick={() => {
+                        setEditingBanner(null);
+                        setNewBanner({ title: '', link: '', image: '' });
+                        setShowModal(true);
+                    }}
+                    className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
+                >+ Add Banner</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {banners.map(b => (
+                    <div key={b.id} className="bg-white p-4 rounded-[32px] border border-gray-100 shadow-sm group hover:border-primary transition-all relative">
+                        <div className="aspect-[21/9] bg-gray-50 rounded-2xl overflow-hidden mb-4 border relative group-hover:scale-[1.02] transition-transform">
+                            {b.image ? (
+                                <img src={b.image} className="w-full h-full object-cover" alt="Banner" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                    <MonitorPlay size={32} />
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-2 pb-2">
+                           <h4 className="font-black text-sm block truncate text-gray-900">{b.title || 'Untitled Banner'}</h4>
+                           <p className="text-xs text-blue-500 font-bold truncate mt-1">{b.link || 'No Link Provided'}</p>
+                        </div>
+                        <div className="absolute top-6 right-6 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all bg-white/80 p-1 rounded-full backdrop-blur">
+                            <button 
+                                onClick={() => {setEditingBanner(b); setShowModal(true)}}
+                                className="p-1.5 text-blue-500 rounded-full hover:bg-blue-50"
+                                title="Edit"
+                            >
+                                <Edit3 size={14} />
+                            </button>
+                            <button 
+                                onClick={() => setBannerToDelete(b.id)}
+                                className="p-1.5 text-red-500 rounded-full hover:bg-red-50"
+                                title="Delete"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <ConfirmModal 
+                isOpen={!!bannerToDelete}
+                onClose={() => setBannerToDelete(null)}
+                onConfirm={() => deleteBanner(bannerToDelete!)}
+                title="Delete Banner?"
+                message="Are you sure you want to remove this banner from the home screen?"
+            />
+
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+                    <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col p-6 sm:p-8 space-y-6">
+                        <div className="flex justify-between items-center border-b pb-4">
+                            <h2 className="text-xl font-bold tracking-tighter">{editingBanner ? 'Edit Banner' : 'New Banner'}</h2>
+                            <button onClick={() => setShowModal(false)} className="text-2xl text-gray-400 hover:text-black">&times;</button>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Banner Title (Optional)</label>
+                                <input 
+                                    value={newBanner.title}
+                                    onChange={e => setNewBanner({...newBanner, title: e.target.value})}
+                                    className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                    placeholder="e.g. Summer Sale 2026"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Redirect Link (Optional)</label>
+                                <input 
+                                    value={newBanner.link}
+                                    onChange={e => setNewBanner({...newBanner, link: e.target.value})}
+                                    className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                    placeholder="e.g. /products?category=Fashion"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Main Banner Image *</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="relative group w-full h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
+                                        {newBanner.image ? (
+                                            <>
+                                                <img src={newBanner.image} className="w-full h-full object-cover" alt="Preview" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <Edit3 className="text-white" size={20} />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center text-gray-400 group-hover:text-primary">
+                                                <Upload size={24} />
+                                                <span className="text-[10px] font-bold mt-2 uppercase tracking-widest">Upload Banner</span>
+                                            </div>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => setNewBanner({...newBanner, image: reader.result as string});
+                                                    reader.readAsDataURL(file);
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                    </div>
+                                    {newBanner.image && (
+                                        <button 
+                                            type="button"
+                                            onClick={() => setNewBanner({...newBanner, image: ''})}
+                                            className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors self-end"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleSave}
+                            className="bg-primary text-white w-full py-4 rounded-2xl font-black shadow-xl shadow-red-200 hover-primary-dark transition-all text-sm uppercase tracking-wider"
+                        >
+                            {editingBanner ? 'Update Banner' : 'Save Banner'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

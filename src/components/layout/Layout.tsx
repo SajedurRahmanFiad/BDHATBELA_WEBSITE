@@ -12,7 +12,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { settings, categories, products } = useAdmin();
   const { user } = useAuth();
   
+
+  
   React.useEffect(() => {
+    if (!settings) return;
     // Dynamic Title
     document.title = `${settings.companyName} - Best Online Shopping`;
 
@@ -26,7 +29,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
       link.href = settings.favicon;
     }
-  }, [settings.favicon, settings.companyName]);
+  }, [settings?.favicon, settings?.companyName, settings]);
 
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -47,6 +50,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       setShowResults(false);
     }
   };
+
+  if (!settings) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

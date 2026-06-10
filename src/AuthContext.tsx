@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from './types';
+import { API_BASE_URL } from './constants';
 
 interface AuthContextType {
   user: User | null;
   login: (identifier: string, password: string) => Promise<boolean>;
   signup: (userData: Omit<User, 'id' | 'role' | 'orders'>, password: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  updateUser: (userData: Partial<User>) => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -18,25 +19,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('all_users');
-    return saved ? JSON.parse(saved) : [
-      // Seed an admin user for initial access
-      { 
-        id: 'admin-1', 
-        name: 'Admin', 
-        email: 'admin@amardokan.com', 
-        phone: '01700000000', 
-        role: 'Admin', 
-        orders: [] 
-      }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('all_users', JSON.stringify(users));
-  }, [users]);
-
   useEffect(() => {
     if (user) {
       localStorage.setItem('user_session', JSON.stringify(user));
@@ -46,45 +28,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const login = async (identifier: string, password: string): Promise<boolean> => {
-    // In a real app, you'd check passwords. For this mock, we just check email or phone.
-    const foundUser = users.find(u => u.email === identifier || u.phone === identifier);
-    if (foundUser) {
-      setUser(foundUser);
-      return true;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', identifier, password })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Login failed', e);
+      return false;
     }
-    return false;
   };
 
   const signup = async (userData: Omit<User, 'id' | 'role' | 'orders'>, password: string): Promise<boolean> => {
-    // If email is provided, check for duplicate email
-    if (userData.email) {
-      if (users.some(u => u.email === userData.email)) return false;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'signup', ...userData, password })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Signup failed', e);
+      return false;
     }
-    
-    // Check for duplicate phone
-    if (users.some(u => u.phone === userData.phone)) return false;
-
-    const newUser: User = {
-      ...userData,
-      id: `u-${Date.now()}`,
-      role: 'User',
-      orders: []
-    };
-
-    setUsers([...users, newUser]);
-    setUser(newUser);
-    return true;
   };
 
   const logout = () => {
     setUser(null);
   };
 
-  const updateUser = (userData: Partial<User>) => {
+  const updateUser = async (userData: Partial<User>) => {
     if (!user) return;
-    const updatedUser = { ...user, ...userData };
-    setUser(updatedUser);
-    setUsers(users.map(u => u.id === user.id ? updatedUser : u));
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', id: user.id, ...userData })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+      }
+    } catch (e) {
+      console.error('Update user failed', e);
+    }
   };
 
   const isAdmin = user?.role === 'Admin';

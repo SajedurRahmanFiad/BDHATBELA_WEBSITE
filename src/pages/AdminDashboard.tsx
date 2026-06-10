@@ -1721,9 +1721,6 @@ export const AdminBanners = () => {
 
     const handleSave = () => {
         if (!newBanner.image) return alert('Banner image is required');
-        if (newBanner.image.length > 6 * 1024 * 1024) {
-            return alert('Image is too large. Please use a smaller image file (under 4MB).');
-        }
 
         const bannerData = {
             id: editingBanner ? editingBanner.id : `b-${Date.now()}`,

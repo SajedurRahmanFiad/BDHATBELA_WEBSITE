@@ -23,11 +23,13 @@ if ($method === 'GET') {
     $image = $data['image'];
     $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
     $buttonText = $data['buttonText'] ?? 'Shop Now';
+    $buttonLink = $data['buttonLink'] ?? null;
     $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
     $buttonBgColor = $data['buttonBgColor'] ?? '#EF4444';
+    $titleColor = $data['titleColor'] ?? '#FFFFFF';
 
-    $stmt = $pdo->prepare("INSERT INTO banners (id, image, title, link, showButton, buttonText, buttonTextColor, buttonBgColor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    if ($stmt->execute([$id, $image, $title, $link, $showButton, $buttonText, $buttonTextColor, $buttonBgColor])) {
+    $stmt = $pdo->prepare("INSERT INTO banners (id, image, title, link, showButton, buttonText, buttonLink, buttonTextColor, buttonBgColor, titleColor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt->execute([$id, $image, $title, $link, $showButton, $buttonText, $buttonLink, $buttonTextColor, $buttonBgColor, $titleColor])) {
         echo json_encode([
             'id' => $id, 
             'image' => $image, 
@@ -35,8 +37,10 @@ if ($method === 'GET') {
             'link' => $link,
             'showButton' => (bool)$showButton,
             'buttonText' => $buttonText,
+            'buttonLink' => $buttonLink,
             'buttonTextColor' => $buttonTextColor,
-            'buttonBgColor' => $buttonBgColor
+            'buttonBgColor' => $buttonBgColor,
+            'titleColor' => $titleColor
         ]);
     } else {
         http_response_code(500);
@@ -60,11 +64,13 @@ if ($method === 'GET') {
 
     $showButton = isset($data['showButton']) ? (int)$data['showButton'] : 0;
     $buttonText = $data['buttonText'] ?? 'Shop Now';
+    $buttonLink = $data['buttonLink'] ?? null;
     $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
     $buttonBgColor = $data['buttonBgColor'] ?? '#EF4444';
+    $titleColor = $data['titleColor'] ?? '#FFFFFF';
 
-    $stmt = $pdo->prepare("UPDATE banners SET image = ?, title = ?, link = ?, showButton = ?, buttonText = ?, buttonTextColor = ?, buttonBgColor = ? WHERE id = ?");
-    if ($stmt->execute([$data['image'], $data['title'] ?? null, $data['link'] ?? null, $showButton, $buttonText, $buttonTextColor, $buttonBgColor, $id])) {
+    $stmt = $pdo->prepare("UPDATE banners SET image = ?, title = ?, link = ?, showButton = ?, buttonText = ?, buttonLink = ?, buttonTextColor = ?, buttonBgColor = ?, titleColor = ? WHERE id = ?");
+    if ($stmt->execute([$data['image'], $data['title'] ?? null, $data['link'] ?? null, $showButton, $buttonText, $buttonLink, $buttonTextColor, $buttonBgColor, $titleColor, $id])) {
         echo json_encode($data);
     } else {
         http_response_code(500);

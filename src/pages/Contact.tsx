@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, MapPin, Send, MessageCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, MessageCircle, Loader2 } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { useAuth } from '../AuthContext';
 import { motion } from 'motion/react';
+import { API_BASE_URL } from '../constants';
+import { normalizePhone, isValidPhone, handlePhoneChange } from '../utils/phone';
 
 export const Contact: React.FC = () => {
   const { settings } = useAdmin();
@@ -14,6 +16,8 @@ export const Contact: React.FC = () => {
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -25,18 +29,38 @@ export const Contact: React.FC = () => {
     }
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
-    setFormData({ 
-      name: user?.name || '', 
-      phone: user?.phone || '', 
-      subject: '', 
-      message: '' 
-    });
+    if (!isValidPhone(formData.phone)) {
+      setPhoneError('Please enter a valid 11-digit phone number (e.g. 01XXXXXXXXX)');
+      return;
+    }
+    setPhoneError('');
+    setLoading(true);
+    try {
+      await fetch(`${API_BASE_URL}/contacts.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      setSubmitted(true);
+      setFormData({ 
+        name: user?.name || '', 
+        phone: user?.phone || '', 
+        subject: '', 
+        message: '' 
+      });
+      setTimeout(() => setSubmitted(false), 6000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const whatsappHref = settings?.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`
+    : '#';
 
   return (
     <div className="container mx-auto px-4 py-20">
@@ -68,8 +92,8 @@ export const Contact: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-gray-400 text-xs uppercase tracking-widest mb-1">Hotline</h3>
-                <p className="text-xl font-black text-gray-900">{settings.contactPhone}</p>
-                <p className="text-xs text-gray-500 mt-1">10:00 AM to 8:00 PM</p>
+                <p className="text-xl font-black text-gray-900">{settings?.contactPhone}</p>
+                <p className="text-xs text-gray-500 mt-1">{settings?.hotlineHours || '10:00 AM to 8:00 PM'}</p>
               </div>
             </div>
 
@@ -79,7 +103,7 @@ export const Contact: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-gray-400 text-xs uppercase tracking-widest mb-1">Email</h3>
-                <p className="text-lg font-black text-gray-900">{settings.email}</p>
+                <p className="text-lg font-black text-gray-900">{settings?.email}</p>
                 <p className="text-xs text-gray-500 mt-1">Send us an email anytime</p>
               </div>
             </div>
@@ -90,18 +114,23 @@ export const Contact: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-gray-400 text-xs uppercase tracking-widest mb-1">Office</h3>
-                <p className="text-lg font-black text-gray-900">Uttara, Dhaka-1230</p>
+                <p className="text-lg font-black text-gray-900">{settings?.address || 'Not provided'}</p>
                 <p className="text-xs text-gray-500 mt-1">Visit us during business hours</p>
               </div>
             </div>
 
-            <div className="bg-primary p-8 rounded-[40px] shadow-xl shadow-red-100 text-white flex items-center justify-between group cursor-pointer hover:bg-black transition-all">
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-primary p-8 rounded-[40px] shadow-xl shadow-red-100 text-white flex items-center justify-between group cursor-pointer hover:bg-black transition-all no-underline"
+            >
               <div className="space-y-1">
                 <h3 className="font-black text-xl">WhatsApp Us</h3>
                 <p className="text-xs opacity-80">Message us directly on WhatsApp</p>
               </div>
               <MessageCircle size={40} className="opacity-40 group-hover:opacity-100 transition-opacity" />
-            </div>
+            </a>
           </div>
 
           {/* Contact Form */}
@@ -146,11 +175,16 @@ export const Contact: React.FC = () => {
                       <input 
                         type="tel" 
                         required
+                        maxLength={11}
                         value={formData.phone}
-                        onChange={e => setFormData({...formData, phone: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary px-6 py-4 rounded-3xl outline-none transition-all font-medium"
-                        placeholder="Enter your phone number"
+                        onChange={e => {
+                          handlePhoneChange(e.target.value, (v) => setFormData({...formData, phone: v}));
+                          setPhoneError('');
+                        }}
+                        className={`w-full bg-gray-50 border-2 ${phoneError ? 'border-red-400' : 'border-transparent focus:border-primary'} px-6 py-4 rounded-3xl outline-none transition-all font-medium`}
+                        placeholder="e.g. 01XXXXXXXXX"
                       />
+                      {phoneError && <p className="text-red-500 text-xs font-bold ml-4">{phoneError}</p>}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -176,9 +210,11 @@ export const Contact: React.FC = () => {
                   </div>
                   <button 
                     type="submit" 
-                    className="w-full bg-primary text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-red-100 hover:bg-black hover:shadow-gray-200 transition-all flex items-center justify-center gap-3"
+                    disabled={loading}
+                    className="w-full bg-primary text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-red-100 hover:bg-black hover:shadow-gray-200 transition-all flex items-center justify-center gap-3 disabled:opacity-70"
                   >
-                    Send Message <Send size={20} />
+                    {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                    {loading ? 'Sending...' : 'Send Message'}
                   </button>
                 </form>
               )}
@@ -189,3 +225,6 @@ export const Contact: React.FC = () => {
     </div>
   );
 };
+
+
+

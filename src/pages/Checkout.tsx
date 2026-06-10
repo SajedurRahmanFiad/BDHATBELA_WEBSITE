@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../CartContext';
 import { useAdmin } from '../AdminContext';
 import { useAuth } from '../AuthContext';
+import { handlePhoneChange, isValidPhone } from '../utils/phone';
 import { useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone } from 'lucide-react';
 import { DISTRICTS } from '../constants';
@@ -38,8 +39,12 @@ export const Checkout: React.FC = () => {
   const shippingCost = formData.district === 'Dhaka' ? settings.shippingCharges.insideDhaka : settings.shippingCharges.outsideDhaka;
   const totalAmount = subtotal + shippingCost;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidPhone(formData.phone)) {
+      alert('Please enter a valid 11-digit phone number (e.g. 01XXXXXXXXX)');
+      return;
+    }
     if (!formData.name || !formData.phone || !formData.address) {
       alert('Please fill out all required fields');
       return;
@@ -104,17 +109,18 @@ export const Checkout: React.FC = () => {
                </div>
                <div className="space-y-2">
                  <label className="text-sm font-bold text-gray-600 block">Phone Number *</label>
-                 <div className="relative">
+                  <div className="relative">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
                       type="tel" 
                       required
+                      maxLength={11}
                       value={formData.phone}
-                      onChange={e => setFormData({...formData, phone: e.target.value})}
-                      placeholder="11-digit phone number"
+                      onChange={e => handlePhoneChange(e.target.value, (v) => setFormData({...formData, phone: v}))}
+                      placeholder="01XXXXXXXXX"
                       className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50 border-2 border-transparent focus:border-primary outline-none transition-all"
                     />
-                 </div>
+                  </div>
                </div>
                <div className="space-y-2 text-sm">
                   <label className="text-sm font-bold text-gray-600 block">District *</label>

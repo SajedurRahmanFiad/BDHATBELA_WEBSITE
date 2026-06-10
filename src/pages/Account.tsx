@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, UserPlus, LogOut, Package, MapPin, Phone, Mail, User, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { handlePhoneChange, isValidPhone } from '../utils/phone';
 
 export const Account: React.FC = () => {
   const { user, login, signup, logout, isAdmin, updateUser } = useAuth();
@@ -31,6 +32,11 @@ export const Account: React.FC = () => {
 
     try {
       if (isLogin) {
+        if (!isValidPhone(formData.loginIdentifier)) {
+          setError('Please enter a valid 11-digit phone number');
+          setLoading(false);
+          return;
+        }
         const success = await login(formData.loginIdentifier, formData.password);
         if (!success) {
           setError('Invalid phone number or password');
@@ -38,6 +44,11 @@ export const Account: React.FC = () => {
           setFormData({ name: '', phone: '', address: '', password: '', loginIdentifier: '' });
         }
       } else {
+        if (!isValidPhone(formData.phone)) {
+          setError('Please enter a valid 11-digit phone number');
+          setLoading(false);
+          return;
+        }
         const success = await signup({
           name: formData.name,
           phone: formData.phone,
@@ -58,6 +69,10 @@ export const Account: React.FC = () => {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidPhone(editFormData.phone)) {
+      alert('Please enter a valid 11-digit phone number');
+      return;
+    }
     updateUser(editFormData);
     setShowEditModal(false);
   };
@@ -260,12 +275,13 @@ export const Account: React.FC = () => {
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input 
-                        type="text"
+                        type="tel"
                         required
+                        maxLength={11}
                         value={formData.loginIdentifier}
-                        onChange={(e) => setFormData({...formData, loginIdentifier: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-12 pr-4 py-3 rounded-2xl outline-none transition-all font-medium"
-                        placeholder="017xxxxxxxx"
+                        onChange={e => handlePhoneChange(e.target.value, (v) => setFormData({...formData, loginIdentifier: v}))}
+                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary px-6 py-4 rounded-3xl outline-none transition-all font-medium"
+                        placeholder="01XXXXXXXXX"
                       />
                     </div>
                   </div>
@@ -299,10 +315,11 @@ export const Account: React.FC = () => {
                       <input 
                         type="tel"
                         required
+                        maxLength={11}
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={e => handlePhoneChange(e.target.value, (v) => setFormData({...formData, phone: v}))}
                         className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-12 pr-4 py-3 rounded-2xl outline-none transition-all font-medium"
-                        placeholder="017xxxxxxxx"
+                        placeholder="01XXXXXXXXX"
                       />
                     </div>
                   </div>

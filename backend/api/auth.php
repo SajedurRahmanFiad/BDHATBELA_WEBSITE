@@ -5,6 +5,12 @@ require_once '../config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
+if ($method === 'GET') {
+    $stmt = $pdo->query("SELECT id, name, phone, address, role FROM users ORDER BY name ASC");
+    echo json_encode($stmt->fetchAll());
+    exit;
+}
+
 if ($method === 'POST') {
     $action = $data['action'] ?? '';
 
@@ -89,6 +95,17 @@ if ($method === 'POST') {
         } else {
             http_response_code(500);
             echo json_encode(['error' => 'Update failed']);
+        }
+    } elseif ($action === 'update_role') {
+        $id = $data['id'];
+        $role = $data['role']; // 'Admin' or 'User'
+
+        $stmt = $pdo->prepare("UPDATE users SET role = ? WHERE id = ?");
+        if ($stmt->execute([$role, $id])) {
+            echo json_encode(['success' => true]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to update role']);
         }
     }
 }

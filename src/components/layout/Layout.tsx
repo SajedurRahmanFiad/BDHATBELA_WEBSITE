@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../../CartContext';
 import { useAdmin } from '../../AdminContext';
@@ -35,6 +35,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showResults, setShowResults] = React.useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Scroll to top on every page navigation
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
+  const isActive = (path: string) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   const searchResults = searchQuery.trim()
     ? products.filter(p =>
@@ -228,6 +237,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
           {/* Categories Nav - Desktop */}
           <nav className="hidden md:flex items-center gap-8 mt-4 border-t pt-3">
+            <Link
+              to="/"
+              className={`font-medium transition-colors text-sm pb-0.5 ${
+                isActive('/') ? 'text-primary border-b-2 border-primary' : 'hover:text-primary'
+              }`}
+            >
+              Home
+            </Link>
             <div className="group relative">
               <button className="flex items-center gap-1 font-medium hover:text-primary transition-colors cursor-pointer text-sm">
                 All Categories <ChevronDown size={14} />
@@ -240,8 +257,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 ))}
               </div>
             </div>
-            <Link to="/products" className="font-medium hover:text-primary transition-colors text-sm">All Products</Link>
-            <Link to="/contact" className="font-medium hover:text-primary transition-colors text-sm">Contact</Link>
+            <Link
+              to="/products"
+              className={`font-medium transition-colors text-sm pb-0.5 ${
+                isActive('/products') ? 'text-primary border-b-2 border-primary' : 'hover:text-primary'
+              }`}
+            >
+              All Products
+            </Link>
+            <Link
+              to="/contact"
+              className={`font-medium transition-colors text-sm pb-0.5 ${
+                isActive('/contact') ? 'text-primary border-b-2 border-primary' : 'hover:text-primary'
+              }`}
+            >
+              Contact
+            </Link>
           </nav>
         </div>
       </header>
@@ -324,28 +355,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {/* Why Choose Us */}
         <div className="bg-gray-50 py-10">
           <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm animate-pulse">
                 <Truck size={24} />
               </div>
               <h3 className="font-bold text-sm">Fast Delivery</h3>
               <p className="text-xs text-gray-500">24-72 hours delivery all over Bangladesh</p>
             </div>
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
                 <ShieldCheck size={24} />
               </div>
               <h3 className="font-bold text-sm">Original Products</h3>
               <p className="text-xs text-gray-500">100% authentic product guarantee</p>
             </div>
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
                 <RotateCcw size={24} />
               </div>
               <h3 className="font-bold text-sm">Easy Return</h3>
               <p className="text-xs text-gray-500">Easy return within 7 days</p>
             </div>
-            <div className="flex flex-col items-center text-center gap-2">
+            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
                 <ShoppingCart size={24} />
               </div>
@@ -362,11 +393,17 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <img src={settings.logo} alt="Logo" className="w-8 h-8 object-contain" />
               <span className="text-2xl font-bold">{settings.companyName}</span>
             </Link>
-            <p className="text-sm text-gray-600">Just click & get!</p>
+            <p className="text-sm text-gray-600">{settings.tagline || 'Just click & get!'}</p>
             <div className="flex items-center gap-4">
-              <a href={settings.socialLinks.facebook} className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
-              <a href={settings.socialLinks.youtube} className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
-              <a href={settings.socialLinks.instagram} className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+              {settings.socialLinks?.facebook && (
+                <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
+              )}
+              {settings.socialLinks?.youtube && (
+                <a href={settings.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
+              )}
+              {settings.socialLinks?.instagram && (
+                <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+              )}
             </div>
           </div>
 

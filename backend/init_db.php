@@ -115,14 +115,26 @@ try {
             `link` VARCHAR(255),
             `showButton` TINYINT(1) DEFAULT 0,
             `buttonText` VARCHAR(50) DEFAULT 'Shop Now',
+            `buttonLink` VARCHAR(255),
             `buttonTextColor` VARCHAR(20) DEFAULT '#FFFFFF',
-            `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444'
+            `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444',
+            `titleColor` VARCHAR(20) DEFAULT '#FFFFFF'
         );",
 
         "CREATE TABLE IF NOT EXISTS `settings` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `setting_key` VARCHAR(50) UNIQUE NOT NULL,
             `setting_value` JSON NOT NULL
+        );",
+
+        "CREATE TABLE IF NOT EXISTS `contact_messages` (
+            `id` VARCHAR(50) PRIMARY KEY,
+            `name` VARCHAR(100) NOT NULL,
+            `phone` VARCHAR(20) NOT NULL,
+            `subject` VARCHAR(200) NOT NULL,
+            `message` TEXT NOT NULL,
+            `is_read` TINYINT(1) DEFAULT 0,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );"
     ];
 
@@ -137,8 +149,10 @@ try {
     // Add banner columns
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `showButton` TINYINT(1) DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonText` VARCHAR(50) DEFAULT 'Shop Now'"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonLink` VARCHAR(255)"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonTextColor` VARCHAR(20) DEFAULT '#FFFFFF'"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444'"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `titleColor` VARCHAR(20) DEFAULT '#FFFFFF'"); } catch(Exception $e) {}
 
     echo "Tables created successfully.\n";
     
@@ -148,11 +162,15 @@ try {
     if ($stmt->fetchColumn() == 0) {
         $initial_settings = json_encode([
             'companyName' => 'MyStore',
+            'tagline' => 'Just click & get!',
             'logo' => 'https://cdn-icons-png.flaticon.com/512/1162/1162499.png',
             'favicon' => 'https://cdn-icons-png.flaticon.com/512/1162/1162499.png',
             'primaryColor' => '#ef4444',
             'contactPhone' => '016XXXXXXXX',
+            'whatsappNumber' => '8801XXXXXXXXX',
+            'hotlineHours' => '10:00 AM to 8:00 PM',
             'email' => 'support@shop.com',
+            'address' => 'Dhaka, Bangladesh',
             'socialLinks' => [
                 'facebook' => 'https://facebook.com',
                 'youtube' => 'https://youtube.com',

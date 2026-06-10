@@ -83,16 +83,21 @@ export interface Banner {
   link: string;
   showButton?: boolean;
   buttonText?: string;
+  buttonLink?: string;
   buttonTextColor?: string;
   buttonBgColor?: string;
+  titleColor?: string;
 }
 
 export interface StoreSettings {
   companyName: string;
+  tagline?: string;
   logo: string;
   favicon: string;
   primaryColor: string;
   contactPhone: string;
+  whatsappNumber?: string;
+  hotlineHours?: string;
   email: string;
   address?: string;
   socialLinks: {

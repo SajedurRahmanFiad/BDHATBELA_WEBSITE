@@ -7,7 +7,6 @@ import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   const { products, banners, categories } = useAdmin();
-  const scrollRef = React.useRef<HTMLDivElement>(null);
   const [currentBanner, setCurrentBanner] = React.useState(0);
 
   React.useEffect(() => {
@@ -18,114 +17,7 @@ export const Home: React.FC = () => {
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  React.useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
 
-    let intervalId: any;
-    let isMouseDown = false;
-    let startX = 0;
-    let scrollLeft = 0;
-    let userInteracted = false;
-    let interactionTimeout: any;
-
-    const tick = () => {
-      if (isMouseDown || userInteracted) return;
-      if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
-      
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) return;
-
-      if (el.scrollLeft >= maxScroll - 1) {
-        el.scrollLeft = 0; // wrap around smoothly
-      } else {
-        el.scrollLeft += 0.8; // extremely smooth, slow movement
-      }
-    };
-
-    const startAutoScroll = () => {
-      intervalId = setInterval(tick, 30);
-    };
-
-    const stopAutoScroll = () => {
-      clearInterval(intervalId);
-    };
-
-    const resetInteractionFlag = () => {
-      clearTimeout(interactionTimeout);
-      interactionTimeout = setTimeout(() => {
-        userInteracted = false;
-      }, 3000); // Resume auto-scroll 3 seconds after touch/drag ends
-    };
-
-    // Desktop Mouse Drag to Scroll
-    const handleMouseDown = (e: MouseEvent) => {
-      isMouseDown = true;
-      userInteracted = true;
-      startX = e.pageX - el.offsetLeft;
-      scrollLeft = el.scrollLeft;
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown) return;
-      e.preventDefault();
-      const x = e.pageX - el.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      el.scrollLeft = scrollLeft - walk;
-    };
-
-    const handleMouseUp = () => {
-      isMouseDown = false;
-      resetInteractionFlag();
-    };
-
-    const handleMouseLeave = () => {
-      isMouseDown = false;
-    };
-
-    // Mobile Touch Events
-    const handleTouchStart = () => {
-      userInteracted = true;
-      clearTimeout(interactionTimeout);
-    };
-
-    const handleTouchEnd = () => {
-      resetInteractionFlag();
-    };
-
-    // Pause on desktop hover
-    const handleMouseEnter = () => {
-      userInteracted = true;
-    };
-
-    const handleMouseOverLeave = () => {
-      userInteracted = false;
-    };
-
-    el.addEventListener('mousedown', handleMouseDown);
-    el.addEventListener('mousemove', handleMouseMove);
-    el.addEventListener('mouseup', handleMouseUp);
-    el.addEventListener('mouseleave', handleMouseLeave);
-    el.addEventListener('touchstart', handleTouchStart, { passive: true });
-    el.addEventListener('touchend', handleTouchEnd, { passive: true });
-    el.addEventListener('mouseenter', handleMouseEnter);
-    el.addEventListener('mouseleave', handleMouseOverLeave);
-
-    startAutoScroll();
-
-    return () => {
-      stopAutoScroll();
-      clearTimeout(interactionTimeout);
-      el.removeEventListener('mousedown', handleMouseDown);
-      el.removeEventListener('mousemove', handleMouseMove);
-      el.removeEventListener('mouseup', handleMouseUp);
-      el.removeEventListener('mouseleave', handleMouseLeave);
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchend', handleTouchEnd);
-      el.removeEventListener('mouseenter', handleMouseEnter);
-      el.removeEventListener('mouseleave', handleMouseOverLeave);
-    };
-  }, [categories]);
 
   const featuredProducts = [...products].reverse().slice(0, 8); // Limit to 2 rows (4 per row = 8)
   const newArrivals = [...products].slice(-8).reverse(); // Limit to 2 rows (4 per row = 8)
@@ -153,26 +45,39 @@ export const Home: React.FC = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="text-3xl md:text-5xl font-bold leading-tight"
+                        style={{ color: banners[currentBanner].titleColor || '#FFFFFF' }}
                       >
                         {banners[currentBanner].title}
                       </motion.h1>
                     )}
-                    {banners[currentBanner].showButton && banners[currentBanner].link && (
+                    {banners[currentBanner].showButton && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                       >
-                        <Link 
-                          to={banners[currentBanner].link} 
-                          className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
-                          style={{
-                            backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
-                            color: banners[currentBanner].buttonTextColor || '#FFFFFF'
-                          }}
-                        >
-                          {banners[currentBanner].buttonText || 'Shop Now'}
-                        </Link>
+                        {(banners[currentBanner].buttonLink || banners[currentBanner].link) ? (
+                          <Link 
+                            to={(banners[currentBanner].buttonLink || banners[currentBanner].link) as string} 
+                            className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
+                            style={{
+                              backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                              color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                            }}
+                          >
+                            {banners[currentBanner].buttonText || 'Shop Now'}
+                          </Link>
+                        ) : (
+                          <span
+                            className="inline-block px-8 py-3 rounded-full font-bold shadow-lg"
+                            style={{
+                              backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                              color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                            }}
+                          >
+                            {banners[currentBanner].buttonText || 'Shop Now'}
+                          </span>
+                        )}
                       </motion.div>
                     )}
                   </div>
@@ -199,21 +104,20 @@ export const Home: React.FC = () => {
       {/* Quick Access Categories */}
       <section className="container mx-auto px-4 overflow-hidden">
         <div className="relative">
-          {/* Mobile View */}
+          {/* Mobile View — horizontal scroll carousel, no duplication */}
           <div
-            ref={scrollRef}
-            className="flex md:hidden overflow-x-auto no-scrollbar gap-4 pb-4 flex-nowrap cursor-grab active:cursor-grabbing select-none"
+            className="flex md:hidden overflow-x-auto no-scrollbar gap-3 pb-2 flex-nowrap cursor-grab active:cursor-grabbing select-none"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {[...categories, ...categories, ...categories].map((cat, idx) => (
+            {categories.map((cat) => (
               <Link
-                key={`${cat.id}-${idx}`}
+                key={cat.id}
                 to={`/products?category=${encodeURIComponent(cat.name)}`}
-                className="flex-none w-[28%] sm:w-[20%]"
+                className="flex-none w-[22vw] min-w-[72px] max-w-[96px]"
                 draggable={false}
               >
                 <motion.div
-                  whileHover={{ y: -5 }}
+                  whileHover={{ y: -4 }}
                   className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all cursor-pointer group w-full h-full justify-between"
                   draggable={false}
                 >
@@ -224,7 +128,7 @@ export const Home: React.FC = () => {
                       <div className="scale-110">📦</div>
                     )}
                   </div>
-                  <span className="text-[10px] font-bold text-center line-clamp-1 select-none pointer-events-none">{cat.name}</span>
+                  <span className="text-[10px] font-bold text-center line-clamp-1 select-none pointer-events-none w-full">{cat.name}</span>
                 </motion.div>
               </Link>
             ))}
@@ -313,7 +217,7 @@ export const Home: React.FC = () => {
 
       {/* Store Advantage Section */}
       <section className="bg-blue-900 text-white py-16">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
+        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 text-left">
           <div className="space-y-4">
             <h2 className="text-3xl font-bold">Why Shop With Us?</h2>
             <p className="opacity-80">We prioritize customer satisfaction and guarantee high-quality product reliability.</p>

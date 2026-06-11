@@ -1177,12 +1177,26 @@ const AdminSettings = () => {
     const { settings, updateSettings } = useAdmin();
     const { showToast } = useCart();
     const [activeTab, setActiveTab] = React.useState<'general' | 'payments' | 'shipping' | 'branding'>('general');
+
+    const normalizeSocialLink = (link: any) => ({
+        enabled: typeof link === 'string' ? !!link : link?.enabled ?? false,
+        url: typeof link === 'string' ? link : link?.url ?? ''
+    });
+
     const [localSettings, setLocalSettings] = React.useState({
         ...settings,
         contactPhone: settings.contactPhone || '',
         email: settings.email || '',
         address: settings.address || '',
         logo: settings.logo || '',
+        socialLinks: {
+            facebook: normalizeSocialLink(settings.socialLinks?.facebook),
+            instagram: normalizeSocialLink(settings.socialLinks?.instagram),
+            youtube: normalizeSocialLink(settings.socialLinks?.youtube),
+            whatsapp: normalizeSocialLink(settings.socialLinks?.whatsapp),
+            twitter: normalizeSocialLink(settings.socialLinks?.twitter),
+            linkedin: normalizeSocialLink(settings.socialLinks?.linkedin)
+        },
         shippingCharges: {
             base: settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0,
             exceptions: settings.shippingCharges?.exceptions ?? [],
@@ -1311,6 +1325,64 @@ const AdminSettings = () => {
                                     className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg h-24 resize-none"
                                     placeholder="House 123, Road 4, Uttara, Dhaka-1230"
                                 />
+                            </div>
+                        </div>
+                        <div className="border-t pt-6 space-y-6">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Social Links</h3>
+                                    <p className="text-xs text-gray-500">Enable the social links you want to show in the footer.</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                {[
+                                    { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/yourpage' },
+                                    { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/yourpage' },
+                                                            { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/yourchannel' },
+                                    { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/1234567890' },
+                                    { key: 'twitter', label: 'Twitter', placeholder: 'https://twitter.com/yourhandle' },
+                                    { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/company/yourcompany' }
+                                ].map((item: any) => (
+                                    <div key={item.key} className="grid grid-cols-1 gap-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <label className="text-sm font-bold text-gray-800">{item.label}</label>
+                                            <label className="inline-flex items-center gap-2 text-xs font-bold text-gray-600">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={localSettings.socialLinks[item.key].enabled}
+                                                    onChange={e => setLocalSettings({
+                                                        ...localSettings,
+                                                        socialLinks: {
+                                                            ...localSettings.socialLinks,
+                                                            [item.key]: {
+                                                                ...localSettings.socialLinks[item.key],
+                                                                enabled: e.target.checked
+                                                            }
+                                                        }
+                                                    })}
+                                                    className="h-4 w-4 accent-primary"
+                                                />
+                                                Enabled
+                                            </label>
+                                        </div>
+                                        <input
+                                            value={localSettings.socialLinks[item.key].url}
+                                            onChange={e => setLocalSettings({
+                                                ...localSettings,
+                                                socialLinks: {
+                                                    ...localSettings.socialLinks,
+                                                    [item.key]: {
+                                                        ...localSettings.socialLinks[item.key],
+                                                        url: e.target.value
+                                                    }
+                                                }
+                                            })}
+                                            type="url"
+                                            placeholder={item.placeholder}
+                                            className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                         <button onClick={handleSave} className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold mt-4 hover:bg-black transition-all shadow-md">Save General Settings</button>

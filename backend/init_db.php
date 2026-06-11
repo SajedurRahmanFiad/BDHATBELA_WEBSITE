@@ -178,9 +178,12 @@ try {
             'email' => 'support@shop.com',
             'address' => 'Dhaka, Bangladesh',
             'socialLinks' => [
-                'facebook' => 'https://facebook.com',
-                'youtube' => 'https://youtube.com',
-                'instagram' => 'https://instagram.com'
+                'facebook' => ['enabled' => true, 'url' => 'https://facebook.com'],
+                'youtube' => ['enabled' => true, 'url' => 'https://youtube.com'],
+                'instagram' => ['enabled' => true, 'url' => 'https://instagram.com'],
+                'whatsapp' => ['enabled' => false, 'url' => ''],
+                'twitter' => ['enabled' => false, 'url' => ''],
+                'linkedin' => ['enabled' => false, 'url' => '']
             ],
             'shippingCharges' => [
                 'base' => 60,

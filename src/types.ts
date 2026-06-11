@@ -103,9 +103,12 @@ export interface StoreSettings {
   email: string;
   address?: string;
   socialLinks: {
-    facebook?: string;
-    youtube?: string;
-    instagram?: string;
+    facebook: { enabled: boolean; url: string };
+    instagram: { enabled: boolean; url: string };
+    youtube: { enabled: boolean; url: string };
+    twitter: { enabled: boolean; url: string };
+    linkedin: { enabled: boolean; url: string };
+    whatsapp: { enabled: boolean; url: string };
   };
   shippingCharges: {
     base: number;

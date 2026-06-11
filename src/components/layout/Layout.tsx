@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, Twitter, Linkedin, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useCart } from '../../CartContext';
 import { useAdmin } from '../../AdminContext';
 import { useAuth } from '../../AuthContext';
@@ -46,6 +46,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const isActive = (path: string) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+
+  const getSocialUrl = (link: any) => {
+    if (!link) return '';
+    return typeof link === 'string' ? link : link.url || '';
+  };
+
+  const isSocialEnabled = (link: any) => {
+    if (!link) return false;
+    return typeof link === 'string' ? !!link : !!link.enabled && !!link.url;
+  };
 
   const searchResults = searchQuery.trim()
     ? products.filter(p =>
@@ -397,14 +407,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </Link>
             <p className="text-sm text-gray-600">{settings.tagline || 'Just click & get!'}</p>
             <div className="flex items-center gap-4">
-              {settings.socialLinks?.facebook && (
-                <a href={settings.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
+              {isSocialEnabled(settings.socialLinks?.facebook) && (
+                <a href={getSocialUrl(settings.socialLinks?.facebook)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
               )}
-              {settings.socialLinks?.youtube && (
-                <a href={settings.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
+              {isSocialEnabled(settings.socialLinks?.youtube) && (
+                <a href={getSocialUrl(settings.socialLinks?.youtube)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
               )}
-              {settings.socialLinks?.instagram && (
-                <a href={settings.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+              {isSocialEnabled(settings.socialLinks?.instagram) && (
+                <a href={getSocialUrl(settings.socialLinks?.instagram)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+              )}
+              {isSocialEnabled(settings.socialLinks?.whatsapp) && (
+                <a href={getSocialUrl(settings.socialLinks?.whatsapp)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-emerald-600 hover:text-white transition-all"><Phone size={18} /></a>
+              )}
+              {isSocialEnabled(settings.socialLinks?.twitter) && (
+                <a href={getSocialUrl(settings.socialLinks?.twitter)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-600 hover:text-white transition-all"><Twitter size={18} /></a>
+              )}
+              {isSocialEnabled(settings.socialLinks?.linkedin) && (
+                <a href={getSocialUrl(settings.socialLinks?.linkedin)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-700 hover:text-white transition-all"><Linkedin size={18} /></a>
               )}
             </div>
           </div>
@@ -422,10 +441,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <h3 className="font-bold text-lg mb-4">Contact</h3>
             <div className="flex flex-col gap-3 text-sm text-gray-600">
               <p><b>Address:</b> {settings.address || 'Not Provided'}</p>
+              <p><b>Email:</b> {settings.email}</p>
               <p className="flex items-center gap-2 bg-primary/5 text-primary p-3 rounded-xl border border-primary/10 font-bold">
                 <Phone size={16} /> Hotline: {settings.contactPhone}
               </p>
-              <p><b>Email:</b> {settings.email}</p>
             </div>
           </div>
         </div>

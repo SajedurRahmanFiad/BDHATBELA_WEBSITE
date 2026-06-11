@@ -65,7 +65,7 @@ export const ProductDetail: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-gray-100">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white px-6 py-5 md:p-10 rounded-3xl shadow-sm border border-gray-100">
         {/* Images */}
         <div className="space-y-4">
           <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border">

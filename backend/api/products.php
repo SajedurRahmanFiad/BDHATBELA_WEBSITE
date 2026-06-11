@@ -14,6 +14,8 @@ function getProductFullDetails($pdo, $product_id) {
     $product['price'] = (float)$product['price'];
     if ($product['discountPrice']) $product['discountPrice'] = (float)$product['discountPrice'];
     $product['stock'] = (int)$product['stock'];
+    $product['weight'] = isset($product['weight']) ? (float)$product['weight'] : 0;
+    $product['weightUnit'] = $product['weightUnit'] ?? 'kg';
     $product['rating'] = (float)$product['rating'];
 
     // Get images
@@ -101,8 +103,8 @@ if ($method === 'GET') {
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO products (id, name, shortDescription, description, price, discountPrice, category, stock, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$id, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $badge]);
+        $stmt = $pdo->prepare("INSERT INTO products (id, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$id, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge]);
 
         foreach ($images as $img) {
             $stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url) VALUES (?, ?)");
@@ -135,7 +137,7 @@ if ($method === 'GET') {
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("UPDATE products SET name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, badge=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE products SET name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=? WHERE id=?");
         $stmt->execute([
             $data['name'], 
             $data['shortDescription'] ?? '', 
@@ -144,6 +146,8 @@ if ($method === 'GET') {
             $data['discountPrice'] ?? null, 
             $data['category'], 
             $data['stock'] ?? 0, 
+            $data['weight'] ?? 0,
+            $data['weightUnit'] ?? 'kg',
             $data['badge'] ?? null,
             $id
         ]);

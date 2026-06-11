@@ -54,6 +54,8 @@ try {
             `discountPrice` DECIMAL(10, 2),
             `category` VARCHAR(50) NOT NULL,
             `stock` INT DEFAULT 0,
+            `weight` DECIMAL(10, 2) DEFAULT 0,
+            `weightUnit` VARCHAR(20) DEFAULT 'kg',
             `rating` DECIMAL(3, 2) DEFAULT 0,
             `badge` VARCHAR(50)
         );",
@@ -154,6 +156,10 @@ try {
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonBgColor` VARCHAR(20) DEFAULT '#EF4444'"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `titleColor` VARCHAR(20) DEFAULT '#FFFFFF'"); } catch(Exception $e) {}
 
+    // Add product weight fields if missing
+    try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weight` DECIMAL(10, 2) DEFAULT 0"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weightUnit` VARCHAR(20) DEFAULT 'kg'"); } catch(Exception $e) {}
+
     echo "Tables created successfully.\n";
     
     // Check if initial settings exist
@@ -177,6 +183,12 @@ try {
                 'instagram' => 'https://instagram.com'
             ],
             'shippingCharges' => [
+                'base' => 60,
+                'exceptions' => [],
+                'dynamicShipping' => [
+                    'enabled' => false,
+                    'perKgCharge' => 0
+                ],
                 'insideDhaka' => 60,
                 'outsideDhaka' => 120
             ],

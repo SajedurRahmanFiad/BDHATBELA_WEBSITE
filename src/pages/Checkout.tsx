@@ -36,7 +36,18 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingCost = formData.district === 'Dhaka' ? settings.shippingCharges.insideDhaka : settings.shippingCharges.outsideDhaka;
+  const shippingBase = settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0;
+  const exceptionCharge = settings.shippingCharges?.exceptions?.find(ex => ex.district === formData.district)?.charge;
+  const legacyCharge = formData.district === 'Dhaka'
+    ? settings.shippingCharges?.insideDhaka
+    : settings.shippingCharges?.outsideDhaka;
+  const districtShippingCost = exceptionCharge ?? (legacyCharge !== undefined ? legacyCharge : shippingBase);
+
+  const totalWeight = cart.reduce((sum, item) => sum + ((item.product.weight ?? 0) * item.quantity), 0);
+  const extraWeightCharge = settings.shippingCharges?.dynamicShipping?.enabled
+    ? totalWeight * (settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0)
+    : 0;
+  const shippingCost = districtShippingCost + extraWeightCharge;
   const totalAmount = subtotal + shippingCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -260,8 +271,14 @@ export const Checkout: React.FC = () => {
               </div>
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Delivery Charge</span>
-                <span>৳{shippingCost}</span>
+                <span>৳{districtShippingCost}</span>
               </div>
+              {settings.shippingCharges?.dynamicShipping?.enabled && totalWeight > 0 && (
+                <div className="flex justify-between opacity-80 text-sm">
+                  <span>Weight surcharge</span>
+                  <span>৳{extraWeightCharge.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-2xl font-black pt-4">
                 <span>Total</span>
                 <span className="text-primary text-3xl">৳{totalAmount}</span>

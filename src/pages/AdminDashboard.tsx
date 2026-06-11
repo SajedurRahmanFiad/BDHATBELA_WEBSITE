@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { OrderStatus } from '../types';
-import { API_BASE_URL } from '../constants';
+import { API_BASE_URL, DISTRICTS } from '../constants';
 
 export const AdminDashboard: React.FC = () => {
     const { products, orders, settings } = useAdmin();
@@ -771,6 +771,8 @@ const AdminProducts = () => {
         discountPrice: '',
         category: categories[0]?.name || '',
         stock: '',
+        weight: '',
+        weightUnit: 'kg',
         images: [] as string[],
         badge: ''
     });
@@ -785,11 +787,13 @@ const AdminProducts = () => {
                 discountPrice: editingProduct.discountPrice?.toString() || '',
                 category: editingProduct.category,
                 stock: editingProduct.stock.toString(),
+                weight: editingProduct.weight?.toString() || '',
+                weightUnit: editingProduct.weightUnit || 'kg',
                 images: editingProduct.images || [],
                 badge: editingProduct.badge || ''
             });
         } else {
-            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', images: [], badge: '' });
+            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], badge: '' });
         }
     }, [editingProduct]);
 
@@ -807,6 +811,8 @@ const AdminProducts = () => {
             discountPrice: newProduct.discountPrice ? Number(newProduct.discountPrice) : undefined,
             category: newProduct.category || categories[0]?.name || '',
             stock: Number(newProduct.stock) || 0,
+            weight: Number(newProduct.weight) || 0,
+            weightUnit: newProduct.weightUnit || 'kg',
             images: newProduct.images,
             badge: newProduct.badge,
             rating: editingProduct ? editingProduct.rating : 5,
@@ -975,6 +981,18 @@ const AdminProducts = () => {
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
+                                    <input
+                                        type="number"
+                                        value={newProduct.weight}
+                                        min="0"
+                                        step="0.01"
+                                        onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                        placeholder="Example: 0.50"
+                                    />
+                                </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Status Badge</label>
                                     <div className="flex gap-2 flex-wrap pb-2">
@@ -1039,8 +1057,14 @@ const AdminSettings = () => {
         address: settings.address || '',
         logo: settings.logo || '',
         shippingCharges: {
-            insideDhaka: settings.shippingCharges?.insideDhaka || 0,
-            outsideDhaka: settings.shippingCharges?.outsideDhaka || 0
+            base: settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0,
+            exceptions: settings.shippingCharges?.exceptions ?? [],
+            dynamicShipping: {
+                enabled: settings.shippingCharges?.dynamicShipping?.enabled ?? false,
+                perKgCharge: settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0
+            },
+            insideDhaka: settings.shippingCharges?.insideDhaka,
+            outsideDhaka: settings.shippingCharges?.outsideDhaka
         },
         paymentGateways: {
             cod: { enabled: !!settings.paymentGateways?.cod?.enabled },
@@ -1233,36 +1257,147 @@ const AdminSettings = () => {
                             </div>
                             <h2 className="font-black text-gray-900 uppercase text-sm tracking-widest">Delivery and Shipping Charges</h2>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Inside Dhaka Fee (৳)</label>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">General Shipping Charge for All Districts (৳)</label>
                                 <input
-                                    value={localSettings.shippingCharges.insideDhaka}
+                                    value={localSettings.shippingCharges.base}
                                     type="number"
                                     onChange={e => setLocalSettings({
                                         ...localSettings,
                                         shippingCharges: {
                                             ...localSettings.shippingCharges,
-                                            insideDhaka: Number(e.target.value)
+                                            base: Number(e.target.value)
                                         }
                                     })}
                                     className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Outside Dhaka Fee (৳)</label>
-                                <input
-                                    value={localSettings.shippingCharges.outsideDhaka}
-                                    type="number"
-                                    onChange={e => setLocalSettings({
-                                        ...localSettings,
-                                        shippingCharges: {
-                                            ...localSettings.shippingCharges,
-                                            outsideDhaka: Number(e.target.value)
-                                        }
-                                    })}
-                                    className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
-                                />
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">District Exceptions</h3>
+                                        <p className="text-xs text-gray-500">Create custom charge overrides for specific districts.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLocalSettings({
+                                            ...localSettings,
+                                            shippingCharges: {
+                                                ...localSettings.shippingCharges,
+                                                exceptions: [
+                                                    ...localSettings.shippingCharges.exceptions,
+                                                    { district: DISTRICTS[0] || 'Dhaka', charge: 0 }
+                                                ]
+                                            }
+                                        })}
+                                        className="px-4 py-2 bg-primary text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[#c52929] transition-all"
+                                    >+ Add Exception</button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {localSettings.shippingCharges.exceptions.map((exception: any, index: number) => (
+                                        <div key={`${exception.district}-${index}`} className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_auto] gap-3 items-center">
+                                            <select
+                                                value={exception.district}
+                                                onChange={e => {
+                                                    const newExceptions = [...localSettings.shippingCharges.exceptions];
+                                                    newExceptions[index] = { ...newExceptions[index], district: e.target.value };
+                                                    setLocalSettings({
+                                                        ...localSettings,
+                                                        shippingCharges: {
+                                                            ...localSettings.shippingCharges,
+                                                            exceptions: newExceptions
+                                                        }
+                                                    });
+                                                }}
+                                                className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold"
+                                            >
+                                                {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                            <input
+                                                value={exception.charge}
+                                                type="number"
+                                                min="0"
+                                                onChange={e => {
+                                                    const newExceptions = [...localSettings.shippingCharges.exceptions];
+                                                    newExceptions[index] = { ...newExceptions[index], charge: Number(e.target.value) };
+                                                    setLocalSettings({
+                                                        ...localSettings,
+                                                        shippingCharges: {
+                                                            ...localSettings.shippingCharges,
+                                                            exceptions: newExceptions
+                                                        }
+                                                    });
+                                                }}
+                                                className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold font-mono"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newExceptions = localSettings.shippingCharges.exceptions.filter((_: any, i: number) => i !== index);
+                                                    setLocalSettings({
+                                                        ...localSettings,
+                                                        shippingCharges: {
+                                                            ...localSettings.shippingCharges,
+                                                            exceptions: newExceptions
+                                                        }
+                                                    });
+                                                }}
+                                                className="px-4 py-3 bg-red-50 text-red-600 rounded-2xl text-xs font-bold hover:bg-red-100 transition-all"
+                                            >Remove</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-4 space-y-4">
+                                <div className="flex items-center justify-between border p-4 rounded-3xl bg-gray-50">
+                                    <div>
+                                        <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Dynamic Shipping by Weight</h3>
+                                        <p className="text-xs text-gray-500">Charge extra shipping based on total product weight.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={localSettings.shippingCharges.dynamicShipping.enabled}
+                                        onChange={e => setLocalSettings({
+                                            ...localSettings,
+                                            shippingCharges: {
+                                                ...localSettings.shippingCharges,
+                                                dynamicShipping: {
+                                                    ...localSettings.shippingCharges.dynamicShipping,
+                                                    enabled: e.target.checked
+                                                }
+                                            }
+                                        })}
+                                        className="w-5 h-5 accent-primary cursor-pointer"
+                                    />
+                                </div>
+
+                                {localSettings.shippingCharges.dynamicShipping.enabled && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Extra Charge Per 1 Kg (৳)</label>
+                                            <input
+                                                value={localSettings.shippingCharges.dynamicShipping.perKgCharge}
+                                                type="number"
+                                                min="0"
+                                                onChange={e => setLocalSettings({
+                                                    ...localSettings,
+                                                    shippingCharges: {
+                                                        ...localSettings.shippingCharges,
+                                                        dynamicShipping: {
+                                                            ...localSettings.shippingCharges.dynamicShipping,
+                                                            perKgCharge: Number(e.target.value)
+                                                        }
+                                                    }
+                                                })}
+                                                className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button onClick={handleSave} className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold mt-4 hover:bg-black transition-all shadow-md">Save Shipping Fees</button>

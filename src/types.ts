@@ -18,6 +18,8 @@ export interface Product {
   category: string;
   images: string[];
   stock: number;
+  weight?: number;
+  weightUnit?: 'kg';
   rating: number;
   reviews: Review[];
   features?: string[];
@@ -106,14 +108,20 @@ export interface StoreSettings {
     instagram?: string;
   };
   shippingCharges: {
-    insideDhaka: number;
-    outsideDhaka: number;
+    base: number;
+    exceptions: Array<{ district: string; charge: number }>;
+    dynamicShipping: {
+      enabled: boolean;
+      perKgCharge: number;
+    };
+    insideDhaka?: number;
+    outsideDhaka?: number;
   };
   paymentGateways: {
     cod: { enabled: boolean; };
-    bkash: { enabled: boolean; number: string; type: 'Personal' | 'Agent'; instructions: string; };
-    nagad: { enabled: boolean; number: string; type: 'Personal' | 'Agent'; instructions: string; };
-    rocket: { enabled: boolean; number: string; type: 'Personal' | 'Agent'; instructions: string; };
+    bkash: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
+    nagad: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
+    rocket: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
     bank: { enabled: boolean; accountName: string; accountNumber: string; bankName: string; branchName: string; instructions: string; };
   };
 }

@@ -8,6 +8,7 @@ interface AuthContextType {
   signup: (userData: Omit<User, 'id' | 'role' | 'orders'>, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -86,10 +87,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = async () => {
+    if (!user) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth.php?id=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        data.orders = [];
+        setUser(data);
+      }
+    } catch (e) {
+      console.error('Refresh user failed', e);
+    }
+  };
+
+  // Refresh user on mount to sync with database
+  useEffect(() => {
+    if (user) {
+      refreshUser();
+    }
+  }, []);
+
   const isAdmin = user?.role === 'Admin';
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, updateUser, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, updateUser, refreshUser, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

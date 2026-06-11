@@ -6,8 +6,23 @@ $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);
 
 if ($method === 'GET') {
-    $stmt = $pdo->query("SELECT id, name, phone, address, role FROM users ORDER BY name ASC");
-    echo json_encode($stmt->fetchAll());
+    $userId = $_GET['id'] ?? null;
+    if ($userId) {
+        // Fetch single user by ID
+        $stmt = $pdo->prepare("SELECT id, name, phone, address, role FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        if ($user) {
+            echo json_encode($user);
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'User not found']);
+        }
+    } else {
+        // Fetch all users
+        $stmt = $pdo->query("SELECT id, name, phone, address, role FROM users ORDER BY name ASC");
+        echo json_encode($stmt->fetchAll());
+    }
     exit;
 }
 

@@ -21,6 +21,13 @@ export const AdminDashboard: React.FC = () => {
 
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
 
+    // Update page title when settings load
+    React.useEffect(() => {
+        if (settings?.companyName) {
+            document.title = `${settings.companyName} - Admin Panel`;
+        }
+    }, [settings?.companyName]);
+
     if (!settings) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold uppercase tracking-widest text-sm animate-pulse">Loading Admin Panel...</div>;
     }
@@ -312,6 +319,11 @@ const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val
 
 const MultiImageUpload = ({ values, onChange, label }: { values: string[], onChange: (vals: string[]) => void, label: string }) => {
     const [isUploading, setIsUploading] = React.useState(false);
+    const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
+    const [touchStartIndex, setTouchStartIndex] = React.useState<number | null>(null);
+    const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
+    const [dragPosition, setDragPosition] = React.useState({ x: 0, y: 0 });
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -348,26 +360,139 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
         e.target.value = '';
     };
 
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === dropIndex) {
+            setDraggedIndex(null);
+            return;
+        }
+
+        const newValues = [...values];
+        const draggedValue = newValues[draggedIndex];
+        newValues.splice(draggedIndex, 1);
+        newValues.splice(dropIndex, 0, draggedValue);
+        onChange(newValues);
+        setDraggedIndex(null);
+    };
+
+    // Touch handlers for mobile
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>, index: number) => {
+        setTouchStartIndex(index);
+        const touch = e.touches[0];
+        setDragPosition({ x: touch.clientX, y: touch.clientY });
+    };
+
+    const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+        if (touchStartIndex === null || !containerRef.current) return;
+        
+        const touch = e.touches[0];
+        setDragPosition({ x: touch.clientX, y: touch.clientY });
+        
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (element) {
+            const imageDiv = element.closest('[data-image-index]');
+            if (imageDiv) {
+                const index = parseInt(imageDiv.getAttribute('data-image-index') || '-1');
+                if (index >= 0 && index < values.length) {
+                    setHoverIndex(index);
+                }
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (touchStartIndex === null || hoverIndex === null || touchStartIndex === hoverIndex) {
+            setTouchStartIndex(null);
+            setHoverIndex(null);
+            setDragPosition({ x: 0, y: 0 });
+            return;
+        }
+
+        const newValues = [...values];
+        const draggedValue = newValues[touchStartIndex];
+        newValues.splice(touchStartIndex, 1);
+        newValues.splice(hoverIndex, 0, draggedValue);
+        onChange(newValues);
+        setTouchStartIndex(null);
+        setHoverIndex(null);
+        setDragPosition({ x: 0, y: 0 });
+    };
+
+    React.useEffect(() => {
+        if (touchStartIndex !== null) {
+            document.addEventListener('touchmove', handleTouchMove as any, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+            return () => {
+                document.removeEventListener('touchmove', handleTouchMove as any);
+                document.removeEventListener('touchend', handleTouchEnd);
+            };
+        }
+    }, [touchStartIndex, hoverIndex, values.length]);
+
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{label}</label>
-            <div className="flex flex-wrap gap-4">
-                {values.map((val, idx) => (
-                    <div key={idx} className="relative w-24 h-24 bg-gray-50 border rounded-2xl overflow-hidden group">
-                        {val.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                            <video src={val} className="w-full h-full object-cover" />
-                        ) : (
-                            <img src={val} className="w-full h-full object-cover" alt="" />
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => onChange(values.filter((_, i) => i !== idx))}
-                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
-                            <X size={12} />
-                        </button>
-                    </div>
-                ))}
+            <p className="text-[9px] text-gray-500 italic">Drag images to reorder</p>
+            <div className="flex flex-wrap gap-4 relative" ref={containerRef}>
+                {values.map((val, idx) => {
+                    const isDragging = touchStartIndex === idx;
+                    
+                    return (
+                        <React.Fragment key={idx}>
+                            <div
+                                data-image-index={idx}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, idx)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, idx)}
+                                onTouchStart={(e) => handleTouchStart(e, idx)}
+                                className={`relative w-24 h-24 bg-gray-50 border rounded-2xl overflow-hidden group cursor-move transition-all touch-none ${
+                                    draggedIndex === idx ? 'opacity-50 scale-95' : ''
+                                } ${hoverIndex === idx && touchStartIndex !== null && touchStartIndex !== idx ? 'ring-2 ring-green-500 scale-110' : ''} ${
+                                    isDragging ? 'z-50 ring-2 ring-primary shadow-2xl scale-110' : ''
+                                }`}
+                                style={isDragging ? {
+                                    position: 'fixed',
+                                    left: `${dragPosition.x - 48}px`,
+                                    top: `${dragPosition.y - 48}px`,
+                                    pointerEvents: 'none'
+                                } : undefined}
+                            >
+                                {val.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                    <video src={val} className="w-full h-full object-cover pointer-events-none" />
+                                ) : (
+                                    <img src={val} className="w-full h-full object-cover pointer-events-none" alt="" />
+                                )}
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                    <div className="text-white text-[10px] font-bold uppercase">#{idx + 1}</div>
+                                </div>
+                                {!isDragging && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onChange(values.filter((_, i) => i !== idx))}
+                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                )}
+                            </div>
+                            {isDragging && (
+                                <div className="relative w-24 h-24 bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl opacity-50" />
+                            )}
+                        </React.Fragment>
+                    );
+                })}
 
                 <div className="relative w-24 h-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
                     {isUploading ? (
@@ -774,6 +899,7 @@ const AdminProducts = () => {
         weight: '',
         weightUnit: 'kg',
         images: [] as string[],
+        features: [] as string[],
         badge: ''
     });
 
@@ -790,10 +916,11 @@ const AdminProducts = () => {
                 weight: editingProduct.weight?.toString() || '',
                 weightUnit: editingProduct.weightUnit || 'kg',
                 images: editingProduct.images || [],
+                features: editingProduct.features || [],
                 badge: editingProduct.badge || ''
             });
         } else {
-            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], badge: '' });
+            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '' });
         }
     }, [editingProduct]);
 
@@ -814,9 +941,9 @@ const AdminProducts = () => {
             weight: Number(newProduct.weight) || 0,
             weightUnit: newProduct.weightUnit || 'kg',
             images: newProduct.images,
+            features: newProduct.features || [],
             badge: newProduct.badge,
-            rating: editingProduct ? editingProduct.rating : 5,
-            reviews: editingProduct ? editingProduct.reviews : []
+            rating: editingProduct ? editingProduct.rating : 5
         };
 
         if (editingProduct) {
@@ -851,7 +978,7 @@ const AdminProducts = () => {
                     <button
                         onClick={() => {
                             setEditingProduct(null);
-                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', images: [], badge: '' });
+                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '' });
                             setShowModal(true);
                         }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
@@ -1061,7 +1188,8 @@ const AdminSettings = () => {
             exceptions: settings.shippingCharges?.exceptions ?? [],
             dynamicShipping: {
                 enabled: settings.shippingCharges?.dynamicShipping?.enabled ?? false,
-                perKgCharge: settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0
+                perKgCharge: settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,
+                startKg: settings.shippingCharges?.dynamicShipping?.startKg ?? 0
             },
             insideDhaka: settings.shippingCharges?.insideDhaka,
             outsideDhaka: settings.shippingCharges?.outsideDhaka
@@ -1377,6 +1505,25 @@ const AdminSettings = () => {
 
                                 {localSettings.shippingCharges.dynamicShipping.enabled && (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Start Extra Shipping After (Kg)</label>
+                                            <input
+                                                value={localSettings.shippingCharges.dynamicShipping.startKg}
+                                                type="number"
+                                                min="0"
+                                                onChange={e => setLocalSettings({
+                                                    ...localSettings,
+                                                    shippingCharges: {
+                                                        ...localSettings.shippingCharges,
+                                                        dynamicShipping: {
+                                                            ...localSettings.shippingCharges.dynamicShipping,
+                                                            startKg: Number(e.target.value)
+                                                        }
+                                                    }
+                                                })}
+                                                className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
+                                            />
+                                        </div>
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">Extra Charge Per 1 Kg (৳)</label>
                                             <input

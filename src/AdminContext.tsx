@@ -86,6 +86,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const savedProduct = await res.json();
         setProducts(products.map(item => item.id === p.id ? savedProduct : item));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Failed to update product (HTTP ${res.status}). Please try again.`);
       }
     } catch (e) { console.error(e); }
   };

@@ -113,6 +113,7 @@ export interface StoreSettings {
     dynamicShipping: {
       enabled: boolean;
       perKgCharge: number;
+      startKg: number;
     };
     insideDhaka?: number;
     outsideDhaka?: number;

@@ -44,8 +44,9 @@ export const Checkout: React.FC = () => {
   const districtShippingCost = exceptionCharge ?? (legacyCharge !== undefined ? legacyCharge : shippingBase);
 
   const totalWeight = cart.reduce((sum, item) => sum + ((item.product.weight ?? 0) * item.quantity), 0);
+  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 0;
   const extraWeightCharge = settings.shippingCharges?.dynamicShipping?.enabled
-    ? totalWeight * (settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0)
+    ? Math.max(totalWeight - dynamicStartKg, 0) * (settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0)
     : 0;
   const shippingCost = districtShippingCost + extraWeightCharge;
   const totalAmount = subtotal + shippingCost;

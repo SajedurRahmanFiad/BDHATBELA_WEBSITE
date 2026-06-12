@@ -280,7 +280,7 @@ export const Account: React.FC = () => {
                         maxLength={11}
                         value={formData.loginIdentifier}
                         onChange={e => handlePhoneChange(e.target.value, (v) => setFormData({...formData, loginIdentifier: v}))}
-                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary px-6 py-4 rounded-3xl outline-none transition-all font-medium"
+                        className="w-full bg-gray-50 border-2 border-transparent focus:border-primary pl-12 pr-6 py-4 rounded-3xl outline-none transition-all font-medium"
                         placeholder="01XXXXXXXXX"
                       />
                     </div>

@@ -7,12 +7,15 @@ import {
     Package, Clock, CheckCircle, CheckCircle2, Search, Filter,
     Trash2, Edit3, Eye, ArrowUpDown, ChevronDown, ChevronUp,
     Phone, Mail, MapPin, CreditCard, Upload, X, Menu, MonitorPlay, MessageSquare,
-    User
+    User, LineChart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { OrderStatus } from '../types';
 import { API_BASE_URL, DISTRICTS } from '../constants';
+import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
+import { AdminAnalytics } from './AdminAnalytics';
+import { DashboardStats } from './DashboardStats';
 
 const normalizeSrc = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
@@ -28,12 +31,24 @@ export const AdminDashboard: React.FC = () => {
 
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
 
-    // Update page title when settings load
+    // Update page title and favicon when settings load
     React.useEffect(() => {
-        if (settings?.companyName) {
+        if (!settings) return;
+        
+        if (settings.companyName) {
             document.title = `${settings.companyName} - Admin Panel`;
         }
-    }, [settings?.companyName]);
+
+        if (settings.favicon) {
+            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.getElementsByTagName('head')[0].appendChild(link);
+            }
+            link.href = settings.favicon;
+        }
+    }, [settings]);
 
     if (!settings) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold uppercase tracking-widest text-sm animate-pulse">Loading Admin Panel...</div>;
@@ -124,6 +139,7 @@ export const AdminDashboard: React.FC = () => {
 
                 <nav className="flex flex-col gap-1" onClick={() => setIsMobileSidebarOpen(false)}>
                     <NavItem to="/admin" icon={LayoutDashboard} label="Dashboard" />
+                    <NavItem to="/admin/analytics" icon={LineChart} label="Analytics" />
                     <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
                     <NavItem to="/admin/categories" icon={Filter} label="Categories" />
                     <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
@@ -153,6 +169,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="max-w-6xl mx-auto space-y-8">
                     <Routes>
                         <Route path="/" element={<DashboardStats />} />
+                        <Route path="/analytics" element={<AdminAnalytics />} />
                         <Route path="/orders" element={<AdminOrders />} />
                         <Route path="/categories" element={<AdminCategories />} />
                         <Route path="/products" element={<AdminProducts />} />
@@ -163,87 +180,6 @@ export const AdminDashboard: React.FC = () => {
                     </Routes>
                 </div>
             </main>
-        </div>
-    );
-};
-
-const DashboardStats = () => {
-    const { products, orders } = useAdmin();
-    const totalSales = orders.reduce((sum, o) => sum + o.total, 0);
-    const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING).length;
-    const lowStockProducts = products.filter(p => p.stock < 10).length;
-
-    return (
-        <div className="space-y-8">
-            <header className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Overview Dashboard</h1>
-                    <p className="text-xs text-gray-400 font-bold">Realtime statistics overview of your online shop</p>
-                </div>
-                <div className="text-xs bg-white px-4 py-2 rounded-lg border font-bold text-gray-500 self-start sm:self-auto">
-                    {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </div>
-            </header>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-2">
-                    <TrendingUp className="text-green-500" />
-                    <h3 className="text-xs text-gray-400 font-black uppercase tracking-wider">Total Sales</h3>
-                    <p className="text-2xl font-black text-gray-900">৳{totalSales}</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-2">
-                    <Clock className="text-orange-500" />
-                    <h3 className="text-xs text-gray-400 font-black uppercase tracking-wider">Pending Orders</h3>
-                    <p className="text-2xl font-black text-gray-900">{pendingOrders}</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-2">
-                    <AlertCircle className="text-red-500" />
-                    <h3 className="text-xs text-gray-400 font-black uppercase tracking-wider">Low Stock</h3>
-                    <p className="text-2xl font-black text-gray-900">{lowStockProducts}</p>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-2">
-                    <CheckCircle className="text-blue-500" />
-                    <h3 className="text-xs text-gray-400 font-black uppercase tracking-wider">Total Products</h3>
-                    <p className="text-2xl font-black text-gray-900">{products.length}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                    <h2 className="font-bold text-lg mb-6 border-b pb-4">Recent Orders</h2>
-                    {orders.length > 0 ? (
-                        <div className="space-y-4">
-                            {orders.slice(0, 5).map(order => (
-                                <div key={order.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl">
-                                    <div className="space-y-1">
-                                        <p className="font-bold text-sm">#{order.id.split('-')[1] || order.id.slice(-6)}</p>
-                                        <p className="text-xs text-gray-400 font-medium">{order.customerName}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-sm">৳{order.total}</p>
-                                        <span className="text-[10px] font-bold px-2.5 py-0.5 bg-white border rounded-full text-gray-500 uppercase tracking-wider">{order.status}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-center py-10 text-gray-400 italic text-sm">No new orders found</p>
-                    )}
-                </div>
-
-                <div className="bg-primary text-white p-8 rounded-3xl relative overflow-hidden flex flex-col justify-between">
-                    <div className="relative z-10 space-y-2 max-w-sm">
-                        <h2 className="text-2xl font-bold">Add a New Product?</h2>
-                        <p className="opacity-80 text-sm">Adding new items and collections to your online store is now easier than ever.</p>
-                    </div>
-                    <Link to="/admin/products" className="relative z-10 inline-block bg-white text-primary px-8 py-3 rounded-full font-bold self-start mt-6 hover:scale-105 transition-all text-sm">
-                        Add New Product
-                    </Link>
-                    <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none">
-                        <ShoppingBag size={120} />
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
@@ -553,8 +489,16 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
 
 const AdminOrders = () => {
     const { orders, updateOrderStatus, deleteOrder } = useAdmin();
+    const location = useLocation();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<string>('All');
+    const [statusFilter, setStatusFilter] = React.useState<string>(location.state?.status || 'All');
+    const [dateFilter, setDateFilter] = React.useState<DateFilterResult | null>(null);
+
+    React.useEffect(() => {
+        if (location.state?.status) {
+            setStatusFilter(location.state.status);
+        }
+    }, [location.state]);
     const [sortConfig, setSortConfig] = React.useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
     const [selectedOrder, setSelectedOrder] = React.useState<any>(null);
     const [orderToDelete, setOrderToDelete] = React.useState<string | null>(null);
@@ -565,7 +509,15 @@ const AdminOrders = () => {
                 o.phone.includes(searchTerm) ||
                 o.id.includes(searchTerm);
             const matchesStatus = statusFilter === 'All' || o.status === statusFilter;
-            return matchesSearch && matchesStatus;
+            
+            let matchesDate = true;
+            if (dateFilter && dateFilter.type !== 'All') {
+                const d = new Date(o.date);
+                if (dateFilter.startDate && d < dateFilter.startDate) matchesDate = false;
+                if (dateFilter.endDate && d > dateFilter.endDate) matchesDate = false;
+            }
+            
+            return matchesSearch && matchesStatus && matchesDate;
         })
         .sort((a: any, b: any) => {
             if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -582,18 +534,19 @@ const AdminOrders = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Order Management</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 sm:flex-initial">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <div className="flex flex-1 sm:flex-initial items-center bg-white border rounded-xl focus-within:border-primary transition-all px-3 py-2 w-full md:w-64">
+                        <Search className="text-gray-400 shrink-0" size={16} />
                         <input
                             placeholder="Search orders..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 border rounded-xl outline-none focus:border-primary w-full md:w-64 text-sm transition-all bg-white"
+                            className="ml-2 bg-transparent outline-none text-sm w-full"
                         />
                     </div>
+                    <DateFilterBar onFilterChange={setDateFilter} />
                     <select
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
@@ -790,6 +743,7 @@ const AdminOrders = () => {
 const AdminCategories = () => {
     const { categories, addCategory, updateCategory, deleteCategory } = useAdmin();
     const { showToast } = useCart();
+    const [searchTerm, setSearchTerm] = React.useState('');
     const [showModal, setShowModal] = React.useState(false);
     const [editingCategory, setEditingCategory] = React.useState<any>(null);
     const [categoryToDelete, setCategoryToDelete] = React.useState<string | null>(null);
@@ -833,20 +787,31 @@ const AdminCategories = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Category Management</h1>
-                <button
-                    onClick={() => {
-                        setEditingCategory(null);
-                        setNewCategory({ name: '', image: '', icon: 'Package' });
-                        setShowModal(true);
-                    }}
-                    className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
-                >+ Add Category</button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 sm:flex-initial">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                            placeholder="Search categories..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 border rounded-xl outline-none focus:border-primary w-full md:w-64 text-sm transition-all bg-white"
+                        />
+                    </div>
+                    <button
+                        onClick={() => {
+                            setEditingCategory(null);
+                            setNewCategory({ name: '', image: '', icon: 'Package' });
+                            setShowModal(true);
+                        }}
+                        className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
+                    >+ Add Category</button>
+                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {categories.map(cat => (
+                {categories.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase())).map(cat => (
                     <div key={cat.id} className="bg-white p-4 sm:p-5 rounded-[32px] border border-gray-100 shadow-sm group hover:border-primary transition-all relative">
                         <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden mb-4 border relative group-hover:scale-[1.02] transition-transform">
                             {cat.image ? (
@@ -1300,7 +1265,15 @@ const AdminProducts = () => {
                                                                     }} />
                                                                 </div>
                                                                 <div>
-                                                                    <button type="button" onClick={() => { const nv = [...(newProduct.variations || [])]; nv.splice(idx, 1); setNewProduct({ ...newProduct, variations: nv }); }} className="text-red-500 text-sm">Remove</button>
+                                                                    <button type="button" onClick={() => { 
+                                                                        const nv = [...(newProduct.variations || [])]; 
+                                                                        const wasDefault = nv[idx].isDefault;
+                                                                        nv.splice(idx, 1); 
+                                                                        if (wasDefault && nv.length > 0) {
+                                                                            nv[0].isDefault = true;
+                                                                        }
+                                                                        setNewProduct({ ...newProduct, variations: nv }); 
+                                                                    }} className="text-red-500 text-sm">Remove</button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -2483,6 +2456,8 @@ export const AdminBanners = () => {
 const AdminContacts = () => {
     const [messages, setMessages] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [dateFilter, setDateFilter] = React.useState<DateFilterResult | null>(null);
 
     const fetchMessages = async () => {
         try {
@@ -2514,7 +2489,21 @@ const AdminContacts = () => {
 
     return (
         <div className="space-y-6 pb-32">
-            <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Contact Messages</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h1 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Contact Messages</h1>
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 sm:flex-initial">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                            placeholder="Search messages..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 border rounded-xl outline-none focus:border-primary w-full md:w-64 text-sm transition-all bg-white"
+                        />
+                    </div>
+                    <DateFilterBar onFilterChange={setDateFilter} />
+                </div>
+            </div>
 
             {loading ? (
                 <div className="text-center py-10 font-bold text-gray-400">Loading messages...</div>
@@ -2522,7 +2511,20 @@ const AdminContacts = () => {
                 <div className="text-center py-10 font-bold text-gray-400">No contact messages received yet.</div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
-                    {messages.map(msg => (
+                    {messages.filter(msg => {
+                        const matchesSearch = msg.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                              msg.phone?.includes(searchTerm) || 
+                                              msg.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+                        
+                        let matchesDate = true;
+                        if (dateFilter && dateFilter.type !== 'All') {
+                            const d = new Date(msg.created_at);
+                            if (dateFilter.startDate && d < dateFilter.startDate) matchesDate = false;
+                            if (dateFilter.endDate && d > dateFilter.endDate) matchesDate = false;
+                        }
+
+                        return matchesSearch && matchesDate;
+                    }).map(msg => (
                         <div key={msg.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
                             <div className="flex justify-between items-start gap-4">
                                 <div>

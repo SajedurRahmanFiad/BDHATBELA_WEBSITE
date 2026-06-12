@@ -4,6 +4,12 @@ import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 
+const normalizeSrc = (src?: string | null) => {
+  if (!src || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  return trimmed ? trimmed : null;
+};
+
 export const Cart: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
   const { settings } = useAdmin();
@@ -35,24 +41,31 @@ export const Cart: React.FC = () => {
         {/* Cart List */}
         <div className="lg:col-span-2 space-y-4">
           {cart.map(item => (
-            <div key={item.product.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
               <Link to={`/product/${item.product.id}`} className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 border">
-                <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                {(() => {
+                  const src = normalizeSrc(item.variation?.media ?? item.product.images?.[0]);
+                  return src ? (
+                    <img src={src} alt={item.product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
+                  );
+                })()}
               </Link>
               <div className="flex-1 min-w-0">
-                <Link to={`/product/${item.product.id}`} className="font-bold hover:text-primary transition-colors block truncate">{item.product.name}</Link>
-                <p className="text-sm text-gray-500 mb-2">৳{item.product.discountPrice || item.product.price} / unit</p>
+                <Link to={`/product/${item.product.id}`} className="font-bold hover:text-primary transition-colors block truncate">{item.product.name}{item.variation ? ` (${item.variation.name})` : ''}</Link>
+                <p className="text-sm text-gray-500 mb-2">৳{item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)} / unit</p>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center border rounded-lg bg-gray-50">
-                    <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="p-1 px-2 hover:text-primary"><Minus size={14} /></button>
+                    <button onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.variation?.id)} className="p-1 px-2 hover:text-primary"><Minus size={14} /></button>
                     <span className="px-3 font-bold text-sm">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="p-1 px-2 hover:text-primary"><Plus size={14} /></button>
+                    <button onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.variation?.id)} className="p-1 px-2 hover:text-primary"><Plus size={14} /></button>
                   </div>
-                  <button onClick={() => removeFromCart(item.product.id)} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={18} /></button>
+                  <button onClick={() => removeFromCart(item.product.id, item.variation?.id)} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={18} /></button>
                 </div>
               </div>
               <div className="text-right hidden sm:block">
-                <span className="font-black text-lg">৳{(item.product.discountPrice || item.product.price) * item.quantity}</span>
+                <span className="font-black text-lg">৳{(item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)) * item.quantity}</span>
               </div>
             </div>
           ))}

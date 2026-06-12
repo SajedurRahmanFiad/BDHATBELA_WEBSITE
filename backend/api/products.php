@@ -6,6 +6,12 @@ header("Content-Type: application/json; charset=utf-8");
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+function variationTableHasIsDefault($pdo) {
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM product_variations LIKE 'is_default'");
+    $stmt->execute();
+    return (bool)$stmt->fetch();
+}
+
 function getProductFullDetails($pdo, $product_id) {
     $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
     $stmt->execute([$product_id]);
@@ -36,6 +42,38 @@ function getProductFullDetails($pdo, $product_id) {
     $product['reviews'] = $stmt->fetchAll();
     foreach ($product['reviews'] as &$review) {
         $review['rating'] = (int)$review['rating'];
+    }
+
+    // Map new DB columns (handle snake_case or camelCase)
+    if (isset($product['cost_of_goods'])) $product['costOfGoods'] = (float)$product['cost_of_goods'];
+    if (isset($product['costOfGoods'])) $product['costOfGoods'] = (float)$product['costOfGoods'];
+    if (isset($product['product_type'])) $product['productType'] = $product['product_type'];
+    if (isset($product['productType'])) $product['productType'] = $product['productType'];
+
+    // Get variations (if any)
+    $product['variations'] = [];
+    $hasIsDefault = variationTableHasIsDefault($pdo);
+    $variationColumns = ['id', 'name', 'media', 'price', 'discount_price', 'cost_of_goods', 'weight', 'stock', 'sku'];
+    if ($hasIsDefault) {
+        $variationColumns[] = 'is_default';
+    }
+
+    $vstmt = $pdo->prepare("SELECT " . implode(', ', $variationColumns) . " FROM product_variations WHERE product_id = ? ORDER BY id ASC");
+    $vstmt->execute([$product_id]);
+    $variations = $vstmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($variations as $v) {
+        $product['variations'][] = [
+            'id' => $v['id'],
+            'name' => $v['name'],
+            'media' => $v['media'],
+            'price' => (float)$v['price'],
+            'discountPrice' => isset($v['discount_price']) ? (float)$v['discount_price'] : null,
+            'costOfGoods' => isset($v['cost_of_goods']) ? (float)$v['cost_of_goods'] : 0,
+            'weight' => isset($v['weight']) ? (float)$v['weight'] : null,
+            'stock' => isset($v['stock']) ? (int)$v['stock'] : 0,
+            'sku' => $v['sku'] ?? null,
+            'isDefault' => $hasIsDefault && isset($v['is_default']) ? (bool)$v['is_default'] : false
+        ];
     }
 
     return $product;
@@ -101,12 +139,14 @@ if ($method === 'GET') {
     $badge = $data['badge'] ?? null;
     $images = $data['images'] ?? [];
     $features = $data['features'] ?? [];
+    $productType = $data['productType'] ?? 'simple';
+    $costOfGoods = $data['costOfGoods'] ?? 0;
 
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO products (id, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$id, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge]);
+        $stmt = $pdo->prepare("INSERT INTO products (id, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge, product_type, cost_of_goods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$id, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge, $productType, $costOfGoods]);
 
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $img) {
@@ -123,6 +163,32 @@ if ($method === 'GET') {
                     $stmt = $pdo->prepare("INSERT INTO product_features (product_id, feature) VALUES (?, ?)");
                     $stmt->execute([$id, $feat]);
                 }
+            }
+        }
+        // Insert variations if provided
+        if ($productType === 'variation' && isset($data['variations']) && is_array($data['variations'])) {
+            $hasIsDefault = variationTableHasIsDefault($pdo);
+            $variationInsertSql = $hasIsDefault
+                ? "INSERT INTO product_variations (product_id, name, media, price, discount_price, cost_of_goods, weight, stock, sku, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                : "INSERT INTO product_variations (product_id, name, media, price, discount_price, cost_of_goods, weight, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            foreach ($data['variations'] as $var) {
+                $vstmt = $pdo->prepare($variationInsertSql);
+                $params = [
+                    $id,
+                    $var['name'] ?? '',
+                    $var['media'] ?? null,
+                    $var['price'] ?? 0,
+                    $var['discountPrice'] ?? null,
+                    $var['costOfGoods'] ?? 0,
+                    $var['weight'] ?? null,
+                    $var['stock'] ?? 0,
+                    $var['sku'] ?? null,
+                ];
+                if ($hasIsDefault) {
+                    $params[] = isset($var['isDefault']) && $var['isDefault'] ? 1 : 0;
+                }
+                $vstmt->execute($params);
             }
         }
         
@@ -170,7 +236,10 @@ if ($method === 'GET') {
 
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("UPDATE products SET name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=? WHERE id=?");
+        $productType = $data['productType'] ?? 'simple';
+        $costOfGoods = $data['costOfGoods'] ?? 0;
+
+        $stmt = $pdo->prepare("UPDATE products SET name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=?, product_type=?, cost_of_goods=? WHERE id=?");
         $result = $stmt->execute([
             $data['name'] ?? '', 
             $data['shortDescription'] ?? '', 
@@ -182,6 +251,8 @@ if ($method === 'GET') {
             $data['weight'] ?? 0,
             $data['weightUnit'] ?? 'kg',
             $data['badge'] ?? null,
+            $productType,
+            $costOfGoods,
             $id
         ]);
         
@@ -215,6 +286,41 @@ if ($method === 'GET') {
                 }
             }
             error_log("Features updated: " . count($data['features']));
+        }
+
+        // Recreate variations: if product is variation type, replace existing variations
+        if ($productType === 'variation') {
+            $stmt = $pdo->prepare("DELETE FROM product_variations WHERE product_id = ?");
+            $stmt->execute([$id]);
+            if (isset($data['variations']) && is_array($data['variations'])) {
+                $hasIsDefault = variationTableHasIsDefault($pdo);
+                $variationInsertSql = $hasIsDefault
+                    ? "INSERT INTO product_variations (product_id, name, media, price, discount_price, cost_of_goods, weight, stock, sku, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    : "INSERT INTO product_variations (product_id, name, media, price, discount_price, cost_of_goods, weight, stock, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                foreach ($data['variations'] as $var) {
+                    $vstmt = $pdo->prepare($variationInsertSql);
+                    $params = [
+                        $id,
+                        $var['name'] ?? '',
+                        $var['media'] ?? null,
+                        $var['price'] ?? 0,
+                        $var['discountPrice'] ?? null,
+                        $var['costOfGoods'] ?? 0,
+                        $var['weight'] ?? null,
+                        $var['stock'] ?? 0,
+                        $var['sku'] ?? null,
+                    ];
+                    if ($hasIsDefault) {
+                        $params[] = isset($var['isDefault']) && $var['isDefault'] ? 1 : 0;
+                    }
+                    $vstmt->execute($params);
+                }
+            }
+        } else {
+            // If switching to simple product, remove variations
+            $stmt = $pdo->prepare("DELETE FROM product_variations WHERE product_id = ?");
+            $stmt->execute([$id]);
         }
         
         $pdo->commit();

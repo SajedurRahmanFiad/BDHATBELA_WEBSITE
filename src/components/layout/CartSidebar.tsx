@@ -4,6 +4,12 @@ import { X, ShoppingBag, Trash2, ChevronRight, Minus, Plus } from 'lucide-react'
 import { useCart } from '../../CartContext';
 import { Link } from 'react-router-dom';
 
+const normalizeSrc = (src?: string | null) => {
+  if (!src || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  return trimmed ? trimmed : null;
+};
+
 interface CartSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -54,44 +60,51 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
               {cart.length > 0 ? (
                 <div className="space-y-6">
                   {cart.map((item) => (
-                    <div key={item.product.id} className="flex gap-4 group">
+                    <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="flex gap-4 group">
                       <div className="w-20 h-24 bg-gray-50 rounded-2xl overflow-hidden border shrink-0">
-                        <img 
-                          src={item.product.images[0]} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
-                          alt={item.product.name} 
-                        />
+                        {(() => {
+                          const src = normalizeSrc(item.variation?.media ?? item.product.images?.[0]);
+                          return src ? (
+                            <img 
+                              src={src}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                              alt={item.product.name} 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
+                          );
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div>
                           <div className="flex justify-between items-start gap-2">
-                            <h3 className="font-bold text-sm truncate">{item.product.name}</h3>
+                            <h3 className="font-bold text-sm truncate">{item.product.name}{item.variation ? ` (${item.variation.name})` : ''}</h3>
                             <button 
-                              onClick={() => removeFromCart(item.product.id)}
+                              onClick={() => removeFromCart(item.product.id, item.variation?.id)}
                               className="text-gray-300 hover:text-red-500 transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>
                           </div>
-                          <p className="text-xs font-black text-primary mt-1">৳{item.product.discountPrice || item.product.price}</p>
+                          <p className="text-xs font-black text-primary mt-1">৳{item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)}</p>
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center bg-gray-50 rounded-lg p-1 border">
                             <button 
-                              onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.variation?.id)}
                               className="p-1 hover:bg-white rounded-md transition-colors"
                             >
                               <Minus size={14} />
                             </button>
                             <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
                             <button 
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.variation?.id)}
                               className="p-1 hover:bg-white rounded-md transition-colors"
                             >
                               <Plus size={14} />
                             </button>
                           </div>
-                          <p className="text-sm font-black">৳{(item.product.discountPrice || item.product.price) * item.quantity}</p>
+                          <p className="text-sm font-black">৳{(item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)) * item.quantity}</p>
                         </div>
                       </div>
                     </div>

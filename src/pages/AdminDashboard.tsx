@@ -14,6 +14,13 @@ import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { OrderStatus } from '../types';
 import { API_BASE_URL, DISTRICTS } from '../constants';
 
+const normalizeSrc = (src?: string | null) => {
+    if (!src || typeof src !== 'string') return null;
+    const trimmed = src.trim();
+    if (!trimmed) return null;
+    return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
+};
+
 export const AdminDashboard: React.FC = () => {
     const { products, orders, settings } = useAdmin();
     const { toast } = useCart();
@@ -267,25 +274,46 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
 };
 
 const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val: string) => void, label: string }) => {
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const [isUploading, setIsUploading] = React.useState(false);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                onChange(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/upload.php`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.url) {
+                onChange(data.url);
+            } else {
+                console.error('Upload failed:', data.error);
+                alert('Image upload failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Image upload failed. Please try again.');
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
         }
     };
 
+    const previewSrc = normalizeSrc(value);
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{label}</label>
             <div className="flex items-center gap-4">
                 <div className="relative group w-20 h-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
-                    {value ? (
+                    {previewSrc ? (
                         <>
-                            <img src={value} className="w-full h-full object-cover" alt="Preview" />
+                            <img src={previewSrc} className="w-full h-full object-cover" alt="Preview" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                 <Edit3 className="text-white" size={20} />
                             </div>
@@ -293,14 +321,15 @@ const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val
                     ) : (
                         <div className="flex flex-col items-center text-gray-400 group-hover:text-primary">
                             <Upload size={20} />
-                            <span className="text-[8px] font-bold mt-1">Upload</span>
+                            <span className="text-[8px] font-bold mt-1">{isUploading ? 'Uploading...' : 'Upload'}</span>
                         </div>
                     )}
                     <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         onChange={handleFileChange}
                         className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={isUploading}
                     />
                 </div>
                 {value && (
@@ -447,6 +476,7 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
             <div className="flex flex-wrap gap-4 relative" ref={containerRef}>
                 {values.map((val, idx) => {
                     const isDragging = touchStartIndex === idx;
+                    const safeVal = normalizeSrc(val);
                     
                     return (
                         <React.Fragment key={idx}>
@@ -469,10 +499,14 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
                                     pointerEvents: 'none'
                                 } : undefined}
                             >
-                                {val.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                                    <video src={val} className="w-full h-full object-cover pointer-events-none" />
+                                {safeVal ? (
+                                    safeVal.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                        <video src={safeVal} className="w-full h-full object-cover pointer-events-none" />
+                                    ) : (
+                                        <img src={safeVal} className="w-full h-full object-cover pointer-events-none" alt="" />
+                                    )
                                 ) : (
-                                    <img src={val} className="w-full h-full object-cover pointer-events-none" alt="" />
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Invalid media</div>
                                 )}
                                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                     <div className="text-white text-[10px] font-bold uppercase">#{idx + 1}</div>
@@ -698,16 +732,24 @@ const AdminOrders = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y text-sm">
-                                                {selectedOrder.items.map((item: any, idx: number) => (
-                                                    <tr key={idx}>
-                                                        <td className="px-6 py-4 flex items-center gap-3">
-                                                            <img src={item.product.images[0]} className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" alt="" />
-                                                            <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-gray-600">{item.quantity}</td>
-                                                        <td className="px-6 py-4 font-black text-right text-gray-900">৳{item.product.discountPrice || item.product.price}</td>
-                                                    </tr>
-                                                ))}
+                                                {selectedOrder.items.map((item: any, idx: number) => {
+                                                    const itemImage = normalizeSrc(item.product.images?.[0] ?? item.product.variations?.[0]?.media);
+                                                    const itemPrice = item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price;
+                                                    return (
+                                                        <tr key={idx}>
+                                                            <td className="px-6 py-4 flex items-center gap-3">
+                                                                {itemImage ? (
+                                                                    <img src={itemImage} className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" alt="" />
+                                                                ) : (
+                                                                    <div className="w-10 h-10 rounded-lg border bg-gray-100 flex items-center justify-center text-[10px] text-gray-400">No image</div>
+                                                                )}
+                                                                <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-gray-600">{item.quantity}</td>
+                                                            <td className="px-6 py-4 font-black text-right text-gray-900">৳{itemPrice}</td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                             <tfoot className="bg-gray-50 font-black">
                                                 <tr>
@@ -886,6 +928,7 @@ const AdminProducts = () => {
     const { showToast } = useCart();
     const [showModal, setShowModal] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
+
     const [editingProduct, setEditingProduct] = React.useState<any>(null);
     const [productToDelete, setProductToDelete] = React.useState<string | null>(null);
     const [newProduct, setNewProduct] = React.useState({
@@ -901,6 +944,9 @@ const AdminProducts = () => {
         images: [] as string[],
         features: [] as string[],
         badge: ''
+        ,productType: 'simple',
+        costOfGoods: '',
+        variations: [] as any[]
     });
 
     React.useEffect(() => {
@@ -917,16 +963,31 @@ const AdminProducts = () => {
                 weightUnit: editingProduct.weightUnit || 'kg',
                 images: editingProduct.images || [],
                 features: editingProduct.features || [],
-                badge: editingProduct.badge || ''
+                badge: editingProduct.badge || '',
+                productType: editingProduct.productType || 'simple',
+                costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
+                variations: editingProduct.variations || []
             });
         } else {
-            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '' });
+            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
     }, [editingProduct]);
 
-    const handleSave = () => {
-        if (!newProduct.name || !newProduct.price || newProduct.images.length === 0) {
-            return alert('Please fill in all mandatory product options (Name, Price, Images).');
+    const handleSave = async () => {
+        if (!newProduct.name) return alert('Please provide a product name.');
+
+        if (newProduct.productType === 'simple') {
+            if (!newProduct.price || (newProduct.images || []).length === 0) {
+                return alert('Simple products require a price and at least one image.');
+            }
+        } else if (newProduct.productType === 'variation') {
+            const vars = newProduct.variations || [];
+            if (vars.length === 0) return alert('Please add at least one variation.');
+            for (let i = 0; i < vars.length; i++) {
+                const v = vars[i];
+                if (!v.name) return alert(`Variation #${i + 1} is missing a name.`);
+                if (!v.price) return alert(`Variation #${i + 1} is missing a price.`);
+            }
         }
 
         const productData = {
@@ -934,26 +995,38 @@ const AdminProducts = () => {
             name: newProduct.name,
             shortDescription: newProduct.shortDescription,
             description: newProduct.description,
-            price: Number(newProduct.price),
+            price: Number(newProduct.price) || 0,
             discountPrice: newProduct.discountPrice ? Number(newProduct.discountPrice) : undefined,
             category: newProduct.category || categories[0]?.name || '',
-            stock: Number(newProduct.stock) || 0,
+            stock: Number(newProduct.stock) || (newProduct.productType === 'variation' ? (newProduct.variations || []).reduce((s:any, v:any) => s + (Number(v.stock)||0), 0) : 0),
             weight: Number(newProduct.weight) || 0,
             weightUnit: newProduct.weightUnit || 'kg',
             images: newProduct.images,
             features: newProduct.features || [],
             badge: newProduct.badge,
             rating: editingProduct ? editingProduct.rating : 5
+            , productType: newProduct.productType,
+            costOfGoods: newProduct.costOfGoods ? Number(newProduct.costOfGoods) : undefined,
+            variations: newProduct.productType === 'variation' ? (newProduct.variations || []).map((v:any) => ({
+                id: v.id || undefined,
+                name: v.name,
+                media: v.media,
+                price: Number(v.price) || 0,
+                discountPrice: v.discountPrice ? Number(v.discountPrice) : undefined,
+                costOfGoods: v.costOfGoods ? Number(v.costOfGoods) : undefined,
+                weight: v.weight ? Number(v.weight) : undefined,
+                stock: v.stock ? Number(v.stock) : 0,
+                sku: v.sku || undefined,
+                isDefault: !!v.isDefault
+            })) : undefined
         };
 
-        if (editingProduct) {
-            updateProduct(productData);
-        } else {
-            addProduct(productData);
+        const success = editingProduct ? await updateProduct(productData) : await addProduct(productData);
+        if (success) {
+            showToast('Successfully saved product!');
+            setShowModal(false);
+            setEditingProduct(null);
         }
-        showToast('Successfully saved product!');
-        setShowModal(false);
-        setEditingProduct(null);
     };
 
     const filteredProducts = products.filter(p =>
@@ -977,51 +1050,61 @@ const AdminProducts = () => {
                     </div>
                     <button
                         onClick={() => {
-                            setEditingProduct(null);
-                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '' });
-                            setShowModal(true);
-                        }}
+                                            setEditingProduct(null);
+                                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+                                            setShowModal(true);
+                                        }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
                     >+ Add Product</button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(p => (
-                    <div
-                        key={p.id}
-                        className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex gap-4 hover:border-primary transition-all group relative"
-                    >
-                        <div className="w-20 h-20 shrink-0 bg-gray-50 rounded-2xl overflow-hidden border">
-                            <img src={p.images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-all" alt="" />
-                        </div>
-                        <div className="flex-1 min-w-0 flex flex-col justify-between">
-                            <div>
-                                <h4 className="font-bold truncate text-sm mb-1 text-gray-800">{p.name}</h4>
-                                <p className="text-xs text-primary font-black">৳{p.discountPrice || p.price}</p>
+                {filteredProducts.map(p => {
+                    const defaultVariation = p.productType === 'variation' ? p.variations?.find((v: any) => v.isDefault) : undefined;
+                    const displayPrice = defaultVariation ? (defaultVariation.discountPrice ?? defaultVariation.price) : (p.discountPrice ?? p.price);
+                    const previewImage = normalizeSrc(p.images?.[0] ?? defaultVariation?.media ?? p.variations?.[0]?.media);
+
+                    return (
+                        <div
+                            key={p.id}
+                            className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex gap-4 hover:border-primary transition-all group relative"
+                        >
+                            <div className="w-20 h-20 shrink-0 bg-gray-50 rounded-2xl overflow-hidden border">
+                                {previewImage ? (
+                                    <img src={previewImage} className="w-full h-full object-cover group-hover:scale-110 transition-all" alt="" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No image</div>
+                                )}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${p.stock < 10 ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-green-50 text-green-500 border border-green-100'}`}>
-                                    STOCK: {p.stock}
-                                </span>
-                                <div className="ml-auto flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all bg-white/90 p-1 rounded-full border border-gray-100 shadow-sm">
-                                    <button
-                                        onClick={() => { setEditingProduct(p); setShowModal(true) }}
-                                        className="p-1 px-2 text-blue-500 rounded-lg hover:bg-blue-50 text-[10px] font-bold flex items-center gap-1"
-                                    >
-                                        <Edit3 size={11} /> Edit
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setProductToDelete(p.id) }}
-                                        className="p-1 px-2 text-red-500 rounded-lg hover:bg-red-50 text-[10px] font-bold flex items-center gap-1"
-                                    >
-                                        <Trash2 size={11} /> Delete
-                                    </button>
+                            <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                <div>
+                                    <h4 className="font-bold truncate text-sm mb-1 text-gray-800">{p.name}</h4>
+                                    <p className="text-xs text-primary font-black">৳{displayPrice}</p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${p.stock < 10 ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-green-50 text-green-500 border border-green-100'}`}>
+                                        STOCK: {p.stock}
+                                    </span>
+                                    <div className="ml-auto flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all bg-white/90 p-1 rounded-full border border-gray-100 shadow-sm">
+                                        <button
+                                            onClick={() => { setEditingProduct(p); setShowModal(true) }}
+                                            className="p-1 px-2 text-blue-500 rounded-lg hover:bg-blue-50 text-[10px] font-bold flex items-center gap-1"
+                                        >
+                                            <Edit3 size={11} /> Edit
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setProductToDelete(p.id) }}
+                                            className="p-1 px-2 text-red-500 rounded-lg hover:bg-red-50 text-[10px] font-bold flex items-center gap-1"
+                                        >
+                                            <Trash2 size={11} /> Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <ConfirmModal
@@ -1044,10 +1127,19 @@ const AdminProducts = () => {
 
                         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 bg-white no-scrollbar flex-1">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-2">
+                                {/* Product Type first */}
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Type</label>
+                                    <select value={newProduct.productType} onChange={e => setNewProduct({ ...newProduct, productType: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold">
+                                        <option value="simple">Simple Product</option>
+                                        <option value="variation">Variation Product</option>
+                                    </select>
+                                </div>
+
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Name *</label>
                                     <input
-                                        value={newProduct.name}
+                                        value={newProduct.name ?? ''}
                                         onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                         placeholder="e.g. Premium Cotton Polo Shirt"
@@ -1056,7 +1148,7 @@ const AdminProducts = () => {
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Short Summary Description *</label>
                                     <input
-                                        value={newProduct.shortDescription}
+                                        value={newProduct.shortDescription ?? ''}
                                         onChange={e => setNewProduct({ ...newProduct, shortDescription: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                         placeholder="e.g. Elegant comfortable fit regular polo cotton"
@@ -1065,96 +1157,162 @@ const AdminProducts = () => {
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Long Details *</label>
                                     <textarea
-                                        value={newProduct.description}
+                                        value={newProduct.description ?? ''}
                                         onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all h-32 resize-none text-sm leading-relaxed"
                                         placeholder="Describe full benefits, materials, sizing parameters..."
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
-                                    <input
-                                        type="number"
-                                        value={newProduct.price}
-                                        onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Offer Discount Price (Optional)</label>
-                                    <input
-                                        type="number"
-                                        value={newProduct.discountPrice}
-                                        onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Category *</label>
-                                    <select
-                                        value={newProduct.category}
-                                        onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600 bg-white"
-                                    >
-                                        {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
-                                    <input
-                                        type="number"
-                                        value={newProduct.stock}
-                                        onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
-                                    <input
-                                        type="number"
-                                        value={newProduct.weight}
-                                        min="0"
-                                        step="0.01"
-                                        onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                        placeholder="Example: 0.50"
-                                    />
-                                </div>
-                                <div className="space-y-2 sm:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Status Badge</label>
-                                    <div className="flex gap-2 flex-wrap pb-2">
-                                        {['New', 'Hot', 'Top', 'Sale'].map(b => (
-                                            <button
-                                                key={b}
-                                                type="button"
-                                                onClick={() => setNewProduct({ ...newProduct, badge: b })}
-                                                className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${newProduct.badge === b ? 'border-primary bg-primary text-white' : 'border-gray-100 hover:border-gray-200'}`}
-                                            >{b}</button>
-                                        ))}
-                                        <input
-                                            value={['New', 'Hot', 'Top', 'Sale'].includes(newProduct.badge || '') ? '' : newProduct.badge}
-                                            onChange={e => setNewProduct({ ...newProduct, badge: e.target.value })}
-                                            className="flex-1 min-w-[120px] bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs font-bold"
-                                            placeholder="Custom Badge text..."
-                                        />
-                                        {newProduct.badge && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setNewProduct({ ...newProduct, badge: '' })}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        )}
+                                <>
+                                    {newProduct.productType === 'simple' ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.price ?? ''}
+                                                    onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Offer Discount Price (Optional)</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.discountPrice ?? ''}
+                                                    onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
+                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
+                                                <input type="number" value={newProduct.costOfGoods ?? ''} onChange={e => setNewProduct({ ...newProduct, costOfGoods: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.stock ?? ''}
+                                                    onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.weight ?? ''}
+                                                    min="0"
+                                                    step="0.01"
+                                                    onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
+                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                    placeholder="Example: 0.50"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <MultiImageUpload
+                                                    label="Product Showcase Images (Minimum 1 Required) *"
+                                                    values={newProduct.images}
+                                                    onChange={vals => setNewProduct({ ...newProduct, images: vals })}
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        /* variations handled below */ null
+                                    )}
+
+                                    {/* Category and Badge placed above variations */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Category *</label>
+                                        <select
+                                            value={newProduct.category ?? ''}
+                                            onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600 bg-white"
+                                        >
+                                            {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                                        </select>
                                     </div>
-                                </div>
-                                <div className="space-y-2 sm:col-span-2">
-                                    <MultiImageUpload
-                                        label="Product Showcase Images (Minimum 1 Required) *"
-                                        values={newProduct.images}
-                                        onChange={vals => setNewProduct({ ...newProduct, images: vals })}
-                                    />
-                                </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Status Badge</label>
+                                        <div className="flex gap-2 flex-wrap pb-2">
+                                            {['New', 'Hot', 'Top', 'Sale'].map(b => (
+                                                <button
+                                                    key={b}
+                                                    type="button"
+                                                    onClick={() => setNewProduct({ ...newProduct, badge: b })}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${newProduct.badge === b ? 'border-primary bg-primary text-white' : 'border-gray-100 hover:border-gray-200'}`}
+                                                >{b}</button>
+                                            ))}
+                                            <input
+                                                value={['New', 'Hot', 'Top', 'Sale'].includes(newProduct.badge || '') ? '' : newProduct.badge}
+                                                onChange={e => setNewProduct({ ...newProduct, badge: e.target.value })}
+                                                className="flex-1 min-w-[120px] bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs font-bold"
+                                                placeholder="Custom Badge text..."
+                                            />
+                                            {newProduct.badge && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewProduct({ ...newProduct, badge: '' })}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {newProduct.productType === 'variation' && (
+                                        <div className="sm:col-span-2 space-y-4">
+                                            <h3 className="text-sm font-bold">Variations</h3>
+                                            <div className="space-y-3">
+                                                {(newProduct.variations || []).map((v: any, idx: number) => (
+                                                    <div key={idx} className="p-3 border rounded-2xl bg-gray-50">
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Variation Name</label>
+                                                                <input value={v.name ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], name: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold" />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Media (image/video)</label>
+                                                                <ImageUpload value={v.media || ''} onChange={(val) => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], media: val }; setNewProduct({ ...newProduct, variations: nv }); }} label="Media" />
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-3">
+                                                                <input type="number" value={v.price ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], price: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Price" />
+                                                                <input type="number" value={v.discountPrice ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], discountPrice: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Discount" />
+                                                                <input type="number" value={v.costOfGoods ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], costOfGoods: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="COG" />
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <input type="number" value={v.weight ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], weight: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Weight (kg)" />
+                                                                <input type="number" value={v.stock ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], stock: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Stock" />
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <label className="text-xs text-gray-500">Default</label>
+                                                                    <input type="checkbox" checked={!!v.isDefault} onChange={() => {
+                                                                        const nv = [...(newProduct.variations || [])];
+                                                                        for (let t = 0; t < nv.length; t++) nv[t] = { ...nv[t], isDefault: t === idx };
+                                                                        setNewProduct({ ...newProduct, variations: nv });
+                                                                    }} />
+                                                                </div>
+                                                                <div>
+                                                                    <button type="button" onClick={() => { const nv = [...(newProduct.variations || [])]; nv.splice(idx, 1); setNewProduct({ ...newProduct, variations: nv }); }} className="text-red-500 text-sm">Remove</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <div>
+                                                    <button type="button" onClick={() => setNewProduct({ ...newProduct, variations: [...(newProduct.variations || []), { name: '', media: '', price: '', discountPrice: '', costOfGoods: '', weight: '', stock: '', isDefault: (newProduct.variations || []).length === 0 }] })} className="px-4 py-2 bg-primary text-white rounded-xl font-bold">+ Add Variation</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             </div>
                         </div>
 

@@ -8,6 +8,20 @@ export enum OrderStatus {
   CANCELLED = 'Cancelled'
 }
 
+export interface Variation {
+  id?: string;
+  name: string;
+  // single media path (image or video)
+  media?: string;
+  price: number;
+  discountPrice?: number;
+  costOfGoods?: number;
+  weight?: number;
+  stock?: number;
+  sku?: string;
+  isDefault?: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -15,6 +29,12 @@ export interface Product {
   description: string;
   price: number;
   discountPrice?: number;
+  // Cost of goods for simple products
+  costOfGoods?: number;
+  // 'simple' = single product, 'variation' = has multiple variation units
+  productType?: 'simple' | 'variation';
+  // For variation products
+  variations?: Variation[];
   category: string;
   images: string[];
   stock: number;
@@ -53,6 +73,7 @@ export interface Review {
 
 export interface CartItem {
   product: Product;
+  variation?: Variation;
   quantity: number;
 }
 

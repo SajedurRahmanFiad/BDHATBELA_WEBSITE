@@ -1,6 +1,7 @@
 <?php
 // backend/api/settings.php
 require_once '../config.php';
+header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'];
 

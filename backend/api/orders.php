@@ -1,6 +1,7 @@
 <?php
 // backend/api/orders.php
 require_once '../config.php';
+header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -89,8 +90,13 @@ if ($method === 'GET') {
             $stmt->execute([$id, $prod['id'], $prod['name'], $prod['price'], $item['quantity'], $image]);
             
             // Optionally, reduce stock here
-            $stmt_stock = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?");
-            $stmt_stock->execute([$item['quantity'], $prod['id'], $item['quantity']]);
+            if (isset($item['variationId']) && $item['variationId']) {
+                $stmt_stock = $pdo->prepare("UPDATE product_variations SET stock = stock - ? WHERE id = ? AND stock >= ?");
+                $stmt_stock->execute([$item['quantity'], $item['variationId'], $item['quantity']]);
+            } else {
+                $stmt_stock = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?");
+                $stmt_stock->execute([$item['quantity'], $prod['id'], $item['quantity']]);
+            }
         }
         
         $pdo->commit();

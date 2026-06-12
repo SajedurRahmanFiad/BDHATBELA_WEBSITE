@@ -187,7 +187,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             }}
                             className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-all text-left group"
                           >
-                            <img src={product.images[0]} className="w-12 h-12 object-cover rounded-lg border group-hover:border-primary" alt="" />
+                            <img src={product.images?.[0]} className="w-12 h-12 object-cover rounded-lg border group-hover:border-primary" alt="" />
                             <div className="flex-1 min-w-0">
                               <h4 className="font-bold text-sm truncate">{product.name}</h4>
                               <p className="text-xs text-primary font-black">৳{product.discountPrice || product.price}</p>

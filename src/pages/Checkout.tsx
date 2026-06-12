@@ -37,14 +37,16 @@ export const Checkout: React.FC = () => {
   const [transactionId, setTransactionId] = useState('');
 
   const shippingBase = settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0;
-  const exceptionCharge = settings.shippingCharges?.exceptions?.find(ex => ex.district === formData.district)?.charge;
+  const exceptionCharge = Array.isArray(settings.shippingCharges?.exceptions)
+    ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)?.charge
+    : undefined;
   const legacyCharge = formData.district === 'Dhaka'
     ? settings.shippingCharges?.insideDhaka
     : settings.shippingCharges?.outsideDhaka;
   const districtShippingCost = exceptionCharge ?? (legacyCharge !== undefined ? legacyCharge : shippingBase);
 
-  const totalWeight = cart.reduce((sum, item) => sum + ((item.product.weight ?? 0) * item.quantity), 0);
-  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 0;
+  const totalWeight = cart.reduce((sum, item) => sum + (((item as any).variation?.weight ?? item.product.weight ?? 0) * item.quantity), 0);
+  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 1;
   const extraWeightCharge = settings.shippingCharges?.dynamicShipping?.enabled
     ? Math.max(totalWeight - dynamicStartKg, 0) * (settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0)
     : 0;
@@ -67,6 +69,21 @@ export const Checkout: React.FC = () => {
         return;
     }
 
+    const mappedItems = cart.map(item => {
+      const prod = item.product;
+      const variation = (item as any).variation;
+      return {
+        product: {
+          id: prod.id,
+          name: variation ? `${prod.name} (${variation.name})` : prod.name,
+          price: variation ? (variation.discountPrice ?? variation.price) : (prod.discountPrice ?? prod.price),
+          images: [variation?.media ?? prod.images?.[0] ?? '']
+        },
+        quantity: item.quantity,
+        variationId: variation?.id ?? null
+      };
+    });
+
     const newOrder = {
       id: `order-${Date.now()}`,
       customerId: 'guest',
@@ -74,7 +91,7 @@ export const Checkout: React.FC = () => {
       phone: formData.phone,
       address: formData.address,
       area: formData.district,
-      items: [...cart],
+      items: mappedItems,
       total: totalAmount,
       status: OrderStatus.PENDING,
       date: new Date().toLocaleDateString('en-US'),
@@ -85,6 +102,7 @@ export const Checkout: React.FC = () => {
     addOrder(newOrder);
     clearCart();
     navigate(`/order-success/${newOrder.id}`);
+
   };
 
   if (cart.length === 0) {
@@ -255,12 +273,12 @@ export const Checkout: React.FC = () => {
             <h2 className="text-xl font-bold border-b border-white/10 pb-4 mb-4">Order Review</h2>
             <div className="space-y-3 max-h-48 overflow-y-auto no-scrollbar pr-2 mb-6">
               {cart.map(item => (
-                <div key={item.product.id} className="flex justify-between items-center gap-3">
+                <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="flex justify-between items-center gap-3">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 bg-white/20 rounded flex items-center justify-center text-[10px] font-bold shrink-0">{item.quantity}x</span>
-                    <span className="text-sm opacity-80 truncate">{item.product.name}</span>
+                    <span className="text-sm opacity-80 truncate">{item.product.name}{item.variation ? ` (${item.variation.name})` : ''}</span>
                   </div>
-                  <span className="font-bold text-sm shrink-0">৳{(item.product.discountPrice || item.product.price) * item.quantity}</span>
+                  <span className="font-bold text-sm shrink-0">৳{((item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice ?? item.product.price))) * item.quantity}</span>
                 </div>
               ))}
             </div>

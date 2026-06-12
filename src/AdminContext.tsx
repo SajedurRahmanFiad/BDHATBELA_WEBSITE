@@ -9,8 +9,8 @@ interface AdminContextType {
   settings: StoreSettings | null;
   orders: Order[];
   staff: Staff[];
-  addProduct: (product: Product) => Promise<void>;
-  updateProduct: (product: Product) => Promise<void>;
+  addProduct: (product: Product) => Promise<boolean>;
+  updateProduct: (product: Product) => Promise<boolean>;
   deleteProduct: (id: string) => Promise<void>;
   updateSettings: (settings: StoreSettings) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
@@ -40,6 +40,22 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Fetch initial data
   useEffect(() => {
+    const parseJsonResponse = async (res: Response, url: string) => {
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`${url} returned ${res.status} ${res.statusText}: ${text}`);
+      }
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error(`${url} returned non-JSON content type ${contentType}: ${text.slice(0, 400)}`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`${url} returned invalid JSON: ${text.slice(0, 400)}`);
+      }
+    };
+
     const fetchData = async () => {
       try {
         const [prodRes, catRes, banRes, setRes, ordRes] = await Promise.all([
@@ -50,11 +66,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           fetch(`${API_BASE_URL}/orders.php`)
         ]);
 
-        if (prodRes.ok) setProducts(await prodRes.json());
-        if (catRes.ok) setCategories(await catRes.json());
-        if (banRes.ok) setBanners(await banRes.json());
-        if (setRes.ok) setSettings(await setRes.json());
-        if (ordRes.ok) setOrders(await ordRes.json());
+        setProducts(await parseJsonResponse(prodRes, `${API_BASE_URL}/products.php`));
+        setCategories(await parseJsonResponse(catRes, `${API_BASE_URL}/categories.php`));
+        setBanners(await parseJsonResponse(banRes, `${API_BASE_URL}/banners.php`));
+        setSettings(await parseJsonResponse(setRes, `${API_BASE_URL}/settings.php`));
+        setOrders(await parseJsonResponse(ordRes, `${API_BASE_URL}/orders.php`));
       } catch (e) {
         console.error('Failed to fetch admin data', e);
       }
@@ -62,7 +78,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchData();
   }, []);
 
-  const addProduct = async (p: Product) => {
+  const addProduct = async (p: Product): Promise<boolean> => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php`, {
         method: 'POST',
@@ -72,11 +88,18 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const savedProduct = await res.json();
         setProducts([savedProduct, ...products]);
+        return true;
       }
-    } catch (e) { console.error(e); }
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || `Failed to save product (HTTP ${res.status}). Please try again.`);
+      return false;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   };
 
-  const updateProduct = async (p: Product) => {
+  const updateProduct = async (p: Product): Promise<boolean> => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php`, {
         method: 'PUT',
@@ -86,11 +109,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const savedProduct = await res.json();
         setProducts(products.map(item => item.id === p.id ? savedProduct : item));
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || `Failed to update product (HTTP ${res.status}). Please try again.`);
+        return true;
       }
-    } catch (e) { console.error(e); }
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || `Failed to update product (HTTP ${res.status}). Please try again.`);
+      return false;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
   };
 
   const deleteProduct = async (id: string) => {

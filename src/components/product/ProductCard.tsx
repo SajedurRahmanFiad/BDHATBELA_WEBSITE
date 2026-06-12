@@ -5,6 +5,12 @@ import { Product } from '../../types';
 import { useCart } from '../../CartContext';
 import { motion } from 'motion/react';
 
+const normalizeSrc = (src?: string | null) => {
+  if (!src || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  return trimmed ? trimmed : null;
+};
+
 interface ProductCardProps {
   product: Product;
 }
@@ -15,14 +21,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
-    addToCart(product, 1, false);
+    const variation = product.productType === 'variation' && product.variations && product.variations.length > 0 ? (product.variations.find(v => v.isDefault) ?? product.variations[0]) : undefined;
+    addToCart(product, 1, false, variation);
     navigate('/checkout');
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
-    addToCart(product, 1);
+    const variation = product.productType === 'variation' && product.variations && product.variations.length > 0 ? (product.variations.find(v => v.isDefault) ?? product.variations[0]) : undefined;
+    addToCart(product, 1, true, variation);
   };
+
+  const normalizeSrc = (src?: string | null) => {
+    if (!src || typeof src !== 'string') return null;
+    const trimmed = src.trim();
+    return trimmed ? trimmed : null;
+  };
+
+  const displayVar = product.productType === 'variation' ? (product.variations?.find(v => v.isDefault) ?? product.variations?.[0]) : undefined;
+  const displayPrice = displayVar?.discountPrice ?? displayVar?.price ?? product.discountPrice ?? product.price;
+  const displayBasePrice = displayVar?.discountPrice ? displayVar.price : (product.discountPrice ? product.price : undefined);
 
   return (
     <motion.div 
@@ -30,15 +48,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group"
     >
       <Link to={`/product/${product.id}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
-        {product.images[0]?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-          <video src={product.images[0]} autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />
-        ) : (
-          <img 
-            src={product.images[0]} 
-            alt={product.name} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        )}
+        {(() => {
+          const rawImg = product.productType === 'variation'
+            ? (product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
+            : (product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null));
+          const img = normalizeSrc(rawImg);
+          if (!img) return <div className="w-full h-full flex items-center justify-center text-gray-300">No image</div>;
+          if (img.match(/\.(mp4|webm|ogg|mov)$/i)) {
+            return <video src={img} autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />;
+          }
+          return <img src={img} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />;
+        })()}
         {product.discountPrice && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">
             {Math.round(((product.price - product.discountPrice) / product.price) * 100)}% OFF
@@ -63,9 +83,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-lg font-bold text-gray-900">৳{product.discountPrice || product.price}</span>
-            {product.discountPrice && (
-              <span className="text-sm text-gray-400 line-through">৳{product.price}</span>
+            <span className="text-lg font-bold text-gray-900">৳{displayPrice}</span>
+            {displayBasePrice && (
+              <span className="text-sm text-gray-400 line-through">৳{displayBasePrice}</span>
             )}
           </div>
 

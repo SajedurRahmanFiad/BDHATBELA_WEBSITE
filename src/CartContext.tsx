@@ -3,9 +3,9 @@ import { CartItem, Product } from './types';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number, openSidebar?: boolean) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, openSidebar?: boolean, variation?: any) => void;
+  removeFromCart: (productId: string, variationId?: any) => void;
+  updateQuantity: (productId: string, quantity: number, variationId?: any) => void;
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
@@ -35,19 +35,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const closeSidebar = () => setIsSidebarOpen(false);
   const clearToast = () => setToast(null);
 
-  const addToCart = (product: Product, quantity = 1, openSidebar = true) => {
+  const addToCart = (product: Product, quantity = 1, openSidebar = true, variation?: any) => {
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
+      const existing = prev.find(item => {
+        if (item.product.id !== product.id) return false;
+        if (item.variation && variation) return item.variation.id === variation.id;
+        return !item.variation && !variation;
+      });
       if (existing) {
         return prev.map(item => 
-          item.product.id === product.id 
+          (item.product.id === product.id && ((item.variation && variation && item.variation.id === variation.id) || (!item.variation && !variation)))
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, variation, quantity }];
     });
-    setToast({ message: `${product.name} has been added to cart!`, show: true });
+    const name = variation ? `${product.name} (${variation.name})` : product.name;
+    setToast({ message: `${name} has been added to cart!`, show: true });
     
     if (openSidebar) {
       setIsSidebarOpen(true);
@@ -66,17 +71,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 3000);
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
+  const removeFromCart = (productId: string, variationId?: any) => {
+    setCart(prev => prev.filter(item => {
+      if (item.product.id !== productId) return true;
+      if (variationId) return !(item.variation && item.variation.id == variationId);
+      return !!item.variation; // remove only items without variation when variationId not provided
+    }));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number, variationId?: any) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, variationId);
       return;
     }
     setCart(prev => prev.map(item => 
-      item.product.id === productId ? { ...item, quantity } : item
+      (item.product.id === productId && ((variationId && item.variation && item.variation.id == variationId) || (!variationId && !item.variation))) ? { ...item, quantity } : item
     ));
   };
 
@@ -84,7 +93,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => {
-    const price = item.product.discountPrice || item.product.price;
+    const price = item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price);
     return sum + price * item.quantity;
   }, 0);
 

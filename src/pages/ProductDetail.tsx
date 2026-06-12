@@ -15,6 +15,7 @@ export const ProductDetail: React.FC = () => {
   const { user } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [activeVariationIndex, setActiveVariationIndex] = useState<number | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
@@ -37,8 +38,27 @@ export const ProductDetail: React.FC = () => {
 
   if (!product) return <div className="py-20 text-center font-bold text-xl">Product not found.</div>;
 
+  const images = product.images || [];
+  const selectedVariation = product.productType === 'variation' && product.variations && product.variations.length > 0 && (activeVariationIndex !== null) ? product.variations[activeVariationIndex] : undefined;
+  const normalizeSrc = (src?: string | null) => {
+    if (!src || typeof src !== 'string') return null;
+    const trimmed = src.trim();
+    if (!trimmed) return null;
+    return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
+  };
+  const displayImage = normalizeSrc(selectedVariation?.media ?? images[activeImage] ?? images[0] ?? null);
+  const displayPrice = selectedVariation?.discountPrice ?? selectedVariation?.price ?? product.discountPrice ?? product.price;
+  const basePrice = selectedVariation?.price ?? product.price;
+
+  React.useEffect(() => {
+    if (product && product.productType === 'variation' && (product.variations || []).length > 0 && activeVariationIndex === null) {
+      const def = (product.variations || []).findIndex(v => v.isDefault);
+      setActiveVariationIndex(def >= 0 ? def : 0);
+    }
+  }, [product]);
+
   const handleBuyNow = () => {
-    addToCart(product, quantity, false);
+    addToCart(product, quantity, false, selectedVariation);
     navigate('/checkout');
   };
 
@@ -68,34 +88,45 @@ export const ProductDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white px-6 py-5 md:p-10 rounded-3xl shadow-sm border border-gray-100">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border">
-            {product.images[activeImage]?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-              <video src={product.images[activeImage]} controls autoPlay muted className="w-full h-full object-contain bg-black" />
-            ) : (
-              <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-contain" />
-            )}
-          </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-            {product.images.map((img, idx) => (
-              <button 
-                key={idx}
-                onClick={() => setActiveImage(idx)}
-                className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
-              >
-                {img.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                  <>
-                    <video src={img} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center pl-0.5 shadow">
-                        ▶
-                      </div>
-                    </div>
-                  </>
+            <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border flex items-center justify-center">
+              {displayImage ? (
+                displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                  <video src={displayImage} controls autoPlay muted className="w-full h-full object-contain bg-black" />
                 ) : (
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                )}
-              </button>
-            ))}
+                  <img src={displayImage} alt={product.name} className="w-full h-full object-contain" />
+                )
+              ) : (
+                <div className="text-gray-400">No image available</div>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            {(images || []).map((img, idx) => {
+              const safeImg = normalizeSrc(String(img));
+              return (
+                <button 
+                  key={idx}
+                  onClick={() => { setActiveImage(idx); setActiveVariationIndex(null); }}
+                  className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx && !selectedVariation ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
+                >
+                  {safeImg ? (
+                    safeImg.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                      <>
+                        <video src={safeImg} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center pl-0.5 shadow">
+                            ▶
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <img src={safeImg} alt="" className="w-full h-full object-cover" />
+                    )
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No preview</div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -131,18 +162,49 @@ export const ProductDetail: React.FC = () => {
               <div className="h-4 w-[1px] bg-gray-200" />
               <div className="flex items-center gap-1 text-sm">
                 <Check size={16} className="text-green-500" />
-                <span className={product.stock > 0 ? "text-green-500 font-medium" : "text-red-500"}>
-                  {product.stock > 0 ? `In Stock (${product.stock})` : "Out of Stock"}
-                </span>
+                {(() => {
+                  const stockCount = selectedVariation ? (selectedVariation.stock ?? 0) : (product.stock ?? 0);
+                  return (
+                    <span className={stockCount > 0 ? "text-green-500 font-medium" : "text-red-500"}>
+                      {stockCount > 0 ? `In Stock (${stockCount})` : "Out of Stock"}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 
             <div className="flex items-baseline gap-4 mb-6">
-               <span className="text-4xl font-black text-gray-900">৳{product.discountPrice || product.price}</span>
-               {product.discountPrice && (
-                 <span className="text-xl text-gray-400 line-through">৳{product.price}</span>
+               <span className="text-4xl font-black text-gray-900">৳{displayPrice}</span>
+               {(selectedVariation?.discountPrice || product.discountPrice) && (
+                 <span className="text-xl text-gray-400 line-through">৳{basePrice}</span>
                )}
             </div>
+
+            {/* Variation thumbnails (for variation products) */}
+            {product.productType === 'variation' && product.variations && product.variations.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-3">
+                  {product.variations.map((v, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <button onClick={() => { setActiveVariationIndex(idx); setActiveImage(0); }} className={`w-16 h-16 rounded-lg border overflow-hidden ${activeVariationIndex === idx ? 'border-primary' : 'border-gray-200'}`}>
+                        {v.media ? (
+                          String(v.media).match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video src={String(v.media)} className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={String(v.media)} alt={v.name} className="w-full h-full object-cover" />
+                          )
+                        ) : images[0] ? (
+                          <img src={images[0]} alt={v.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No preview</div>
+                        )}
+                      </button>
+                      <span className="text-xs mt-1 text-gray-600 text-center max-w-[70px] line-clamp-1">{v.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -156,8 +218,10 @@ export const ProductDetail: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={() => addToCart(product, quantity)}
+                <button 
+                onClick={() => {
+                  addToCart(product, quantity, true, selectedVariation);
+                }}
                 className="flex-1 bg-gray-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-800 transition-all text-lg shadow-lg shadow-gray-200"
               >
                 <ShoppingCart size={22} /> Add to Cart

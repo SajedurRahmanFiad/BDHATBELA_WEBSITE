@@ -17,11 +17,14 @@ const calculateOrderShippingCost = (order: Order, settings: StoreSettings) => {
         : settings.shippingCharges.outsideDhaka;
     const defaultCharge = hasBase ? shippingBase : (legacyBase ?? 0);
 
-    const exceptionCharge = Array.isArray(settings.shippingCharges.exceptions)
-        ? settings.shippingCharges.exceptions.find(ex => ex.district === order.area)?.charge
+    const exceptionItem = Array.isArray(settings.shippingCharges.exceptions)
+        ? settings.shippingCharges.exceptions.find(ex => ex.district === order.area)
+        : undefined;
+    const exceptionCharge = exceptionItem !== undefined
+        ? Number(exceptionItem.charge)
         : undefined;
 
-    const districtShippingCost = exceptionCharge ?? defaultCharge;
+    const districtShippingCost = exceptionCharge !== undefined ? exceptionCharge : defaultCharge;
 
     const totalWeight = order.items.reduce((sum, item) => {
         const w = item.variation?.weight ?? item.product?.weight ?? 0;

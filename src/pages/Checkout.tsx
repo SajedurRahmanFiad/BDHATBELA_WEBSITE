@@ -44,12 +44,15 @@ export const Checkout: React.FC = () => {
     : Number(settings?.shippingCharges?.outsideDhaka ?? 0);
   const defaultCharge = hasBase ? shippingBase : legacyBase;
 
-  const exceptionCharge = Array.isArray(settings?.shippingCharges?.exceptions)
-    ? Number(settings?.shippingCharges?.exceptions.find(ex => ex.district === formData.district)?.charge ?? 0)
+  const exceptionItem = Array.isArray(settings?.shippingCharges?.exceptions)
+    ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)
+    : undefined;
+  const exceptionCharge = exceptionItem !== undefined
+    ? Number(exceptionItem.charge)
     : undefined;
 
   // Exception overrides base; base overrides legacy
-  const districtShippingCost = Number(exceptionCharge ?? defaultCharge);
+  const districtShippingCost = Number(exceptionCharge !== undefined ? exceptionCharge : defaultCharge);
 
   const totalWeight = cart.reduce((sum, item) => {
     // Use live product data to avoid stale localStorage weight

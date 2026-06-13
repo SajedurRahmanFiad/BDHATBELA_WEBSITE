@@ -10,7 +10,7 @@ import { OrderStatus } from '../types';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart } = useCart();
-  const { settings, addOrder } = useAdmin();
+  const { settings, addOrder, products: liveProducts } = useAdmin();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -36,19 +36,40 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingBase = settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0;
+  const shippingBase = settings.shippingCharges?.base ?? 0;
+  // Only use legacy insideDhaka/outsideDhaka if base is not explicitly set (i.e. old settings format)
+  const hasBase = settings.shippingCharges?.base !== undefined && settings.shippingCharges?.base !== null;
+  const legacyBase = formData.district === 'Dhaka'
+    ? settings.shippingCharges?.insideDhaka
+    : settings.shippingCharges?.outsideDhaka;
+  const defaultCharge = hasBase ? shippingBase : (legacyBase ?? 0);
+
   const exceptionCharge = Array.isArray(settings.shippingCharges?.exceptions)
     ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)?.charge
     : undefined;
-  const legacyCharge = formData.district === 'Dhaka'
-    ? settings.shippingCharges?.insideDhaka
-    : settings.shippingCharges?.outsideDhaka;
-  const districtShippingCost = exceptionCharge ?? (legacyCharge !== undefined ? legacyCharge : shippingBase);
 
-  const totalWeight = cart.reduce((sum, item) => sum + (((item as any).variation?.weight ?? item.product.weight ?? 0) * item.quantity), 0);
-  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 1;
-  const extraWeightCharge = settings.shippingCharges?.dynamicShipping?.enabled
-    ? Math.max(totalWeight - dynamicStartKg, 0) * (settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0)
+  // Exception overrides base; base overrides legacy
+  const districtShippingCost = exceptionCharge ?? defaultCharge;
+
+  const totalWeight = cart.reduce((sum, item) => {
+    // Use live product data to avoid stale localStorage weight
+    const liveProduct = liveProducts.find(p => p.id === item.product.id);
+    if (item.variation) {
+      // For variation products, find the matching live variation
+      const liveVariation = liveProduct?.variations?.find(v => v.id === item.variation!.id);
+      const varWeight = liveVariation?.weight ?? item.variation.weight;
+      const w = (varWeight !== null && varWeight !== undefined) ? varWeight
+        : (liveProduct?.weight ?? item.product.weight ?? 0);
+      return sum + w * item.quantity;
+    }
+    const w = liveProduct?.weight ?? item.product.weight ?? 0;
+    return sum + w * item.quantity;
+  }, 0);
+  const dynamicEnabled = settings.shippingCharges?.dynamicShipping?.enabled ?? false;
+  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 0;
+  const dynamicPerKg = settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0;
+  const extraWeightCharge = dynamicEnabled
+    ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
   const shippingCost = districtShippingCost + extraWeightCharge;
   const totalAmount = subtotal + shippingCost;
@@ -292,10 +313,14 @@ export const Checkout: React.FC = () => {
                 <span>Delivery Charge</span>
                 <span>৳{districtShippingCost}</span>
               </div>
-              {settings.shippingCharges?.dynamicShipping?.enabled && totalWeight > 0 && (
-                <div className="flex justify-between opacity-80 text-sm">
-                  <span>Weight surcharge</span>
-                  <span>৳{extraWeightCharge.toFixed(2)}</span>
+              {dynamicEnabled && (
+                <div className="flex justify-between opacity-70 text-xs">
+                  <span>Cart Weight: {totalWeight.toFixed(2)} kg
+                    {dynamicStartKg > 0 && ` (free up to ${dynamicStartKg} kg)`}
+                  </span>
+                  <span className={extraWeightCharge > 0 ? 'text-yellow-300 font-bold' : ''}>
+                    {extraWeightCharge > 0 ? `+৳${extraWeightCharge.toFixed(2)}` : 'No surcharge'}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-2xl font-black pt-4">

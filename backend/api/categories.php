@@ -7,8 +7,8 @@ header('Content-Type: application/json; charset=utf-8');
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $stmt = $pdo->query("SELECT * FROM categories");
-    $categories = $stmt->fetchAll();
+    $stmt = $pdo->query("SELECT id, name, icon, image, parent_id as parentId FROM categories");
+    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($categories);
 
 } elseif ($method === 'POST') {
@@ -18,10 +18,11 @@ if ($method === 'GET') {
     $name = $data['name'];
     $icon = $data['icon'] ?? null;
     $image = $data['image'] ?? null;
+    $parentId = $data['parentId'] ?? null;
 
-    $stmt = $pdo->prepare("INSERT INTO categories (id, name, icon, image) VALUES (?, ?, ?, ?)");
-    if ($stmt->execute([$id, $name, $icon, $image])) {
-        echo json_encode(['id' => $id, 'name' => $name, 'icon' => $icon, 'image' => $image]);
+    $stmt = $pdo->prepare("INSERT INTO categories (id, name, icon, image, parent_id) VALUES (?, ?, ?, ?, ?)");
+    if ($stmt->execute([$id, $name, $icon, $image, $parentId])) {
+        echo json_encode(['id' => $id, 'name' => $name, 'icon' => $icon, 'image' => $image, 'parentId' => $parentId]);
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to create category']);
@@ -37,8 +38,8 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE categories SET name = ?, icon = ?, image = ? WHERE id = ?");
-    if ($stmt->execute([$data['name'], $data['icon'] ?? null, $data['image'] ?? null, $id])) {
+    $stmt = $pdo->prepare("UPDATE categories SET name = ?, icon = ?, image = ?, parent_id = ? WHERE id = ?");
+    if ($stmt->execute([$data['name'], $data['icon'] ?? null, $data['image'] ?? null, $data['parentId'] ?? null, $id])) {
         echo json_encode($data);
     } else {
         http_response_code(500);

@@ -750,7 +750,8 @@ const AdminCategories = () => {
     const [newCategory, setNewCategory] = React.useState({
         name: '',
         image: '',
-        icon: 'Package'
+        icon: 'Package',
+        parentId: ''
     });
 
     React.useEffect(() => {
@@ -758,10 +759,11 @@ const AdminCategories = () => {
             setNewCategory({
                 name: editingCategory.name,
                 image: editingCategory.image || '',
-                icon: editingCategory.icon || 'Package'
+                icon: editingCategory.icon || 'Package',
+                parentId: editingCategory.parentId || ''
             });
         } else {
-            setNewCategory({ name: '', image: '', icon: 'Package' });
+            setNewCategory({ name: '', image: '', icon: 'Package', parentId: '' });
         }
     }, [editingCategory]);
 
@@ -772,7 +774,8 @@ const AdminCategories = () => {
             id: editingCategory ? editingCategory.id : `cat-${Date.now()}`,
             name: newCategory.name,
             image: newCategory.image,
-            icon: newCategory.icon
+            icon: newCategory.icon,
+            parentId: newCategory.parentId || null
         };
 
         if (editingCategory) {
@@ -868,6 +871,19 @@ const AdminCategories = () => {
                                     className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                     placeholder="e.g. Smart Electronics"
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Parent Category</label>
+                                <select
+                                    value={newCategory.parentId}
+                                    onChange={e => setNewCategory({ ...newCategory, parentId: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                >
+                                    <option value="">None (Top Level)</option>
+                                    {categories.filter(c => !editingCategory || c.id !== editingCategory.id).map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <ImageUpload
                                 label="Category Banner/Icon Image"
@@ -1330,7 +1346,7 @@ const AdminSettings = () => {
         },
         shippingCharges: {
             base: settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0,
-            exceptions: settings.shippingCharges?.exceptions ?? [],
+            exceptions: Array.isArray(settings.shippingCharges?.exceptions) ? settings.shippingCharges.exceptions : [],
             dynamicShipping: {
                 enabled: settings.shippingCharges?.dynamicShipping?.enabled ?? false,
                 perKgCharge: settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,

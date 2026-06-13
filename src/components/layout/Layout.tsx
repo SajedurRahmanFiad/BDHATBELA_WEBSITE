@@ -261,12 +261,34 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <button className="flex items-center gap-1 font-medium hover:text-primary transition-colors cursor-pointer text-sm">
                 All Categories <ChevronDown size={14} />
               </button>
-              <div className="absolute top-full left-0 bg-white shadow-xl rounded-lg py-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 border border-gray-100">
-                {categories.map(cat => (
-                  <Link key={cat.id} to={`/products?category=${encodeURIComponent(cat.name)}`} className="block px-4 py-2 hover:bg-gray-50 hover:text-primary transition-colors text-sm">
-                    {cat.name}
-                  </Link>
-                ))}
+              <div className="absolute top-full left-0 bg-white shadow-xl rounded-lg py-2 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 border border-gray-100">
+                {categories.filter(c => !c.parentId).map(cat => {
+                  const subs = categories.filter(c => c.parentId === cat.id);
+                  return (
+                    <div key={cat.id} className="relative group/sub">
+                      <Link 
+                        to={`/products?category=${encodeURIComponent(cat.name)}`} 
+                        className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 hover:text-primary transition-colors text-sm"
+                      >
+                        {cat.name}
+                        {subs.length > 0 && <ChevronDown size={14} className="-rotate-90" />}
+                      </Link>
+                      {subs.length > 0 && (
+                        <div className="absolute top-0 left-full ml-1 bg-white shadow-xl rounded-lg py-2 w-48 opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all border border-gray-100">
+                          {subs.map(sub => (
+                            <Link 
+                              key={sub.id} 
+                              to={`/products?category=${encodeURIComponent(sub.name)}`} 
+                              className="block px-4 py-2 hover:bg-gray-50 hover:text-primary transition-colors text-sm"
+                            >
+                              {sub.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <Link
@@ -322,19 +344,37 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   >
                     All Products
                   </Link>
-                  <p className="text-[10px] uppercase font-black text-gray-400 tracking-wider pl-1">All Categories</p>
                   <div className="flex flex-col gap-1 pl-3 max-h-48 overflow-y-auto border-l border-gray-100">
-                    {categories.map(cat => (
-                      <Link
-                        key={cat.id}
-                        to={`/products?category=${encodeURIComponent(cat.name)}`}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="py-1.5 text-xs text-gray-600 hover:text-primary transition-colors flex items-center gap-1.5"
-                      >
-                        <span className="w-1.5 h-1.5 bg-gray-300 rounded-full shrink-0" />
-                        {cat.name}
-                      </Link>
-                    ))}
+                    {categories.filter(c => !c.parentId).map(cat => {
+                      const subs = categories.filter(c => c.parentId === cat.id);
+                      return (
+                        <div key={cat.id} className="flex flex-col">
+                          <Link
+                            to={`/products?category=${encodeURIComponent(cat.name)}`}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="py-1.5 text-xs text-gray-600 hover:text-primary transition-colors flex items-center gap-1.5"
+                          >
+                            <span className="w-1.5 h-1.5 bg-gray-300 rounded-full shrink-0" />
+                            {cat.name}
+                          </Link>
+                          {subs.length > 0 && (
+                            <div className="flex flex-col pl-4 border-l border-gray-100 ml-1.5">
+                              {subs.map(sub => (
+                                <Link
+                                  key={sub.id}
+                                  to={`/products?category=${encodeURIComponent(sub.name)}`}
+                                  onClick={() => setIsMenuOpen(false)}
+                                  className="py-1.5 text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5"
+                                >
+                                  <span className="w-1 h-1 bg-gray-200 rounded-full shrink-0" />
+                                  {sub.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

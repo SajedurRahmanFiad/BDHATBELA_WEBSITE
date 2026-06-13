@@ -38,50 +38,52 @@ export const Home: React.FC = () => {
                 className="absolute inset-0"
               >
                 <img src={banners[currentBanner].image} alt={banners[currentBanner].title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
-                  <div className="max-w-xl text-white space-y-4">
-                    {banners[currentBanner].title && (
-                      <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-3xl md:text-5xl font-bold leading-tight"
-                        style={{ color: banners[currentBanner].titleColor || '#FFFFFF' }}
-                      >
-                        {banners[currentBanner].title}
-                      </motion.h1>
-                    )}
-                    {Boolean(banners[currentBanner].showButton) && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                      >
-                        {(banners[currentBanner].buttonLink || banners[currentBanner].link) ? (
-                          <Link 
-                            to={(banners[currentBanner].buttonLink || banners[currentBanner].link) as string} 
-                            className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
-                            style={{
-                              backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
-                              color: banners[currentBanner].buttonTextColor || '#FFFFFF'
-                            }}
-                          >
-                            {banners[currentBanner].buttonText || 'Shop Now'}
-                          </Link>
-                        ) : (
-                          <span
-                            className="inline-block px-8 py-3 rounded-full font-bold shadow-lg"
-                            style={{
-                              backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
-                              color: banners[currentBanner].buttonTextColor || '#FFFFFF'
-                            }}
-                          >
-                            {banners[currentBanner].buttonText || 'Shop Now'}
-                          </span>
-                        )}
-                      </motion.div>
-                    )}
+                {(banners[currentBanner].title?.trim() || Boolean(banners[currentBanner].showButton)) && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
+                    <div className="max-w-xl text-white space-y-4">
+                      {banners[currentBanner].title && (
+                        <motion.h1
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-3xl md:text-5xl font-bold leading-tight"
+                          style={{ color: banners[currentBanner].titleColor || '#FFFFFF' }}
+                        >
+                          {banners[currentBanner].title}
+                        </motion.h1>
+                      )}
+                      {Boolean(banners[currentBanner].showButton) && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.1 }}
+                        >
+                          {(banners[currentBanner].buttonLink || banners[currentBanner].link) ? (
+                            <Link 
+                              to={(banners[currentBanner].buttonLink || banners[currentBanner].link) as string} 
+                              className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
+                              style={{
+                                backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                                color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                              }}
+                            >
+                              {banners[currentBanner].buttonText || 'Shop Now'}
+                            </Link>
+                          ) : (
+                            <span
+                              className="inline-block px-8 py-3 rounded-full font-bold shadow-lg"
+                              style={{
+                                backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                                color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                              }}
+                            >
+                              {banners[currentBanner].buttonText || 'Shop Now'}
+                            </span>
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             </AnimatePresence>
             

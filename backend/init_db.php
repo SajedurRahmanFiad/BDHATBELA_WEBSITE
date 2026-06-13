@@ -42,7 +42,8 @@ try {
             `id` VARCHAR(50) PRIMARY KEY,
             `name` VARCHAR(100) NOT NULL,
             `icon` VARCHAR(50),
-            `image` LONGTEXT
+            `image` LONGTEXT,
+            `parent_id` VARCHAR(50) DEFAULT NULL
         );",
 
         "CREATE TABLE IF NOT EXISTS `products` (
@@ -148,6 +149,9 @@ try {
     try { $pdo->exec("ALTER TABLE `users` DROP COLUMN `email`"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `staff` DROP COLUMN `email`"); } catch(Exception $e) {}
 
+    // Add parent_id to categories
+    try { $pdo->exec("ALTER TABLE `categories` ADD COLUMN `parent_id` VARCHAR(255) DEFAULT NULL"); } catch(Exception $e) {}
+
     // Add banner columns
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `showButton` TINYINT(1) DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `banners` ADD COLUMN `buttonText` VARCHAR(50) DEFAULT 'Shop Now'"); } catch(Exception $e) {}
@@ -190,7 +194,8 @@ try {
                 'exceptions' => [],
                 'dynamicShipping' => [
                     'enabled' => false,
-                    'perKgCharge' => 0
+                    'perKgCharge' => 0,
+                    'startKg' => 0
                 ],
                 'insideDhaka' => 60,
                 'outsideDhaka' => 120

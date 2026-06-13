@@ -97,6 +97,7 @@ export interface Category {
   name: string;
   icon: string;
   image?: string;
+  parentId?: string | null;
 }
 
 export interface Banner {

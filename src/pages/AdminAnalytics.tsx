@@ -10,16 +10,18 @@ import { DollarSign, TrendingUp, TrendingDown, Activity, Package, Receipt } from
 
 const calculateOrderShippingCost = (order: Order, settings: StoreSettings) => {
     if (!settings || !settings.shippingCharges) return 0;
-    const shippingBase = settings.shippingCharges.base ?? settings.shippingCharges.insideDhaka ?? 0;
+    const shippingBase = settings.shippingCharges.base ?? 0;
+    const hasBase = settings.shippingCharges.base !== undefined && settings.shippingCharges.base !== null;
+    const legacyBase = order.area === 'Dhaka'
+        ? settings.shippingCharges.insideDhaka
+        : settings.shippingCharges.outsideDhaka;
+    const defaultCharge = hasBase ? shippingBase : (legacyBase ?? 0);
+
     const exceptionCharge = Array.isArray(settings.shippingCharges.exceptions)
         ? settings.shippingCharges.exceptions.find(ex => ex.district === order.area)?.charge
         : undefined;
 
-    const legacyCharge = order.area === 'Dhaka'
-        ? settings.shippingCharges.insideDhaka
-        : settings.shippingCharges.outsideDhaka;
-
-    const districtShippingCost = exceptionCharge ?? (legacyCharge !== undefined ? legacyCharge : shippingBase);
+    const districtShippingCost = exceptionCharge ?? defaultCharge;
 
     const totalWeight = order.items.reduce((sum, item) => {
         const w = item.variation?.weight ?? item.product?.weight ?? 0;

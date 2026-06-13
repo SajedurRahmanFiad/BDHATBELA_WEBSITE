@@ -36,20 +36,20 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingBase = settings?.shippingCharges?.base ?? 0;
+  const shippingBase = Number(settings?.shippingCharges?.base ?? 0);
   // Only use legacy insideDhaka/outsideDhaka if base is not explicitly set (i.e. old settings format)
   const hasBase = settings?.shippingCharges?.base !== undefined && settings?.shippingCharges?.base !== null;
   const legacyBase = formData.district === 'Dhaka'
-    ? settings?.shippingCharges?.insideDhaka
-    : settings?.shippingCharges?.outsideDhaka;
-  const defaultCharge = hasBase ? shippingBase : (legacyBase ?? 0);
+    ? Number(settings?.shippingCharges?.insideDhaka ?? 0)
+    : Number(settings?.shippingCharges?.outsideDhaka ?? 0);
+  const defaultCharge = hasBase ? shippingBase : legacyBase;
 
   const exceptionCharge = Array.isArray(settings?.shippingCharges?.exceptions)
-    ? settings?.shippingCharges?.exceptions.find(ex => ex.district === formData.district)?.charge
+    ? Number(settings?.shippingCharges?.exceptions.find(ex => ex.district === formData.district)?.charge ?? 0)
     : undefined;
 
   // Exception overrides base; base overrides legacy
-  const districtShippingCost = exceptionCharge ?? defaultCharge;
+  const districtShippingCost = Number(exceptionCharge ?? defaultCharge);
 
   const totalWeight = cart.reduce((sum, item) => {
     // Use live product data to avoid stale localStorage weight
@@ -66,13 +66,13 @@ export const Checkout: React.FC = () => {
     return sum + w * item.quantity;
   }, 0);
   const dynamicEnabled = settings?.shippingCharges?.dynamicShipping?.enabled ?? false;
-  const dynamicStartKg = settings?.shippingCharges?.dynamicShipping?.startKg ?? 0;
-  const dynamicPerKg = settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0;
+  const dynamicStartKg = Number(settings?.shippingCharges?.dynamicShipping?.startKg ?? 0);
+  const dynamicPerKg = Number(settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0);
   const extraWeightCharge = dynamicEnabled
     ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
-  const shippingCost = districtShippingCost + extraWeightCharge;
-  const totalAmount = subtotal + shippingCost;
+  const shippingCost = Number(districtShippingCost + extraWeightCharge);
+  const totalAmount = Number(subtotal) + Number(shippingCost);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -32,6 +32,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     addToCart(product, 1, true, variation);
   };
 
+  const normalizeMedia = (media?: string | string[] | null) => {
+    if (!media) return null;
+    if (Array.isArray(media)) return String(media[0] || '');
+    return media;
+  };
+
   const normalizeSrc = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
     const trimmed = src.trim();
@@ -50,8 +56,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <Link to={`/product/${product.id}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
         {(() => {
           const rawImg = product.productType === 'variation'
-            ? (product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
-            : (product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null));
+            ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
+            : normalizeMedia((product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null)));
           const img = normalizeSrc(rawImg);
           if (!img) return <div className="w-full h-full flex items-center justify-center text-gray-300">No image</div>;
           if (img.match(/\.(mp4|webm|ogg|mov)$/i)) {

@@ -33,9 +33,7 @@ $filename = uniqid('media_') . '.' . $ext;
 $target_file = $target_dir . $filename;
 
 if (move_uploaded_file($file["tmp_name"], $target_file)) {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $url = $scheme . '://' . $host . '/uploads/' . $filename;
+    $url = '/uploads/' . $filename;
     echo json_encode(["url" => $url]);
 } else {
     http_response_code(500);

@@ -11,8 +11,8 @@ export enum OrderStatus {
 export interface Variation {
   id?: string;
   name: string;
-  // single media path (image or video)
-  media?: string;
+  // one or more media items (image or video)
+  media?: string | string[];
   price: number;
   discountPrice?: number;
   costOfGoods?: number;

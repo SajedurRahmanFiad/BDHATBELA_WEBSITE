@@ -44,7 +44,9 @@ export const Cart: React.FC = () => {
             <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
               <Link to={`/product/${item.product.id}`} className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0 border">
                 {(() => {
-                  const src = normalizeSrc(item.variation?.media ?? item.product.images?.[0]);
+                  const rawMedia = item.variation?.media;
+                  const mediaSrc = Array.isArray(rawMedia) ? rawMedia[0] : rawMedia;
+                  const src = normalizeSrc(mediaSrc ?? item.product.images?.[0]);
                   return src ? (
                     <img src={src} alt={item.product.name} className="w-full h-full object-cover" />
                   ) : (

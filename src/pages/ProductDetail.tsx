@@ -16,6 +16,8 @@ export const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [activeVariationIndex, setActiveVariationIndex] = useState<number | null>(null);
+  const [showVariationModal, setShowVariationModal] = useState(false);
+  const [pendingVariationAction, setPendingVariationAction] = useState<'add' | 'buy' | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
@@ -46,7 +48,18 @@ export const ProductDetail: React.FC = () => {
     if (!trimmed) return null;
     return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
   };
-  const displayImage = normalizeSrc(selectedVariation?.media ?? images[activeImage] ?? images[0] ?? null);
+
+  const normalizeMedia = (media?: string | string[] | null) => {
+    if (!media) return [] as string[];
+    if (Array.isArray(media)) return media.map(m => String(m)).filter(Boolean);
+    if (typeof media === 'string') return media ? [media] : [];
+    return [];
+  };
+
+  const productGallery = normalizeMedia(images);
+  const variationGallery = normalizeMedia(selectedVariation?.media);
+  const gallery = selectedVariation ? (variationGallery.length ? variationGallery : productGallery) : productGallery;
+  const displayImage = normalizeSrc(gallery[activeImage] ?? gallery[0] ?? null);
   const displayPrice = selectedVariation?.discountPrice ?? selectedVariation?.price ?? product.discountPrice ?? product.price;
   const basePrice = selectedVariation?.price ?? product.price;
 
@@ -57,9 +70,32 @@ export const ProductDetail: React.FC = () => {
     }
   }, [product]);
 
-  const handleBuyNow = () => {
+  React.useEffect(() => {
+    setActiveImage(0);
+  }, [activeVariationIndex]);
+
+  const handleBuyNowDirect = () => {
     addToCart(product, quantity, false, selectedVariation);
     navigate('/checkout');
+  };
+
+  const handleVariationAction = (action: 'add' | 'buy') => {
+    setPendingVariationAction(action);
+    setShowVariationModal(true);
+  };
+
+  const handleAddToCartDirect = () => {
+    addToCart(product, quantity, true, selectedVariation);
+  };
+
+  const handleConfirmVariation = () => {
+    if (pendingVariationAction === 'buy') {
+      handleBuyNowDirect();
+    } else {
+      handleAddToCartDirect();
+    }
+    setShowVariationModal(false);
+    setPendingVariationAction(null);
   };
 
   const handleReviewSubmit = (e: React.FormEvent) => {
@@ -100,13 +136,13 @@ export const ProductDetail: React.FC = () => {
               )}
             </div>
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-            {(images || []).map((img, idx) => {
+            {(gallery || []).map((img, idx) => {
               const safeImg = normalizeSrc(String(img));
               return (
                 <button 
                   key={idx}
-                  onClick={() => { setActiveImage(idx); setActiveVariationIndex(null); }}
-                  className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx && !selectedVariation ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
+                  onClick={() => setActiveImage(idx)}
+                  className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
                 >
                   {safeImg ? (
                     safeImg.match(/\.(mp4|webm|ogg|mov)$/i) ? (
@@ -184,14 +220,18 @@ export const ProductDetail: React.FC = () => {
             {product.productType === 'variation' && product.variations && product.variations.length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-3">
-                  {product.variations.map((v, idx) => (
+                  {product.variations.map((v, idx) => {
+                    // media can be array or string; extract first URL
+                    const varMediaArr = Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : []);
+                    const varMediaSrc = varMediaArr.length > 0 ? varMediaArr[0] : null;
+                    return (
                     <div key={idx} className="flex flex-col items-center">
                       <button onClick={() => { setActiveVariationIndex(idx); setActiveImage(0); }} className={`w-16 h-16 rounded-lg border overflow-hidden ${activeVariationIndex === idx ? 'border-primary' : 'border-gray-200'}`}>
-                        {v.media ? (
-                          String(v.media).match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                            <video src={String(v.media)} className="w-full h-full object-cover" />
+                        {varMediaSrc ? (
+                          varMediaSrc.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video src={varMediaSrc} className="w-full h-full object-cover" />
                           ) : (
-                            <img src={String(v.media)} alt={v.name} className="w-full h-full object-cover" />
+                            <img src={varMediaSrc} alt={v.name} className="w-full h-full object-cover" />
                           )
                         ) : images[0] ? (
                           <img src={images[0]} alt={v.name} className="w-full h-full object-cover" />
@@ -201,7 +241,7 @@ export const ProductDetail: React.FC = () => {
                       </button>
                       <span className="text-xs mt-1 text-gray-600 text-center max-w-[70px] line-clamp-1">{v.name}</span>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )}
@@ -220,14 +260,24 @@ export const ProductDetail: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4">
                 <button 
                 onClick={() => {
-                  addToCart(product, quantity, true, selectedVariation);
+                  if (product.productType === 'variation') {
+                    handleVariationAction('add');
+                  } else {
+                    handleAddToCartDirect();
+                  }
                 }}
                 className="flex-1 bg-gray-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-800 transition-all text-lg shadow-lg shadow-gray-200"
               >
                 <ShoppingCart size={22} /> Add to Cart
               </button>
               <button 
-                onClick={handleBuyNow}
+                onClick={() => {
+                  if (product.productType === 'variation') {
+                    handleVariationAction('buy');
+                  } else {
+                    handleBuyNowDirect();
+                  }
+                }}
                 className="flex-1 bg-primary text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover-primary-dark transition-all text-lg shadow-lg shadow-red-200"
               >
                 <Zap size={22} /> Buy Now
@@ -380,6 +430,104 @@ export const ProductDetail: React.FC = () => {
                       Submit Review
                     </button>
                  </form>
+               </motion.div>
+            </div>
+          )}
+
+          {showVariationModal && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+               <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowVariationModal(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+               />
+               <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-2xl rounded-[40px] p-8 relative z-10 shadow-2xl overflow-hidden"
+               >
+                 <button 
+                  onClick={() => setShowVariationModal(false)}
+                  className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"
+                 >
+                   <X size={24} />
+                 </button>
+
+                 <div className="space-y-6">
+                   <div>
+                     <h2 className="text-3xl font-black">Choose a Variation</h2>
+                     <p className="text-sm text-gray-500 mt-2">Select the variation you want to {pendingVariationAction === 'buy' ? 'buy now' : 'add to cart'}.</p>
+                   </div>
+
+                   <div className="grid grid-cols-1 gap-6">
+                     <div className="bg-gray-50 rounded-3xl p-5 border">
+                       <h3 className="font-bold text-sm text-gray-500 uppercase tracking-widest mb-4">Selected Variation</h3>
+                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                         <div className="w-24 h-24 rounded-3xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                           {(() => {
+                             const selectedMedia = Array.isArray(selectedVariation?.media) ? selectedVariation?.media[0] : selectedVariation?.media;
+                             const selectedSrc = normalizeSrc(String(selectedMedia ?? images[0] ?? ''));
+                             return selectedSrc ? (
+                               selectedSrc.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                 <video src={selectedSrc} className="w-full h-full object-cover" />
+                               ) : (
+                                 <img src={selectedSrc} alt={selectedVariation?.name ?? product.name} className="w-full h-full object-cover" />
+                               )
+                             ) : (
+                               <div className="text-xs text-gray-400">No preview</div>
+                             );
+                           })()}
+                         </div>
+                         <div className="space-y-2">
+                           <p className="text-lg font-bold">{selectedVariation?.name ?? 'Default'}</p>
+                           <p className="text-sm text-gray-500">Price: ৳{displayPrice}</p>
+                           <p className="text-sm text-gray-500">Stock: {selectedVariation ? (selectedVariation.stock ?? 0) : (product.stock ?? 0)}</p>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="bg-white rounded-3xl p-5 border shadow-sm">
+                       <h3 className="font-bold text-sm text-gray-500 uppercase tracking-widest mb-4">Choose Variation</h3>
+                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                         {product.variations?.map((v, idx) => {
+                           const varMedia = Array.isArray(v.media) ? v.media[0] : v.media;
+                           const optionImg = normalizeSrc(varMedia) ?? normalizeSrc(images[0]);
+                           return (
+                             <button
+                               key={v.id ?? idx}
+                               onClick={() => { setActiveVariationIndex(idx); setActiveImage(0); }}
+                               className={`border rounded-3xl p-2 text-left transition-all ${activeVariationIndex === idx ? 'border-primary bg-primary/10' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                             >
+                               <div className="w-full h-20 rounded-xl overflow-hidden bg-gray-100 mb-2">
+                                 {optionImg ? <img src={optionImg} alt={v.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No preview</div>}
+                               </div>
+                               <p className="text-sm font-semibold truncate">{v.name}</p>
+                               <p className="text-xs text-gray-500">৳{v.discountPrice ?? v.price}</p>
+                             </button>
+                           );
+                         })}
+                       </div>
+                     </div>
+
+                     <div className="flex gap-3 pt-2">
+                       <button
+                         onClick={handleConfirmVariation}
+                         className="flex-1 py-4 bg-primary text-white rounded-3xl font-bold text-sm hover-primary-dark transition-all"
+                       >
+                         Confirm Selection
+                       </button>
+                       <button
+                         onClick={() => setShowVariationModal(false)}
+                         className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-3xl font-bold text-sm hover:bg-gray-200 transition-all"
+                       >
+                         Cancel
+                       </button>
+                     </div>
+                   </div>
+                 </div>
                </motion.div>
             </div>
           )}

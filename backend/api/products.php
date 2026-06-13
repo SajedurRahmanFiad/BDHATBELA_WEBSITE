@@ -62,10 +62,22 @@ function getProductFullDetails($pdo, $product_id) {
     $vstmt->execute([$product_id]);
     $variations = $vstmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($variations as $v) {
+        // Decode media: stored as JSON array string or plain URL string
+        $rawMedia = $v['media'] ?? null;
+        $decodedMedia = null;
+        if ($rawMedia !== null && $rawMedia !== '') {
+            $decoded = json_decode($rawMedia, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $decodedMedia = $decoded;
+            } else {
+                // Legacy: plain URL string
+                $decodedMedia = [$rawMedia];
+            }
+        }
         $product['variations'][] = [
             'id' => $v['id'],
             'name' => $v['name'],
-            'media' => $v['media'],
+            'media' => $decodedMedia,
             'price' => (float)$v['price'],
             'discountPrice' => isset($v['discount_price']) ? (float)$v['discount_price'] : null,
             'costOfGoods' => isset($v['cost_of_goods']) ? (float)$v['cost_of_goods'] : 0,
@@ -174,10 +186,20 @@ if ($method === 'GET') {
 
             foreach ($data['variations'] as $var) {
                 $vstmt = $pdo->prepare($variationInsertSql);
+                // Serialize media as JSON string to support multiple images
+                $mediaVal = $var['media'] ?? null;
+                if (is_array($mediaVal)) {
+                    $mediaVal = count($mediaVal) > 0 ? json_encode($mediaVal) : null;
+                } elseif (is_string($mediaVal) && $mediaVal !== '') {
+                    // Wrap plain string into JSON array for consistency
+                    $mediaVal = json_encode([$mediaVal]);
+                } else {
+                    $mediaVal = null;
+                }
                 $params = [
                     $id,
                     $var['name'] ?? '',
-                    $var['media'] ?? null,
+                    $mediaVal,
                     $var['price'] ?? 0,
                     $var['discountPrice'] ?? null,
                     $var['costOfGoods'] ?? 0,
@@ -300,10 +322,20 @@ if ($method === 'GET') {
 
                 foreach ($data['variations'] as $var) {
                     $vstmt = $pdo->prepare($variationInsertSql);
+                    // Serialize media as JSON string to support multiple images
+                    $mediaVal = $var['media'] ?? null;
+                    if (is_array($mediaVal)) {
+                        $mediaVal = count($mediaVal) > 0 ? json_encode($mediaVal) : null;
+                    } elseif (is_string($mediaVal) && $mediaVal !== '') {
+                        // Wrap plain string into JSON array for consistency
+                        $mediaVal = json_encode([$mediaVal]);
+                    } else {
+                        $mediaVal = null;
+                    }
                     $params = [
                         $id,
                         $var['name'] ?? '',
-                        $var['media'] ?? null,
+                        $mediaVal,
                         $var['price'] ?? 0,
                         $var['discountPrice'] ?? null,
                         $var['costOfGoods'] ?? 0,

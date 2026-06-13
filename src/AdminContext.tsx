@@ -85,12 +85,18 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(p)
       });
+      const text = await res.text();
       if (res.ok) {
-        const savedProduct = await res.json();
+        const savedProduct = JSON.parse(text);
         setProducts([savedProduct, ...products]);
         return true;
       }
-      const err = await res.json().catch(() => ({}));
+      let err = {} as any;
+      try {
+        err = JSON.parse(text);
+      } catch {
+        console.error('Failed to parse product save error response:', text);
+      }
       alert(err.error || `Failed to save product (HTTP ${res.status}). Please try again.`);
       return false;
     } catch (e) {
@@ -106,12 +112,18 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(p)
       });
+      const text = await res.text();
       if (res.ok) {
-        const savedProduct = await res.json();
+        const savedProduct = JSON.parse(text);
         setProducts(products.map(item => item.id === p.id ? savedProduct : item));
         return true;
       }
-      const err = await res.json().catch(() => ({}));
+      let err = {} as any;
+      try {
+        err = JSON.parse(text);
+      } catch {
+        console.error('Failed to parse product update error response:', text);
+      }
       alert(err.error || `Failed to update product (HTTP ${res.status}). Please try again.`);
       return false;
     } catch (e) {

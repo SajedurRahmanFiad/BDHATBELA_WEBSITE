@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
-import { OrderStatus } from '../types';
+import { OrderStatus, Category, Product } from '../types';
 import { API_BASE_URL, DISTRICTS } from '../constants';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { AdminAnalytics } from './AdminAnalytics';
@@ -855,7 +855,7 @@ const AdminCategories = () => {
                     <button
                         onClick={() => {
                             setEditingCategory(null);
-                            setNewCategory({ name: '', image: '', icon: 'Package' });
+                            setNewCategory({ name: '', image: '', icon: 'Package', parentId: '' });
                             setShowModal(true);
                         }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
@@ -930,7 +930,7 @@ const AdminCategories = () => {
                                     className="w-full bg-gray-50 border border-gray-200 focus:border-primary px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                 >
                                     <option value="">None (Top Level)</option>
-                                    {categories.filter(c => !editingCategory || c.id !== editingCategory.id).map(c => (
+                                    {categories.filter((c: Category) => !editingCategory || c.id !== editingCategory.id).map((c: Category) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
@@ -962,7 +962,23 @@ const AdminProducts = () => {
 
     const [editingProduct, setEditingProduct] = React.useState<any>(null);
     const [productToDelete, setProductToDelete] = React.useState<string | null>(null);
-    const [newProduct, setNewProduct] = React.useState({
+    const [newProduct, setNewProduct] = React.useState<{
+        name: string;
+        shortDescription: string;
+        description: string;
+        price: string;
+        discountPrice: string;
+        category: string;
+        stock: string;
+        weight: string;
+        weightUnit: 'kg';
+        images: string[];
+        features: string[];
+        badge: string;
+        productType: 'simple' | 'variation';
+        costOfGoods: string;
+        variations: any[];
+    }>({
         name: '',
         shortDescription: '',
         description: '',
@@ -974,8 +990,8 @@ const AdminProducts = () => {
         weightUnit: 'kg',
         images: [] as string[],
         features: [] as string[],
-        badge: ''
-        ,productType: 'simple',
+        badge: '',
+        productType: 'simple',
         costOfGoods: '',
         variations: [] as any[]
     });
@@ -1038,6 +1054,7 @@ const AdminProducts = () => {
             rating: editingProduct ? editingProduct.rating : 5
             , productType: newProduct.productType,
             costOfGoods: newProduct.costOfGoods ? Number(newProduct.costOfGoods) : undefined,
+            reviews: editingProduct?.reviews ?? [],
             variations: newProduct.productType === 'variation' ? (newProduct.variations || []).map((v:any) => ({
                 id: v.id || undefined,
                 name: v.name,
@@ -1091,10 +1108,12 @@ const AdminProducts = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(p => {
+                {filteredProducts.map((p: Product) => {
                     const defaultVariation = p.productType === 'variation' ? p.variations?.find((v: any) => v.isDefault) : undefined;
                     const displayPrice = defaultVariation ? (defaultVariation.discountPrice ?? defaultVariation.price) : (p.discountPrice ?? p.price);
-                    const previewImage = normalizeSrc(p.images?.[0] ?? defaultVariation?.media ?? p.variations?.[0]?.media);
+                    const defaultMedia = Array.isArray(defaultVariation?.media) ? defaultVariation?.media[0] : defaultVariation?.media;
+                    const firstVariationMedia = Array.isArray(p.variations?.[0]?.media) ? p.variations?.[0]?.media[0] : p.variations?.[0]?.media;
+                    const previewImage = normalizeSrc(p.images?.[0] ?? defaultMedia ?? firstVariationMedia);
 
                     return (
                         <div
@@ -1161,7 +1180,7 @@ const AdminProducts = () => {
                                 {/* Product Type first */}
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Type</label>
-                                    <select value={newProduct.productType} onChange={e => setNewProduct({ ...newProduct, productType: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold">
+                                    <select value={newProduct.productType} onChange={e => setNewProduct({ ...newProduct, productType: e.target.value as 'simple' | 'variation' })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold">
                                         <option value="simple">Simple Product</option>
                                         <option value="variation">Variation Product</option>
                                     </select>
@@ -1265,7 +1284,7 @@ const AdminProducts = () => {
                                             onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
                                             className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600 bg-white"
                                         >
-                                            {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                                                                    {categories.map((cat: Category) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                                         </select>
                                     </div>
 
@@ -1310,7 +1329,11 @@ const AdminProducts = () => {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Media (image/video)</label>
-                                                                <ImageUpload value={v.media || ''} onChange={(val) => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], media: val }; setNewProduct({ ...newProduct, variations: nv }); }} label="Media" />
+                                                                <MultiImageUpload
+                                                                    values={Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : [])}
+                                                                    onChange={(vals) => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], media: vals }; setNewProduct({ ...newProduct, variations: nv }); }}
+                                                                    label="Media"
+                                                                />
                                                             </div>
                                                             <div className="grid grid-cols-3 gap-3">
                                                                 <input type="number" value={v.price ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], price: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Price" />
@@ -1382,56 +1405,56 @@ const AdminSettings = () => {
 
     const [localSettings, setLocalSettings] = React.useState({
         ...settings,
-        contactPhone: settings.contactPhone || '',
-        email: settings.email || '',
-        address: settings.address || '',
-        logo: settings.logo || '',
+        contactPhone: settings?.contactPhone || '',
+        email: settings?.email || '',
+        address: settings?.address || '',
+        logo: settings?.logo || '',
         socialLinks: {
-            facebook: normalizeSocialLink(settings.socialLinks?.facebook),
-            instagram: normalizeSocialLink(settings.socialLinks?.instagram),
-            youtube: normalizeSocialLink(settings.socialLinks?.youtube),
-            whatsapp: normalizeSocialLink(settings.socialLinks?.whatsapp),
-            twitter: normalizeSocialLink(settings.socialLinks?.twitter),
-            linkedin: normalizeSocialLink(settings.socialLinks?.linkedin)
+            facebook: normalizeSocialLink(settings?.socialLinks?.facebook),
+            instagram: normalizeSocialLink(settings?.socialLinks?.instagram),
+            youtube: normalizeSocialLink(settings?.socialLinks?.youtube),
+            whatsapp: normalizeSocialLink(settings?.socialLinks?.whatsapp),
+            twitter: normalizeSocialLink(settings?.socialLinks?.twitter),
+            linkedin: normalizeSocialLink(settings?.socialLinks?.linkedin)
         },
         shippingCharges: {
-            base: settings.shippingCharges?.base ?? settings.shippingCharges?.insideDhaka ?? 0,
-            exceptions: Array.isArray(settings.shippingCharges?.exceptions) ? settings.shippingCharges.exceptions : [],
+            base: settings?.shippingCharges?.base ?? settings?.shippingCharges?.insideDhaka ?? 0,
+            exceptions: Array.isArray(settings?.shippingCharges?.exceptions) ? settings.shippingCharges.exceptions : [],
             dynamicShipping: {
-                enabled: settings.shippingCharges?.dynamicShipping?.enabled ?? false,
-                perKgCharge: settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,
-                startKg: settings.shippingCharges?.dynamicShipping?.startKg ?? 0
+                enabled: settings?.shippingCharges?.dynamicShipping?.enabled ?? false,
+                perKgCharge: settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,
+                startKg: settings?.shippingCharges?.dynamicShipping?.startKg ?? 0
             },
-            insideDhaka: settings.shippingCharges?.insideDhaka,
-            outsideDhaka: settings.shippingCharges?.outsideDhaka
+            insideDhaka: settings?.shippingCharges?.insideDhaka,
+            outsideDhaka: settings?.shippingCharges?.outsideDhaka
         },
         paymentGateways: {
-            cod: { enabled: !!settings.paymentGateways?.cod?.enabled },
+            cod: { enabled: !!settings?.paymentGateways?.cod?.enabled },
             bkash: {
-                enabled: !!settings.paymentGateways?.bkash?.enabled,
-                number: settings.paymentGateways?.bkash?.number || '',
-                type: settings.paymentGateways?.bkash?.type || 'Personal',
-                instructions: settings.paymentGateways?.bkash?.instructions || ''
+                enabled: !!settings?.paymentGateways?.bkash?.enabled,
+                number: settings?.paymentGateways?.bkash?.number || '',
+                type: settings?.paymentGateways?.bkash?.type || 'Personal',
+                instructions: settings?.paymentGateways?.bkash?.instructions || ''
             },
             nagad: {
-                enabled: !!settings.paymentGateways?.nagad?.enabled,
-                number: settings.paymentGateways?.nagad?.number || '',
-                type: settings.paymentGateways?.nagad?.type || 'Personal',
-                instructions: settings.paymentGateways?.nagad?.instructions || ''
+                enabled: !!settings?.paymentGateways?.nagad?.enabled,
+                number: settings?.paymentGateways?.nagad?.number || '',
+                type: settings?.paymentGateways?.nagad?.type || 'Personal',
+                instructions: settings?.paymentGateways?.nagad?.instructions || ''
             },
             rocket: {
-                enabled: !!settings.paymentGateways?.rocket?.enabled,
-                number: settings.paymentGateways?.rocket?.number || '',
-                type: settings.paymentGateways?.rocket?.type || 'Personal',
-                instructions: settings.paymentGateways?.rocket?.instructions || ''
+                enabled: !!settings?.paymentGateways?.rocket?.enabled,
+                number: settings?.paymentGateways?.rocket?.number || '',
+                type: settings?.paymentGateways?.rocket?.type || 'Personal',
+                instructions: settings?.paymentGateways?.rocket?.instructions || ''
             },
             bank: {
-                enabled: !!settings.paymentGateways?.bank?.enabled,
-                bankName: settings.paymentGateways?.bank?.bankName || '',
-                branchName: settings.paymentGateways?.bank?.branchName || '',
-                accountName: settings.paymentGateways?.bank?.accountName || '',
-                accountNumber: settings.paymentGateways?.bank?.accountNumber || '',
-                instructions: settings.paymentGateways?.bank?.instructions || ''
+                enabled: !!settings?.paymentGateways?.bank?.enabled,
+                bankName: settings?.paymentGateways?.bank?.bankName || '',
+                branchName: settings?.paymentGateways?.bank?.branchName || '',
+                accountName: settings?.paymentGateways?.bank?.accountName || '',
+                accountNumber: settings?.paymentGateways?.bank?.accountNumber || '',
+                instructions: settings?.paymentGateways?.bank?.instructions || ''
             }
         }
     });
@@ -1546,13 +1569,13 @@ const AdminSettings = () => {
                                             <label className="inline-flex items-center gap-2 text-xs font-bold text-gray-600">
                                                 <input
                                                     type="checkbox"
-                                                    checked={localSettings.socialLinks[item.key].enabled}
+                                                    checked={localSettings?.socialLinks?.[item.key as keyof typeof localSettings.socialLinks]?.enabled ?? false}
                                                     onChange={e => setLocalSettings({
                                                         ...localSettings,
                                                         socialLinks: {
                                                             ...localSettings.socialLinks,
                                                             [item.key]: {
-                                                                ...localSettings.socialLinks[item.key],
+                                                                ...localSettings.socialLinks[item.key as keyof typeof localSettings.socialLinks],
                                                                 enabled: e.target.checked
                                                             }
                                                         }
@@ -1563,13 +1586,13 @@ const AdminSettings = () => {
                                             </label>
                                         </div>
                                         <input
-                                            value={localSettings.socialLinks[item.key].url}
+                                            value={localSettings?.socialLinks?.[item.key as keyof typeof localSettings.socialLinks]?.url ?? ''}
                                             onChange={e => setLocalSettings({
                                                 ...localSettings,
                                                 socialLinks: {
                                                     ...localSettings.socialLinks,
-                                                    [item.key]: {
-                                                        ...localSettings.socialLinks[item.key],
+                                                    [item.key as keyof typeof localSettings.socialLinks]: {
+                                                        ...localSettings.socialLinks[item.key as keyof typeof localSettings.socialLinks],
                                                         url: e.target.value
                                                     }
                                                 }

@@ -63,7 +63,9 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
                     <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="flex gap-4 group">
                       <div className="w-20 h-24 bg-gray-50 rounded-2xl overflow-hidden border shrink-0">
                         {(() => {
-                          const src = normalizeSrc(item.variation?.media ?? item.product.images?.[0]);
+                          const rawMedia = item.variation?.media;
+                          const mediaSrc = Array.isArray(rawMedia) ? rawMedia[0] : rawMedia;
+                          const src = normalizeSrc(mediaSrc ?? item.product.images?.[0]);
                           return src ? (
                             <img 
                               src={src}

@@ -36,16 +36,16 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingBase = settings.shippingCharges?.base ?? 0;
+  const shippingBase = settings?.shippingCharges?.base ?? 0;
   // Only use legacy insideDhaka/outsideDhaka if base is not explicitly set (i.e. old settings format)
-  const hasBase = settings.shippingCharges?.base !== undefined && settings.shippingCharges?.base !== null;
+  const hasBase = settings?.shippingCharges?.base !== undefined && settings?.shippingCharges?.base !== null;
   const legacyBase = formData.district === 'Dhaka'
-    ? settings.shippingCharges?.insideDhaka
-    : settings.shippingCharges?.outsideDhaka;
+    ? settings?.shippingCharges?.insideDhaka
+    : settings?.shippingCharges?.outsideDhaka;
   const defaultCharge = hasBase ? shippingBase : (legacyBase ?? 0);
 
-  const exceptionCharge = Array.isArray(settings.shippingCharges?.exceptions)
-    ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)?.charge
+  const exceptionCharge = Array.isArray(settings?.shippingCharges?.exceptions)
+    ? settings?.shippingCharges?.exceptions.find(ex => ex.district === formData.district)?.charge
     : undefined;
 
   // Exception overrides base; base overrides legacy
@@ -65,9 +65,9 @@ export const Checkout: React.FC = () => {
     const w = liveProduct?.weight ?? item.product.weight ?? 0;
     return sum + w * item.quantity;
   }, 0);
-  const dynamicEnabled = settings.shippingCharges?.dynamicShipping?.enabled ?? false;
-  const dynamicStartKg = settings.shippingCharges?.dynamicShipping?.startKg ?? 0;
-  const dynamicPerKg = settings.shippingCharges?.dynamicShipping?.perKgCharge ?? 0;
+  const dynamicEnabled = settings?.shippingCharges?.dynamicShipping?.enabled ?? false;
+  const dynamicStartKg = settings?.shippingCharges?.dynamicShipping?.startKg ?? 0;
+  const dynamicPerKg = settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0;
   const extraWeightCharge = dynamicEnabled
     ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
@@ -90,20 +90,11 @@ export const Checkout: React.FC = () => {
         return;
     }
 
-    const mappedItems = cart.map(item => {
-      const prod = item.product;
-      const variation = (item as any).variation;
-      return {
-        product: {
-          id: prod.id,
-          name: variation ? `${prod.name} (${variation.name})` : prod.name,
-          price: variation ? (variation.discountPrice ?? variation.price) : (prod.discountPrice ?? prod.price),
-          images: [variation?.media ?? prod.images?.[0] ?? '']
-        },
-        quantity: item.quantity,
-        variationId: variation?.id ?? null
-      };
-    });
+    const mappedItems = cart.map(item => ({
+      ...item,
+      product: item.product,
+      variation: item.variation
+    }));
 
     const newOrder = {
       id: `order-${Date.now()}`,
@@ -215,7 +206,7 @@ export const Checkout: React.FC = () => {
               <CreditCard size={24} className="text-primary" /> Payment Method
             </h2>
             <div className="grid grid-cols-1 gap-3">
-              {settings.paymentGateways.cod.enabled && (
+              {settings?.paymentGateways?.cod?.enabled && (
                 <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-primary bg-red-50' : 'border-gray-100 hover:border-gray-200'}`}>
                   <div className="flex items-center gap-3">
                     <Wallet className="text-primary" />
@@ -226,8 +217,8 @@ export const Checkout: React.FC = () => {
               )}
 
               {['bkash', 'nagad', 'rocket'].map((gateway) => {
-                const config = (settings.paymentGateways as any)[gateway];
-                if (!config.enabled) return null;
+                const config = (settings?.paymentGateways as any)?.[gateway];
+                if (!config?.enabled) return null;
                 return (
                   <label key={gateway} className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === gateway ? 'border-primary bg-red-50' : 'border-gray-100 hover:border-gray-200'}`}>
                     <div className="flex items-center gap-3">
@@ -245,7 +236,7 @@ export const Checkout: React.FC = () => {
                 );
               })}
 
-              {settings.paymentGateways.bank.enabled && (
+              {settings?.paymentGateways?.bank?.enabled && (
                 <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${paymentMethod === 'bank' ? 'border-primary bg-red-50' : 'border-gray-100 hover:border-gray-200'}`}>
                   <div className="flex items-center gap-3">
                     <Landmark className="text-blue-600" />
@@ -263,16 +254,16 @@ export const Checkout: React.FC = () => {
                     <p className="text-sm font-medium leading-relaxed">
                         {paymentMethod === 'bank' ? (
                             <>
-                                <b>Bank Name:</b> {settings.paymentGateways.bank.bankName}<br/>
-                                <b>Branch:</b> {settings.paymentGateways.bank.branchName}<br/>
-                                <b>Account Name:</b> {settings.paymentGateways.bank.accountName}<br/>
-                                <b>Account No:</b> {settings.paymentGateways.bank.accountNumber}<br/>
-                                <span className="text-xs text-gray-500 mt-2 block">{settings.paymentGateways.bank.instructions}</span>
+                                <b>Bank Name:</b> {settings?.paymentGateways?.bank?.bankName}<br/>
+                                <b>Branch:</b> {settings?.paymentGateways?.bank?.branchName}<br/>
+                                <b>Account Name:</b> {settings?.paymentGateways?.bank?.accountName}<br/>
+                                <b>Account No:</b> {settings?.paymentGateways?.bank?.accountNumber}<br/>
+                                <span className="text-xs text-gray-500 mt-2 block">{settings?.paymentGateways?.bank?.instructions}</span>
                             </>
                         ) : (
                             <>
-                                Please send money to our <b>{(settings.paymentGateways as any)[paymentMethod].type}</b> account <b>{(settings.paymentGateways as any)[paymentMethod].number}</b>.<br/>
-                                <span className="text-xs text-gray-500 mt-2 block">{(settings.paymentGateways as any)[paymentMethod].instructions}</span>
+                                Please send money to our <b>{(settings?.paymentGateways as any)?.[paymentMethod]?.type}</b> account <b>{(settings?.paymentGateways as any)?.[paymentMethod]?.number}</b>.<br/>
+                                <span className="text-xs text-gray-500 mt-2 block">{(settings?.paymentGateways as any)?.[paymentMethod]?.instructions}</span>
                             </>
                         )}
                     </p>

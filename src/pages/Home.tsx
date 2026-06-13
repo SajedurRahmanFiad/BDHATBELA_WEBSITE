@@ -103,6 +103,12 @@ export const Home: React.FC = () => {
 
       {/* Quick Access Categories */}
       <section className="container mx-auto px-4 overflow-hidden">
+        <div className="flex justify-between items-end mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 border-l-4 border-primary pl-3">Featured Categories</h2>
+            <p className="text-sm text-gray-500 mt-1">Explore our collections</p>
+          </div>
+        </div>
         <div className="relative">
           {/* Mobile View — horizontal scroll carousel, no duplication */}
           <div

@@ -16,6 +16,11 @@ import { API_BASE_URL, DISTRICTS } from '../constants';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { AdminAnalytics } from './AdminAnalytics';
 import { DashboardStats } from './DashboardStats';
+import { BasicInfoSettings } from './settings/BasicInfoSettings';
+import { BrandingSettings } from './settings/BrandingSettings';
+import { ShippingSettings } from './settings/ShippingSettings';
+import { GatewaySettings } from './settings/GatewaySettings';
+import { ThankYouSettings } from './settings/ThankYouSettings';
 
 const normalizeSrc = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
@@ -30,6 +35,13 @@ export const AdminDashboard: React.FC = () => {
     const location = useLocation();
 
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = React.useState(location.pathname.includes('/admin/settings'));
+
+    React.useEffect(() => {
+        if (location.pathname.includes('/admin/settings')) {
+            setIsSettingsOpen(true);
+        }
+    }, [location.pathname]);
 
     // Update page title and favicon when settings load
     React.useEffect(() => {
@@ -143,8 +155,42 @@ export const AdminDashboard: React.FC = () => {
                     <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
                     <NavItem to="/admin/categories" icon={Filter} label="Categories" />
                     <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
-                    <NavItem to="/admin/banners" icon={MonitorPlay} label="Banners" />
-                    <NavItem to="/admin/settings" icon={Settings} label="Settings" />
+                    
+                    <div className="py-1">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSettingsOpen(!isSettingsOpen);
+                            }}
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:bg-gray-100 text-gray-700 ${location.pathname.includes('/admin/settings') ? 'bg-gray-50 font-semibold text-gray-950' : ''}`}
+                        >
+                            <span className="flex items-center gap-3 font-medium text-sm">
+                                <Settings size={18} /> Settings
+                            </span>
+                            {isSettingsOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                        </button>
+                        
+                        <AnimatePresence initial={false}>
+                            {isSettingsOpen && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden flex flex-col gap-1 pl-4 border-l border-gray-100 ml-6 mt-1"
+                                >
+                                    <NavItem to="/admin/settings/basic" icon={Settings} label="Basic Info" />
+                                    <NavItem to="/admin/settings/branding" icon={ShoppingBag} label="Branding" />
+                                    <NavItem to="/admin/settings/shipping" icon={Package} label="Shipping Fee" />
+                                    <NavItem to="/admin/settings/gateways" icon={CreditCard} label="Gateways" />
+                                    <NavItem to="/admin/settings/banners" icon={MonitorPlay} label="Banners" />
+                                    <NavItem to="/admin/settings/thankyou" icon={CheckCircle2} label="Thank You Page" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
                     <NavItem to="/admin/contacts" icon={MessageSquare} label="Contact Messages" />
                     <NavItem to="/admin/staff" icon={Users} label="Staff Management" />
                 </nav>
@@ -173,8 +219,12 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="/orders" element={<AdminOrders />} />
                         <Route path="/categories" element={<AdminCategories />} />
                         <Route path="/products" element={<AdminProducts />} />
-                        <Route path="/banners" element={<AdminBanners />} />
-                        <Route path="/settings" element={<AdminSettings />} />
+                        <Route path="/settings/basic" element={<BasicInfoSettings />} />
+                        <Route path="/settings/branding" element={<BrandingSettings />} />
+                        <Route path="/settings/shipping" element={<ShippingSettings />} />
+                        <Route path="/settings/gateways" element={<GatewaySettings />} />
+                        <Route path="/settings/banners" element={<AdminBanners />} />
+                        <Route path="/settings/thankyou" element={<ThankYouSettings />} />
                         <Route path="/contacts" element={<AdminContacts />} />
                         <Route path="/staff" element={<AdminStaff />} />
                     </Routes>
@@ -209,7 +259,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }: { isOpen: 
     );
 };
 
-const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val: string) => void, label: string }) => {
+export const ImageUpload = ({ value, onChange, label }: { value: string, onChange: (val: string) => void, label: string }) => {
     const [isUploading, setIsUploading] = React.useState(false);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

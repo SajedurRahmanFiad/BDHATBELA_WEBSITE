@@ -150,4 +150,5 @@ export interface StoreSettings {
     rocket: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
     bank: { enabled: boolean; accountName: string; accountNumber: string; bankName: string; branchName: string; instructions: string; };
   };
+  thankYouPage?: { title: string; subtitle: string; description: string; };
 }

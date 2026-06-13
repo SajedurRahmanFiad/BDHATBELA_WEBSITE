@@ -164,6 +164,9 @@ try {
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weight` DECIMAL(10, 2) DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weightUnit` VARCHAR(20) DEFAULT 'kg'"); } catch(Exception $e) {}
 
+    // Add variation_id to order_items
+    try { $pdo->exec("ALTER TABLE `order_items` ADD COLUMN `variation_id` INT DEFAULT NULL"); } catch(Exception $e) {}
+
     echo "Tables created successfully.\n";
     
     // Check if initial settings exist

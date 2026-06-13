@@ -12,9 +12,9 @@ interface CartContextType {
   isSidebarOpen: boolean;
   openSidebar: () => void;
   closeSidebar: () => void;
-  toast: { message: string; show: boolean } | null;
+  toast: { message: string; show: boolean; type?: 'success' | 'error' } | null;
   clearToast: () => void;
-  showToast: (message: string) => void;
+  showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -25,7 +25,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : [];
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [toast, setToast] = useState<{ message: string; show: boolean } | null>(null);
+  const [toast, setToast] = useState<{ message: string; show: boolean; type?: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -52,7 +52,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [...prev, { product, variation, quantity }];
     });
     const name = variation ? `${product.name} (${variation.name})` : product.name;
-    setToast({ message: `${name} has been added to cart!`, show: true });
+    setToast({ message: `${name} has been added to cart!`, show: true, type: 'success' });
     
     if (openSidebar) {
       setIsSidebarOpen(true);
@@ -64,8 +64,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 3000);
   };
 
-  const showToast = (message: string) => {
-    setToast({ message, show: true });
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, show: true, type });
     setTimeout(() => {
       setToast(prev => prev ? { ...prev, show: false } : null);
     }, 3000);

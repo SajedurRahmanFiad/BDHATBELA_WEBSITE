@@ -85,25 +85,31 @@ if ($method === 'GET') {
 
         foreach ($items as $item) {
             $prod = $item['product'];
-            $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image) VALUES (?, ?, ?, ?, ?, ?)");
-            $image = !empty($prod['images']) ? $prod['images'][0] : null;
-            $stmt->execute([$id, $prod['id'], $prod['name'], $prod['price'], $item['quantity'], $image]);
+            $variationId = $item['variationId'] ?? null;
             
-            // Optionally, reduce stock here
-            if (isset($item['variationId']) && $item['variationId']) {
+            // Deduct stock first
+            if ($variationId) {
                 $stmt_stock = $pdo->prepare("UPDATE product_variations SET stock = stock - ? WHERE id = ? AND stock >= ?");
-                $stmt_stock->execute([$item['quantity'], $item['variationId'], $item['quantity']]);
+                $stmt_stock->execute([$item['quantity'], $variationId, $item['quantity']]);
             } else {
                 $stmt_stock = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?");
                 $stmt_stock->execute([$item['quantity'], $prod['id'], $item['quantity']]);
             }
+
+            if ($stmt_stock->rowCount() === 0) {
+                throw new Exception("Insufficient stock for " . $prod['name']);
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image, variation_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $image = !empty($prod['images']) ? $prod['images'][0] : null;
+            $stmt->execute([$id, $prod['id'], $prod['name'], $prod['price'], $item['quantity'], $image, $variationId]);
         }
         
         $pdo->commit();
         echo json_encode(getOrderDetails($pdo, $id));
     } catch (Exception $e) {
         $pdo->rollBack();
-        http_response_code(500);
+        http_response_code(400);
         echo json_encode(['error' => $e->getMessage()]);
     }
 
@@ -118,12 +124,45 @@ if ($method === 'GET') {
         exit;
     }
 
-    $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-    if ($stmt->execute([$status, $id])) {
+    $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
+    $stmt->execute([$id]);
+    $oldStatus = $stmt->fetchColumn();
+
+    if (!$oldStatus) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Order not found']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
+        $stmt->execute([$status, $id]);
+
+        // If marked as cancelled, restore stock
+        if ($status === 'Cancelled' && $oldStatus !== 'Cancelled') {
+            $stmt_items = $pdo->prepare("SELECT product_id, quantity, variation_id FROM order_items WHERE order_id = ?");
+            $stmt_items->execute([$id]);
+            $orderItems = $stmt_items->fetchAll();
+
+            foreach ($orderItems as $item) {
+                if (!empty($item['variation_id'])) {
+                    $stmt_stock = $pdo->prepare("UPDATE product_variations SET stock = stock + ? WHERE id = ?");
+                    $stmt_stock->execute([$item['quantity'], $item['variation_id']]);
+                } else {
+                    $stmt_stock = $pdo->prepare("UPDATE products SET stock = stock + ? WHERE id = ?");
+                    $stmt_stock->execute([$item['quantity'], $item['product_id']]);
+                }
+            }
+        }
+
+        $pdo->commit();
         echo json_encode(getOrderDetails($pdo, $id));
-    } else {
+    } catch (Exception $e) {
+        $pdo->rollBack();
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to update order']);
+        echo json_encode(['error' => 'Failed to update order: ' . $e->getMessage()]);
     }
 } elseif ($method === 'DELETE') {
     $id = $_GET['id'] ?? null;

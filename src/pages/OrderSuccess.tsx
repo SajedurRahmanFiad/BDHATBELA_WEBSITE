@@ -15,8 +15,11 @@ export const OrderSuccess: React.FC = () => {
                 </div>
                 
                 <div className="space-y-4">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Order Placed Successfully!</h1>
-                    <p className="text-gray-500 italic max-w-sm mx-auto">Thank you for shopping with us! Our customer representative will contact you shortly to confirm your order details.</p>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">{settings?.thankYouPage?.title || 'Order Placed Successfully!'}</h1>
+                    <p className="text-gray-500 italic max-w-sm mx-auto font-medium">{settings?.thankYouPage?.subtitle || 'Thank you for shopping with us! Our customer representative will contact you shortly to confirm your order details.'}</p>
+                    {settings?.thankYouPage?.description && (
+                        <p className="text-gray-500 max-w-sm mx-auto text-sm">{settings.thankYouPage.description}</p>
+                    )}
                 </div>
 
                 <div className="w-full bg-gray-50 rounded-2xl p-6 space-y-3">

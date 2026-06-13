@@ -15,7 +15,7 @@ interface AdminContextType {
   updateSettings: (settings: StoreSettings) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
-  addOrder: (order: Order) => Promise<void>;
+  addOrder: (order: Order) => Promise<{ success: boolean; error?: string; order?: Order }>;
   updateBanners: (banners: Banner[]) => Promise<void>;
   addBanner: (banner: Banner) => Promise<void>;
   updateBanner: (banner: Banner) => Promise<void>;
@@ -169,8 +169,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok) {
         const savedOrder = await res.json();
         setOrders([savedOrder, ...orders]);
+        return { success: true, order: savedOrder };
       }
-    } catch (e) { console.error(e); }
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.error || 'Failed to place order.' };
+    } catch (e: any) { 
+        console.error(e); 
+        return { success: false, error: e.message || 'Network error.' };
+    }
   };
 
   const updateBanners = async (b: Banner[]) => {

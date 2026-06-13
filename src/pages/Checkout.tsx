@@ -9,7 +9,7 @@ import { DISTRICTS } from '../constants';
 import { OrderStatus } from '../types';
 
 export const Checkout: React.FC = () => {
-  const { cart, subtotal, clearCart } = useCart();
+  const { cart, subtotal, clearCart, showToast } = useCart();
   const { settings, addOrder, products: liveProducts } = useAdmin();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -120,9 +120,13 @@ export const Checkout: React.FC = () => {
       note: formData.note + (transactionId ? ` | TrxID: ${transactionId}` : '')
     };
 
-    addOrder(newOrder);
+    const result = await addOrder(newOrder);
+    if (!result.success) {
+      showToast(result.error || 'Failed to confirm order.', 'error');
+      return;
+    }
     clearCart();
-    navigate(`/order-success/${newOrder.id}`);
+    navigate(`/order-success/${result.order?.id || newOrder.id}`);
 
   };
 

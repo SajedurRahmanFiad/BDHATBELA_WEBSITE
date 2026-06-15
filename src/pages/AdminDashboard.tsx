@@ -1230,52 +1230,56 @@ const AdminProducts = () => {
                                 <>
                                     {newProduct.productType === 'simple' ? (
                                         <>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
-                                                <input
-                                                    type="number"
-                                                    value={newProduct.price ?? ''}
-                                                    onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                                />
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newProduct.price ?? ''}
+                                                        onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Offer Discount Price (Optional)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newProduct.discountPrice ?? ''}
+                                                        onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
+                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
+                                                    <input type="number" value={newProduct.costOfGoods ?? ''} onChange={e => setNewProduct({ ...newProduct, costOfGoods: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold" />
+                                                </div>
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Offer Discount Price (Optional)</label>
-                                                <input
-                                                    type="number"
-                                                    value={newProduct.discountPrice ?? ''}
-                                                    onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                                />
-                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newProduct.stock ?? ''}
+                                                        onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                    />
+                                                </div>
 
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
-                                                <input type="number" value={newProduct.costOfGoods ?? ''} onChange={e => setNewProduct({ ...newProduct, costOfGoods: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold" />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
-                                                <input
-                                                    type="number"
-                                                    value={newProduct.stock ?? ''}
-                                                    onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
-                                                <input
-                                                    type="number"
-                                                    value={newProduct.weight ?? ''}
-                                                    min="0"
-                                                    step="0.01"
-                                                    onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
-                                                    className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                                    placeholder="Example: 0.50"
-                                                />
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={newProduct.weight ?? ''}
+                                                        min="0"
+                                                        step="0.01"
+                                                        onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
+                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                        placeholder="Example: 0.50"
+                                                    />
+                                                </div>
                                             </div>
 
                                             <div className="space-y-2 sm:col-span-2">
@@ -1342,21 +1346,35 @@ const AdminProducts = () => {
                                                                 <input value={v.name ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], name: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold" />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Media (image/video)</label>
                                                                 <MultiImageUpload
                                                                     values={Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : [])}
                                                                     onChange={(vals) => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], media: vals }; setNewProduct({ ...newProduct, variations: nv }); }}
-                                                                    label="Media"
+                                                                    label="Media (image/video)"
                                                                 />
                                                             </div>
-                                                            <div className="grid grid-cols-3 gap-3">
-                                                                <input type="number" value={v.price ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], price: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Price" />
-                                                                <input type="number" value={v.discountPrice ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], discountPrice: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Discount" />
-                                                                <input type="number" value={v.costOfGoods ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], costOfGoods: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="COG" />
+                                                            <div className="flex flex-col md:flex-row gap-3 items-start">
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <label htmlFor={`var-${idx}-price`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Price (৳)</label>
+                                                                    <input id={`var-${idx}-price`} type="number" value={v.price ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], price: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <label htmlFor={`var-${idx}-discount`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Discount (৳)</label>
+                                                                    <input id={`var-${idx}-discount`} type="number" value={v.discountPrice ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], discountPrice: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <label htmlFor={`var-${idx}-cog`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
+                                                                    <input id={`var-${idx}-cog`} type="number" value={v.costOfGoods ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], costOfGoods: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
+                                                                </div>
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <input type="number" value={v.weight ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], weight: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Weight (kg)" />
-                                                                <input type="number" value={v.stock ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], stock: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="px-4 py-3 rounded-2xl bg-white border" placeholder="Stock" />
+                                                            <div className="flex flex-col md:flex-row gap-3 items-start">
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <label htmlFor={`var-${idx}-weight`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weight (kg)</label>
+                                                                    <input id={`var-${idx}-weight`} type="number" value={v.weight ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], weight: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <label htmlFor={`var-${idx}-stock`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stock</label>
+                                                                    <input id={`var-${idx}-stock`} type="number" value={v.stock ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], stock: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
+                                                                </div>
                                                             </div>
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">

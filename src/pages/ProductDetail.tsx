@@ -18,6 +18,7 @@ export const ProductDetail: React.FC = () => {
   const [activeVariationIndex, setActiveVariationIndex] = useState<number | null>(null);
   const [showVariationModal, setShowVariationModal] = useState(false);
   const [pendingVariationAction, setPendingVariationAction] = useState<'add' | 'buy' | null>(null);
+  const [showLightbox, setShowLightbox] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
@@ -121,13 +122,13 @@ export const ProductDetail: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white px-6 py-5 md:p-10 rounded-3xl shadow-sm border border-gray-100">
+      <div className="grid grid-cols-1 lg:grid-cols-[45%_55%] gap-6 md:gap-0 bg-white px-4 py-5 md:px-8 md:py-8 rounded-3xl shadow-sm border border-gray-100">
         {/* Images */}
-        <div className="space-y-4">
-            <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border flex items-center justify-center">
+        <div className="space-y-4 flex flex-col items-center">
+            <div onClick={() => setShowLightbox(true)} role="button" aria-label="Open image" className="w-[90%] aspect-square bg-gray-50 rounded-2xl overflow-hidden border flex items-center justify-center cursor-zoom-in">
               {displayImage ? (
                 displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                  <video src={displayImage} controls autoPlay muted className="w-full h-full object-contain bg-black" />
+                  <video src={displayImage} controls className="w-full h-full object-contain bg-black" />
                 ) : (
                   <img src={displayImage} alt={product.name} className="w-full h-full object-contain" />
                 )
@@ -135,7 +136,7 @@ export const ProductDetail: React.FC = () => {
                 <div className="text-gray-400">No image available</div>
               )}
             </div>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 w-[90%]">
             {(gallery || []).map((img, idx) => {
               const safeImg = normalizeSrc(String(img));
               return (
@@ -167,7 +168,7 @@ export const ProductDetail: React.FC = () => {
         </div>
 
         {/* Info */}
-        <div className="flex flex-col">
+        <div className="flex flex-col px-4 md:px-6">
           <div className="mb-0">
             <div className="flex items-center justify-between gap-4 mb-2">
               <div className="flex items-center gap-2">
@@ -189,13 +190,17 @@ export const ProductDetail: React.FC = () => {
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
             {product.shortDescription && <p className="text-sm text-gray-500 mb-4 leading-relaxed max-w-lg">{product.shortDescription}</p>}
-            <div className="flex items-center gap-4 mb-6">
-              <div className="flex items-center gap-1">
-                <Star size={18} className="fill-yellow-400 text-yellow-400" />
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center">
+                  {[0,1,2,3,4].map(i => (
+                    <Star key={i} size={16} className={i < Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                  ))}
+                </div>
                 <span className="font-bold">{product.rating}</span>
                 <span className="text-gray-400 text-sm">({product.reviews.length} Reviews)</span>
               </div>
-              <div className="h-4 w-[1px] bg-gray-200" />
+              <div className="hidden md:block h-4 w-px bg-gray-200" />
               <div className="flex items-center gap-1 text-sm">
                 <Check size={16} className="text-green-500" />
                 {(() => {
@@ -464,7 +469,6 @@ export const ProductDetail: React.FC = () => {
 
                    <div className="grid grid-cols-1 gap-6">
                      <div className="bg-gray-50 rounded-3xl p-5 border">
-                       <h3 className="font-bold text-sm text-gray-500 uppercase tracking-widest mb-4">Selected Variation</h3>
                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                          <div className="w-24 h-24 rounded-3xl overflow-hidden bg-gray-100 flex items-center justify-center">
                            {(() => {
@@ -529,6 +533,37 @@ export const ProductDetail: React.FC = () => {
                    </div>
                  </div>
                </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Lightbox Modal */}
+        <AnimatePresence>
+          {showLightbox && (
+            <div onClick={() => setShowLightbox(false)} className="fixed inset-0 z-[300] flex items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLightbox(false)}
+                className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={(e: any) => e.stopPropagation()}
+                className="relative z-10 w-screen h-screen flex items-center justify-center"
+              >
+                <button onClick={() => setShowLightbox(false)} className="absolute top-4 right-4 z-20 text-white bg-black/40 p-2 rounded-full hover:bg-black/60">
+                  <X size={20} />
+                </button>
+                {displayImage && displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                  <video src={displayImage} controls autoPlay className="w-full h-full object-contain" />
+                ) : (
+                  <img src={displayImage ?? ''} alt={product.name} className="w-full h-full object-contain" />
+                )}
+              </motion.div>
             </div>
           )}
         </AnimatePresence>

@@ -964,6 +964,7 @@ const AdminProducts = () => {
     const [editingProduct, setEditingProduct] = React.useState<any>(null);
     const [productToDelete, setProductToDelete] = React.useState<string | null>(null);
     const [newProduct, setNewProduct] = React.useState<{
+        sku: string;
         name: string;
         shortDescription: string;
         description: string;
@@ -980,6 +981,7 @@ const AdminProducts = () => {
         costOfGoods: string;
         variations: any[];
     }>({
+        sku: '',
         name: '',
         shortDescription: '',
         description: '',
@@ -1000,6 +1002,7 @@ const AdminProducts = () => {
     React.useEffect(() => {
         if (editingProduct) {
             setNewProduct({
+                sku: editingProduct.sku || '',
                 name: editingProduct.name,
                 shortDescription: editingProduct.shortDescription || '',
                 description: editingProduct.description,
@@ -1017,7 +1020,7 @@ const AdminProducts = () => {
                 variations: editingProduct.variations || []
             });
         } else {
-            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
     }, [editingProduct]);
 
@@ -1040,6 +1043,7 @@ const AdminProducts = () => {
 
         const productData = {
             id: editingProduct ? editingProduct.id : `p-${Date.now()}`,
+            sku: newProduct.sku || undefined,
             name: newProduct.name,
             shortDescription: newProduct.shortDescription,
             description: newProduct.description,
@@ -1100,7 +1104,7 @@ const AdminProducts = () => {
                     <button
                         onClick={() => {
                                             setEditingProduct(null);
-                                            setNewProduct({ name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+                                            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
                                             setShowModal(true);
                                         }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
@@ -1194,6 +1198,15 @@ const AdminProducts = () => {
                                         onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
                                         placeholder="e.g. Premium Cotton Polo Shirt"
+                                    />
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product SKU</label>
+                                    <input
+                                        value={newProduct.sku ?? ''}
+                                        onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                        placeholder="e.g. SKU-12345 (unique, optional)"
                                     />
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">

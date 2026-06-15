@@ -24,6 +24,7 @@ export interface Variation {
 
 export interface Product {
   id: string;
+  sku?: string;
   name: string;
   shortDescription: string;
   description: string;

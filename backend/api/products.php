@@ -49,6 +49,7 @@ function getProductFullDetails($pdo, $product_id) {
     if (isset($product['costOfGoods'])) $product['costOfGoods'] = (float)$product['costOfGoods'];
     if (isset($product['product_type'])) $product['productType'] = $product['product_type'];
     if (isset($product['productType'])) $product['productType'] = $product['productType'];
+    if (isset($product['sku'])) $product['sku'] = $product['sku'];
 
     // Get variations (if any)
     $product['variations'] = [];
@@ -95,7 +96,15 @@ if ($method === 'GET') {
     $id = $_GET['id'] ?? null;
     
     if ($id) {
+        // allow passing either internal id or sku
         $product = getProductFullDetails($pdo, $id);
+        if (!$product) {
+            // try lookup by sku
+            $stmt = $pdo->prepare("SELECT id FROM products WHERE sku = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $found = $stmt->fetchColumn();
+            if ($found) $product = getProductFullDetails($pdo, $found);
+        }
         if ($product) {
             echo json_encode($product);
         } else {
@@ -157,8 +166,8 @@ if ($method === 'GET') {
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO products (id, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge, product_type, cost_of_goods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$id, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge, $productType, $costOfGoods]);
+        $stmt = $pdo->prepare("INSERT INTO products (id, sku, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge, product_type, cost_of_goods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$id, $data['sku'] ?? null, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge, $productType, $costOfGoods]);
 
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $img) {
@@ -261,8 +270,9 @@ if ($method === 'GET') {
         $productType = $data['productType'] ?? 'simple';
         $costOfGoods = $data['costOfGoods'] ?? 0;
 
-        $stmt = $pdo->prepare("UPDATE products SET name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=?, product_type=?, cost_of_goods=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE products SET sku=?, name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=?, product_type=?, cost_of_goods=? WHERE id=?");
         $result = $stmt->execute([
+            $data['sku'] ?? null,
             $data['name'] ?? '', 
             $data['shortDescription'] ?? '', 
             $data['description'] ?? '', 

@@ -8,7 +8,7 @@ import { ProductCard } from '../components/product/ProductCard';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const ProductDetail: React.FC = () => {
-  const { id } = useParams();
+  const { key } = useParams();
   const navigate = useNavigate();
   const { products, addReview } = useAdmin();
   const { addToCart } = useCart();
@@ -36,7 +36,7 @@ export const ProductDetail: React.FC = () => {
     }
   }, [user]);
 
-  const product = products.find(p => p.id === id);
+  const product = products.find(p => p.id === key || p.sku === key);
 
   if (!product) return <div className="py-20 text-center font-bold text-xl">Product not found.</div>;
 

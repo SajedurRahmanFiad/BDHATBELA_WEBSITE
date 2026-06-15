@@ -2,9 +2,15 @@
 require_once __DIR__ . '/config.php';
 
 try {
-    $sql = file_get_contents(__DIR__ . '/migrations/2026_06_13_add_parent_category.sql');
-    $pdo->exec($sql);
-    echo "Migration applied successfully.\n";
+    $migrations = glob(__DIR__ . '/migrations/*.sql');
+    sort($migrations);
+    foreach ($migrations as $file) {
+        $sql = file_get_contents($file);
+        if (trim($sql) === '') continue;
+        echo "Applying migration: " . basename($file) . "\n";
+        $pdo->exec($sql);
+    }
+    echo "Migrations applied successfully.\n";
 } catch (PDOException $e) {
     echo "Error applying migration: " . $e->getMessage() . "\n";
 }

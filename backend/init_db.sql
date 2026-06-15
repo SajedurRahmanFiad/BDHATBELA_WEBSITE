@@ -207,6 +207,11 @@ SET `setting_value` = JSON_SET(
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
 
+-- Migration: add product-level SKU column and unique index
+ALTER TABLE `products`
+  ADD COLUMN IF NOT EXISTS `sku` VARCHAR(255) DEFAULT NULL,
+  ADD UNIQUE INDEX IF NOT EXISTS `idx_products_sku` (`sku`);
+
 UPDATE `settings`
 SET `setting_value` = JSON_SET(
   `setting_value`,

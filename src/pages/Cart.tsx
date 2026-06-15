@@ -5,6 +5,7 @@ import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { CartItem } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
+import { trackAddToCart } from '../utils/facebookPixel';
 
 const normalizeSrc = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
@@ -20,6 +21,20 @@ const getCartItemUnitPrice = (item: CartItem): number => {
 export const Cart: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
   const { settings } = useAdmin();
+
+  React.useEffect(() => {
+    // Track add to cart with Facebook Pixel
+    if (cart.length > 0) {
+      const cartItems = cart.map(item => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: getCartItemUnitPrice(item),
+        quantity: item.quantity,
+        sku: item.product.sku
+      }));
+      trackAddToCart(cartItems);
+    }
+  }, [cart.length]); // Only track when items count changes
 
   if (cart.length === 0) {
     return (
@@ -113,7 +128,11 @@ export const Cart: React.FC = () => {
                <h3 className="font-bold">Need Help?</h3>
              </div>
              <p className="text-xs opacity-70 leading-relaxed">If you run into any issues while ordering, feel free to call our support hotline or message us directly.</p>
-             <a href={`tel:${settings.contactPhone}`} className="block text-center border border-white/30 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">Call us: {settings.contactPhone}</a>
+             {settings?.contactPhone ? (
+               <a href={`tel:${settings.contactPhone}`} className="block text-center border border-white/30 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">Call us: {settings.contactPhone}</a>
+             ) : (
+               <div className="block text-center border border-white/30 py-2 rounded-lg text-sm text-gray-400">Call us: Not available</div>
+             )}
           </div>
         </div>
       </div>

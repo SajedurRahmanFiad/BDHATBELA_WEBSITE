@@ -6,8 +6,11 @@ import { ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
-  const { products, banners, categories } = useAdmin();
+  const { banners, categories, fetchProductListings } = useAdmin();
   const [currentBanner, setCurrentBanner] = React.useState(0);
+  const [featuredProducts, setFeaturedProducts] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
+  const [newArrivals, setNewArrivals] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
 
   React.useEffect(() => {
     if (banners.length <= 1) return;
@@ -19,8 +22,28 @@ export const Home: React.FC = () => {
 
 
 
-  const featuredProducts = [...products].reverse().slice(0, 8); // Limit to 2 rows (4 per row = 8)
-  const newArrivals = [...products].slice(-8).reverse(); // Limit to 2 rows (4 per row = 8)
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const [featured, arrivals] = await Promise.all([
+          fetchProductListings({ limit: 8, page: 1, sort: 'rating' }),
+          fetchProductListings({ limit: 8, page: 1, sort: 'newest' })
+        ]);
+        if (!cancelled) {
+          setFeaturedProducts(featured.items);
+          setNewArrivals(arrivals.items);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setIsLoadingProducts(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [fetchProductListings]);
 
   return (
     <div className="space-y-12 pb-12">
@@ -183,7 +206,13 @@ export const Home: React.FC = () => {
           </Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 [&>*:nth-child(n+5)]:hidden md:[&>*:nth-child(n+5)]:block md:[&>*:nth-child(n+9)]:hidden">
-          {featuredProducts.map(p => <ProductCard key={p.id} product={p} />)}
+          {isLoadingProducts ? Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse">
+              <div className="aspect-square bg-gray-100 rounded-xl mb-3" />
+              <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
+              <div className="h-8 bg-gray-100 rounded w-1/2" />
+            </div>
+          )) : featuredProducts.map(p => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
 
@@ -217,7 +246,13 @@ export const Home: React.FC = () => {
           </Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 [&>*:nth-child(n+5)]:hidden md:[&>*:nth-child(n+5)]:block md:[&>*:nth-child(n+9)]:hidden">
-          {newArrivals.map(p => <ProductCard key={p.id} product={p} />)}
+          {isLoadingProducts ? Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse">
+              <div className="aspect-square bg-gray-100 rounded-xl mb-3" />
+              <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
+              <div className="h-8 bg-gray-100 rounded w-1/2" />
+            </div>
+          )) : newArrivals.map(p => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
 

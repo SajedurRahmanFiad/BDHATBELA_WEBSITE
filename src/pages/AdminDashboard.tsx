@@ -7,11 +7,11 @@ import {
     Package, Clock, CheckCircle, CheckCircle2, Search, Filter,
     Trash2, Edit3, Eye, ArrowUpDown, ChevronDown, ChevronUp,
     Phone, Mail, MapPin, CreditCard, Upload, X, Menu, MonitorPlay, MessageSquare,
-    User, LineChart
+    User, LineChart, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
-import { OrderStatus, Category, Product } from '../types';
+import { OrderStatus, Category, Product, StoreSettings } from '../types';
 import { API_BASE_URL, DISTRICTS } from '../constants';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { AdminAnalytics } from './AdminAnalytics';
@@ -21,6 +21,7 @@ import { BrandingSettings } from './settings/BrandingSettings';
 import { ShippingSettings } from './settings/ShippingSettings';
 import { GatewaySettings } from './settings/GatewaySettings';
 import { ThankYouSettings } from './settings/ThankYouSettings';
+import { MetaPixelSettings } from './settings/MetaPixelSettings';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 
 const normalizeSrc = (src?: string | null) => {
@@ -30,8 +31,112 @@ const normalizeSrc = (src?: string | null) => {
     return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
 };
 
+const AdminSidebarContent = ({
+    isSettingsOpen,
+    setIsSettingsOpen,
+    closeMobileSidebar,
+    pendingOrders,
+    settings
+}: {
+    isSettingsOpen: boolean;
+    setIsSettingsOpen: (open: boolean) => void;
+    closeMobileSidebar: () => void;
+    pendingOrders: number;
+    settings: StoreSettings;
+}) => {
+    const location = useLocation();
+
+    const NavItem = ({ to, icon: Icon, label, badge }: { to: string, icon: any, label: string, badge?: number }) => {
+        const isActive = location.pathname === to || (to === '/admin' && location.pathname === '/admin/');
+        return (
+            <Link
+                to={to}
+                onClick={closeMobileSidebar}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-primary text-white shadow-lg shadow-red-200' : 'hover:bg-gray-100 text-gray-700'}`}
+            >
+                <span className="flex items-center gap-3 font-medium text-sm">
+                    <Icon size={18} /> {label}
+                </span>
+                {badge !== undefined && badge > 0 && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white text-primary' : 'bg-primary text-white'}`}>
+                        {badge}
+                    </span>
+                )}
+            </Link>
+        );
+    };
+
+    return (
+        <>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b">
+                <div className="flex items-center gap-2">
+                    <img src={settings.logo} className="w-8 h-8 object-contain" alt="" />
+                    <span className="font-black text-lg">Admin <span className="text-primary italic">Panel</span></span>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => closeMobileSidebar()}
+                    className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-black cursor-pointer"
+                >
+                    <X size={18} />
+                </button>
+            </div>
+
+            <nav className="flex flex-col gap-1">
+                <NavItem to="/admin" icon={LayoutDashboard} label="Dashboard" />
+                <NavItem to="/admin/analytics" icon={LineChart} label="Analytics" />
+                <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
+                <NavItem to="/admin/categories" icon={Filter} label="Categories" />
+                <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
+
+                <div className="py-1">
+                    <button
+                        type="button"
+                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:bg-gray-100 text-gray-700 ${location.pathname.includes('/admin/settings') ? 'bg-gray-50 font-semibold text-gray-950' : ''}`}
+                    >
+                        <span className="flex items-center gap-3 font-medium text-sm">
+                            <Settings size={18} /> Settings
+                        </span>
+                        {isSettingsOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                        {isSettingsOpen && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden flex flex-col gap-1 pl-4 border-l border-gray-100 mt-1"
+                            >
+                                <NavItem to="/admin/settings/basic" icon={Settings} label="Basic Info" />
+                                <NavItem to="/admin/settings/branding" icon={ShoppingBag} label="Branding" />
+                                <NavItem to="/admin/settings/shipping" icon={Package} label="Shipping Fee" />
+                                <NavItem to="/admin/settings/gateways" icon={CreditCard} label="Gateways" />
+                                <NavItem to="/admin/settings/banners" icon={MonitorPlay} label="Banners" />
+                                <NavItem to="/admin/settings/thankyou" icon={CheckCircle2} label="Thank You Page" />
+                                <NavItem to="/admin/settings/meta-pixel" icon={Zap} label="Meta Pixel" />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                <NavItem to="/admin/contacts" icon={MessageSquare} label="Contact Messages" />
+                <NavItem to="/admin/staff" icon={Users} label="Staff Management" />
+            </nav>
+
+            <div className="mt-auto pt-6 border-t">
+                <Link to="/" onClick={closeMobileSidebar} className="text-xs font-bold text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
+                    <Package size={14} /> Back to Live Website
+                </Link>
+            </div>
+        </>
+    );
+};
+
 export const AdminDashboard: React.FC = () => {
-    const { products, orders, settings } = useAdmin();
+    const { products, orders, settings, loadProducts, loadOrders } = useAdmin();
     const { toast } = useCart();
     const location = useLocation();
 
@@ -43,6 +148,11 @@ export const AdminDashboard: React.FC = () => {
             setIsSettingsOpen(true);
         }
     }, [location.pathname]);
+
+    React.useEffect(() => {
+        loadProducts().catch(console.error);
+        loadOrders().catch(console.error);
+    }, [loadProducts, loadOrders]);
 
     // Update page title and favicon when settings load
     React.useEffect(() => {
@@ -69,12 +179,14 @@ export const AdminDashboard: React.FC = () => {
 
     const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING).length;
 
+    const closeMobileSidebar = () => setIsMobileSidebarOpen(false);
     const NavItem = ({ to, icon: Icon, label, badge }: { to: string, icon: any, label: string, badge?: number }) => {
         const isActive = location.pathname === to || (to === '/admin' && location.pathname === '/admin/');
         return (
             <Link
                 to={to}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-primary text-white shadow-lg shadow-red-200' : 'hover:bg-gray-100 text-gray-700'}`}
+                onClick={closeMobileSidebar}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-primary text-white shadow-lg shadow-red-200' : 'hover:bg-gray-100 text-gray-700'}`}
             >
                 <span className="flex items-center gap-3 font-medium text-sm">
                     <Icon size={18} /> {label}
@@ -131,84 +243,32 @@ export const AdminDashboard: React.FC = () => {
                 </Link>
             </header>
 
-            {/* Sidebar - Desktop static and Mobile slide-out drawer */}
-            <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r p-6 flex flex-col h-screen transition-transform duration-300 lg:sticky lg:top-0 lg:translate-x-0
-        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-                <div className="flex items-center justify-between mb-8 pb-4 border-b">
-                    <div className="flex items-center gap-2">
-                        <img src={settings.logo} className="w-8 h-8 object-contain" alt="" />
-                        <span className="font-black text-lg">Admin <span className="text-primary italic">Panel</span></span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setIsMobileSidebarOpen(false)}
-                        className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-black cursor-pointer"
-                    >
-                        <X size={18} />
-                    </button>
-                </div>
-
-                <nav className="flex flex-col gap-1" onClick={() => setIsMobileSidebarOpen(false)}>
-                    <NavItem to="/admin" icon={LayoutDashboard} label="Dashboard" />
-                    <NavItem to="/admin/analytics" icon={LineChart} label="Analytics" />
-                    <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
-                    <NavItem to="/admin/categories" icon={Filter} label="Categories" />
-                    <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
-                    
-                    <div className="py-1">
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsSettingsOpen(!isSettingsOpen);
-                            }}
-                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:bg-gray-100 text-gray-700 ${location.pathname.includes('/admin/settings') ? 'bg-gray-50 font-semibold text-gray-950' : ''}`}
-                        >
-                            <span className="flex items-center gap-3 font-medium text-sm">
-                                <Settings size={18} /> Settings
-                            </span>
-                            {isSettingsOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                        </button>
-                        
-                        <AnimatePresence initial={false}>
-                            {isSettingsOpen && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden flex flex-col gap-1 pl-4 border-l border-gray-100 ml-6 mt-1"
-                                >
-                                    <NavItem to="/admin/settings/basic" icon={Settings} label="Basic Info" />
-                                    <NavItem to="/admin/settings/branding" icon={ShoppingBag} label="Branding" />
-                                    <NavItem to="/admin/settings/shipping" icon={Package} label="Shipping Fee" />
-                                    <NavItem to="/admin/settings/gateways" icon={CreditCard} label="Gateways" />
-                                    <NavItem to="/admin/settings/banners" icon={MonitorPlay} label="Banners" />
-                                    <NavItem to="/admin/settings/thankyou" icon={CheckCircle2} label="Thank You Page" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    <NavItem to="/admin/contacts" icon={MessageSquare} label="Contact Messages" />
-                    <NavItem to="/admin/staff" icon={Users} label="Staff Management" />
-                </nav>
-
-                <div className="mt-auto pt-6 border-t">
-                    <Link to="/" className="text-xs font-bold text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
-                        <Package size={14} /> Back to Live Website
-                    </Link>
-                </div>
+            <aside className="hidden lg:flex w-64 bg-white border-r p-6 flex-col h-screen sticky top-0 z-10">
+                <AdminSidebarContent
+                    isSettingsOpen={isSettingsOpen}
+                    setIsSettingsOpen={setIsSettingsOpen}
+                    closeMobileSidebar={() => {}}
+                    pendingOrders={pendingOrders}
+                    settings={settings}
+                />
             </aside>
 
-            {/* Backdrop for Mobile Sidebar Drawer */}
             {isMobileSidebarOpen && (
-                <div
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                    className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-                />
+                <>
+                    <div
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+                    />
+                    <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r p-6 flex flex-col h-screen">
+                        <AdminSidebarContent
+                            isSettingsOpen={isSettingsOpen}
+                            setIsSettingsOpen={setIsSettingsOpen}
+                            closeMobileSidebar={() => setIsMobileSidebarOpen(false)}
+                            pendingOrders={pendingOrders}
+                            settings={settings}
+                        />
+                    </aside>
+                </>
             )}
 
             {/* Main Content */}
@@ -226,6 +286,7 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="/settings/gateways" element={<GatewaySettings />} />
                         <Route path="/settings/banners" element={<AdminBanners />} />
                         <Route path="/settings/thankyou" element={<ThankYouSettings />} />
+                        <Route path="/settings/meta-pixel" element={<MetaPixelSettings />} />
                         <Route path="/contacts" element={<AdminContacts />} />
                         <Route path="/staff" element={<AdminStaff />} />
                     </Routes>
@@ -337,6 +398,8 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
     const [isUploading, setIsUploading] = React.useState(false);
     const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
     const [touchStartIndex, setTouchStartIndex] = React.useState<number | null>(null);
+    const [touchStartPos, setTouchStartPos] = React.useState<{ x: number; y: number } | null>(null);
+    const [touchMoved, setTouchMoved] = React.useState(false);
     const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
     const [dragPosition, setDragPosition] = React.useState({ x: 0, y: 0 });
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -403,19 +466,40 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
 
     // Touch handlers for mobile
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>, index: number) => {
+        // record initial touch but don't treat as a drag until movement exceeds threshold
         setTouchStartIndex(index);
         const touch = e.touches[0];
+        setTouchStartPos({ x: touch.clientX, y: touch.clientY });
         setDragPosition({ x: touch.clientX, y: touch.clientY });
+        setTouchMoved(false);
     };
 
     const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
         if (touchStartIndex === null || !containerRef.current) return;
-        
         const touch = e.touches[0];
+
+        // determine whether movement exceeds a small threshold to be considered a drag
+        if (touchStartPos) {
+            const dx = touch.clientX - touchStartPos.x;
+            const dy = touch.clientY - touchStartPos.y;
+            const dist = Math.hypot(dx, dy);
+            const DRAG_THRESHOLD = 8; // pixels
+
+            if (dist < DRAG_THRESHOLD) {
+                // not yet a drag; update visual position but don't change hover/drag state
+                setDragPosition({ x: touch.clientX, y: touch.clientY });
+                return;
+            }
+
+            // now considered a drag
+            if (!touchMoved) setTouchMoved(true);
+            // prevent scrolling while actively dragging
+            e.preventDefault();
+        }
+
         setDragPosition({ x: touch.clientX, y: touch.clientY });
-        
+
         const element = document.elementFromPoint(touch.clientX, touch.clientY);
-        
         if (element) {
             const imageDiv = element.closest('[data-image-index]');
             if (imageDiv) {
@@ -428,10 +512,23 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
     };
 
     const handleTouchEnd = () => {
-        if (touchStartIndex === null || hoverIndex === null || touchStartIndex === hoverIndex) {
+        // if touch never moved enough to be considered a drag, treat as a tap and do nothing
+        if (touchStartIndex === null) return;
+        if (!touchMoved) {
             setTouchStartIndex(null);
+            setTouchStartPos(null);
             setHoverIndex(null);
             setDragPosition({ x: 0, y: 0 });
+            setTouchMoved(false);
+            return;
+        }
+
+        if (hoverIndex === null || touchStartIndex === hoverIndex) {
+            setTouchStartIndex(null);
+            setHoverIndex(null);
+            setTouchStartPos(null);
+            setDragPosition({ x: 0, y: 0 });
+            setTouchMoved(false);
             return;
         }
 
@@ -442,7 +539,9 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
         onChange(newValues);
         setTouchStartIndex(null);
         setHoverIndex(null);
+        setTouchStartPos(null);
         setDragPosition({ x: 0, y: 0 });
+        setTouchMoved(false);
     };
 
     React.useEffect(() => {
@@ -462,7 +561,8 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
             <p className="text-[9px] text-gray-500 italic">Drag images to reorder</p>
             <div className="flex flex-wrap gap-4 relative" ref={containerRef}>
                 {values.map((val, idx) => {
-                    const isDragging = touchStartIndex === idx;
+                    // only consider an item actually dragging after touch has moved past threshold
+                    const isDragging = touchStartIndex === idx && touchMoved;
                     const safeVal = normalizeSrc(val);
                     
                     return (
@@ -839,6 +939,20 @@ const AdminCategories = () => {
         setEditingCategory(null);
     };
 
+    const closeCategoryModal = () => {
+        if (editingCategory) {
+            setNewCategory({
+                name: editingCategory.name,
+                image: editingCategory.image || '',
+                icon: editingCategory.icon || 'Package',
+                parentId: editingCategory.parentId || ''
+            });
+        } else {
+            setNewCategory({ name: '', image: '', icon: 'Package', parentId: '' });
+        }
+        setShowModal(false);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -907,11 +1021,11 @@ const AdminCategories = () => {
 
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeCategoryModal} />
                     <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col p-6 sm:p-8 space-y-6">
                         <div className="flex justify-between items-center border-b pb-4">
                             <h2 className="text-xl font-bold tracking-tighter">{editingCategory ? 'Edit Category' : 'New Category'}</h2>
-                            <button onClick={() => setShowModal(false)} className="text-2xl text-gray-400 hover:text-black">&times;</button>
+                            <button onClick={closeCategoryModal} className="text-2xl text-gray-400 hover:text-black">&times;</button>
                         </div>
                         <div className="space-y-4">
                             <div className="space-y-2">
@@ -1082,6 +1196,33 @@ const AdminProducts = () => {
         }
     };
 
+    const closeProductModal = () => {
+        // revert unsaved edits by resetting `newProduct` to the current `editingProduct` state
+        if (editingProduct) {
+            setNewProduct({
+                sku: editingProduct.sku || '',
+                name: editingProduct.name,
+                shortDescription: editingProduct.shortDescription || '',
+                description: editingProduct.description,
+                price: editingProduct.price.toString(),
+                discountPrice: editingProduct.discountPrice?.toString() || '',
+                category: editingProduct.category,
+                stock: editingProduct.stock.toString(),
+                weight: editingProduct.weight?.toString() || '',
+                weightUnit: editingProduct.weightUnit || 'kg',
+                images: editingProduct.images || [],
+                features: editingProduct.features || [],
+                badge: editingProduct.badge || '',
+                productType: editingProduct.productType || 'simple',
+                costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
+                variations: editingProduct.variations || []
+            });
+        } else {
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+        }
+        setShowModal(false);
+    };
+
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.category.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1173,11 +1314,11 @@ const AdminProducts = () => {
             {/* Product Edit/Creation Modal */}
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeProductModal} />
                     <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 sm:p-8 border-b flex justify-between items-center bg-gray-50">
                             <h2 className="text-xl font-bold tracking-tighter">{editingProduct ? 'Edit Product Option' : 'Add New Product'}</h2>
-                            <button onClick={() => setShowModal(false)} className="text-2xl text-gray-400 hover:text-black">&times;</button>
+                            <button onClick={closeProductModal} className="text-2xl text-gray-400 hover:text-black">&times;</button>
                         </div>
 
                         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 bg-white no-scrollbar flex-1">
@@ -1229,67 +1370,70 @@ const AdminProducts = () => {
                                 </div>
                                 <>
                                     {newProduct.productType === 'simple' ? (
-                                        <>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newProduct.price ?? ''}
-                                                        onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                                    />
+                                        <div className="sm:col-span-2">
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex flex-col md:flex-row gap-3 items-start">
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Main Price (৳) *</label>
+                                                        <input
+                                                            type="number"
+                                                            value={newProduct.price ?? ''}
+                                                            onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+                                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sale Price (৳)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={newProduct.discountPrice ?? ''}
+                                                            onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
+                                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Purchase Price (৳)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={newProduct.costOfGoods ?? ''}
+                                                            onChange={e => setNewProduct({ ...newProduct, costOfGoods: e.target.value })}
+                                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
+                                                        />
+                                                    </div>
                                                 </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Offer Discount Price (Optional)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newProduct.discountPrice ?? ''}
-                                                        onChange={e => setNewProduct({ ...newProduct, discountPrice: e.target.value })}
-                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
-                                                    <input type="number" value={newProduct.costOfGoods ?? ''} onChange={e => setNewProduct({ ...newProduct, costOfGoods: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-mono font-bold" />
+                                                <div className="flex flex-col md:flex-row gap-3 items-start">
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
+                                                        <input
+                                                            type="number"
+                                                            value={newProduct.stock ?? ''}
+                                                            onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={newProduct.weight ?? ''}
+                                                            min="0"
+                                                            step="0.01"
+                                                            onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
+                                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                                            placeholder="Example: 0.50"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Stock Level quantity *</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newProduct.stock ?? ''}
-                                                        onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
-                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Weight (kg)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={newProduct.weight ?? ''}
-                                                        min="0"
-                                                        step="0.01"
-                                                        onChange={e => setNewProduct({ ...newProduct, weight: e.target.value })}
-                                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
-                                                        placeholder="Example: 0.50"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 sm:col-span-2">
+                                            <div className="pt-6 space-y-2 sm:col-span-2">
                                                 <MultiImageUpload
-                                                    label="Product Showcase Images (Minimum 1 Required) *"
+                                                    label="Product Images (Minimum 1) *"
                                                     values={newProduct.images}
                                                     onChange={vals => setNewProduct({ ...newProduct, images: vals })}
                                                 />
                                             </div>
-                                        </>
+                                        </div>
                                     ) : (
                                         /* variations handled below */ null
                                     )}
@@ -1354,15 +1498,15 @@ const AdminProducts = () => {
                                                             </div>
                                                             <div className="flex flex-col md:flex-row gap-3 items-start">
                                                                 <div className="flex-1 min-w-0 space-y-1">
-                                                                    <label htmlFor={`var-${idx}-price`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Price (৳)</label>
+                                                                    <label htmlFor={`var-${idx}-price`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Main Price (৳)</label>
                                                                     <input id={`var-${idx}-price`} type="number" value={v.price ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], price: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
                                                                 </div>
                                                                 <div className="flex-1 min-w-0 space-y-1">
-                                                                    <label htmlFor={`var-${idx}-discount`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Discount (৳)</label>
+                                                                    <label htmlFor={`var-${idx}-discount`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sale Price (৳)</label>
                                                                     <input id={`var-${idx}-discount`} type="number" value={v.discountPrice ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], discountPrice: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
                                                                 </div>
                                                                 <div className="flex-1 min-w-0 space-y-1">
-                                                                    <label htmlFor={`var-${idx}-cog`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cost of Goods (৳)</label>
+                                                                    <label htmlFor={`var-${idx}-cog`} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Purchase Price (৳)</label>
                                                                     <input id={`var-${idx}-cog`} type="number" value={v.costOfGoods ?? ''} onChange={e => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], costOfGoods: e.target.value }; setNewProduct({ ...newProduct, variations: nv }); }} className="w-full min-w-0 px-3 py-2 rounded-lg bg-white border" />
                                                                 </div>
                                                             </div>
@@ -2342,6 +2486,25 @@ export const AdminBanners = () => {
         setEditingBanner(null);
     };
 
+    const closeBannerModal = () => {
+        if (editingBanner) {
+            setNewBanner({
+                title: editingBanner.title || '',
+                link: editingBanner.link || '',
+                image: editingBanner.image || '',
+                showButton: !!editingBanner.showButton,
+                buttonText: editingBanner.buttonText || 'Shop Now',
+                buttonLink: editingBanner.buttonLink || '',
+                buttonTextColor: editingBanner.buttonTextColor || '#FFFFFF',
+                buttonBgColor: editingBanner.buttonBgColor || '#EF4444',
+                titleColor: editingBanner.titleColor || '#FFFFFF'
+            });
+        } else {
+            setNewBanner({ title: '', link: '', image: '', showButton: false, buttonText: 'Shop Now', buttonLink: '', buttonTextColor: '#FFFFFF', buttonBgColor: '#EF4444', titleColor: '#FFFFFF' });
+        }
+        setShowModal(false);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -2406,7 +2569,7 @@ export const AdminBanners = () => {
                     <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="flex justify-between items-center border-b p-6 sm:p-8 pb-4 shrink-0">
                             <h2 className="text-xl font-bold tracking-tighter">{editingBanner ? 'Edit Banner' : 'New Banner'}</h2>
-                            <button onClick={() => setShowModal(false)} className="text-2xl text-gray-400 hover:text-black">&times;</button>
+                            <button onClick={closeBannerModal} className="text-2xl text-gray-400 hover:text-black">&times;</button>
                         </div>
                         <div className="overflow-y-auto flex-1 p-6 sm:p-8 space-y-4">
                             <div className="space-y-2">

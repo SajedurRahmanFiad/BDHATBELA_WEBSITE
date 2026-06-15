@@ -8,6 +8,7 @@ import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone } from 'lucide
 import { DISTRICTS } from '../constants';
 import { OrderStatus } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
+import { trackInitiateCheckout } from '../utils/facebookPixel';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart, showToast } = useCart();
@@ -34,25 +35,39 @@ export const Checkout: React.FC = () => {
     }
   }, [user]);
 
+  // Track initiate checkout with Facebook Pixel
+  useEffect(() => {
+    if (cart.length > 0) {
+      const checkoutItems = cart.map(item => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price,
+        quantity: item.quantity,
+        sku: item.product.sku
+      }));
+      trackInitiateCheckout(checkoutItems, subtotal);
+    }
+  }, []); // Run once on checkout page load
+
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingBase = toFiniteNumber(settings?.shippingCharges?.base ?? 0);
-  // Only use legacy insideDhaka/outsideDhaka if base is not explicitly set (i.e. old settings format)
-  const hasBase = settings?.shippingCharges?.base !== undefined && settings?.shippingCharges?.base !== null;
+  const shippingCharges = settings?.shippingCharges;
+  const shippingBase = toFiniteNumber(shippingCharges?.base ?? 0);
   const legacyBase = formData.district === 'Dhaka'
-    ? toFiniteNumber(settings?.shippingCharges?.insideDhaka ?? 0)
-    : toFiniteNumber(settings?.shippingCharges?.outsideDhaka ?? 0);
-  const defaultCharge = hasBase ? shippingBase : legacyBase;
+    ? toFiniteNumber(shippingCharges?.insideDhaka ?? 0)
+    : toFiniteNumber(shippingCharges?.outsideDhaka ?? 0);
+  const hasUsableBase = shippingCharges?.base !== undefined && shippingCharges?.base !== null;
+  const defaultCharge = hasUsableBase ? shippingBase : legacyBase;
 
-  const exceptionItem = Array.isArray(settings?.shippingCharges?.exceptions)
-    ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)
+  const exceptionItem = Array.isArray(shippingCharges?.exceptions)
+    ? shippingCharges.exceptions.find(ex => ex.district === formData.district)
     : undefined;
   const exceptionCharge = exceptionItem !== undefined
     ? toFiniteNumber(exceptionItem.charge)
     : undefined;
 
-  // Exception overrides base; base overrides legacy
+  // Exception overrides base; base overrides legacy inside/outside charges.
   const districtShippingCost = toFiniteNumber(exceptionCharge !== undefined ? exceptionCharge : defaultCharge);
 
   const totalWeight = cart.reduce((sum, item) => {
@@ -69,10 +84,11 @@ export const Checkout: React.FC = () => {
     const w = toFiniteNumber(liveProduct?.weight ?? item.product.weight ?? 0);
     return sum + w * toFiniteNumber(item.quantity);
   }, 0);
-  const dynamicEnabled = settings?.shippingCharges?.dynamicShipping?.enabled ?? false;
-  const dynamicStartKg = toFiniteNumber(settings?.shippingCharges?.dynamicShipping?.startKg ?? 0);
-  const dynamicPerKg = toFiniteNumber(settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0);
-  const extraWeightCharge = dynamicEnabled
+  const dynamicShipping = shippingCharges?.dynamicShipping;
+  const dynamicEnabled = dynamicShipping?.enabled === true;
+  const dynamicStartKg = toFiniteNumber(dynamicShipping?.startKg ?? 0);
+  const dynamicPerKg = toFiniteNumber(dynamicShipping?.perKgCharge ?? 0);
+  const extraWeightCharge = dynamicEnabled && dynamicPerKg > 0
     ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
   const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
@@ -310,7 +326,7 @@ export const Checkout: React.FC = () => {
               </div>
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Delivery Charge</span>
-                <span>৳{formatMoney(districtShippingCost)}</span>
+                <span>৳{formatMoney(shippingCost)}</span>
               </div>
               {dynamicEnabled && (
                 <div className="flex justify-between opacity-70 text-xs">

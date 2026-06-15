@@ -1,11 +1,57 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, Package, ArrowRight, Phone } from 'lucide-react';
+import { CheckCircle, ArrowRight, Phone } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
+import { trackPurchase } from '../utils/facebookPixel';
+import { Order } from '../types';
+import { API_BASE_URL } from '../constants';
 
 export const OrderSuccess: React.FC = () => {
     const { id } = useParams();
-    const { settings } = useAdmin();
+    const { settings, orders } = useAdmin();
+    const [order, setOrder] = useState<Order | null>(null);
+
+    useEffect(() => {
+        if (!id) return;
+
+        const existingOrder = orders.find(o => o.id === id);
+        if (existingOrder) {
+            setOrder(existingOrder);
+            return;
+        }
+
+        const fetchOrder = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders.php?id=${encodeURIComponent(id)}`);
+                if (!response.ok) return;
+                const orderData = await response.json();
+                setOrder(orderData);
+            } catch (error) {
+                console.error('Failed to load order details', error);
+            }
+        };
+
+        fetchOrder();
+    }, [id, orders]);
+
+    useEffect(() => {
+        if (!order) return;
+
+        const purchaseItems = order.items.map(item => ({
+            id: item.variation?.id ?? item.product.id,
+            name: item.variation ? `${item.product.name} (${item.variation.name})` : item.product.name,
+            price: item.variation?.price ?? item.product.price,
+            quantity: item.quantity,
+            sku: item.variation?.sku ?? item.product.sku,
+        }));
+
+        trackPurchase({
+            id: order.id,
+            items: purchaseItems,
+            totalPrice: order.total,
+            shippingCost: 0,
+        });
+    }, [order]);
 
     return (
         <div className="container mx-auto px-4 py-20 max-w-2xl text-center">

@@ -1,0 +1,1 @@
+function n(t){let e=t.replace(/[\s\-]/g,"");return e.startsWith("+880")||e.startsWith("0088")?e="0"+e.slice(4):e.startsWith("+88")&&(e="0"+e.slice(3)),e.length>11&&(e=e.slice(0,11)),e}function s(t){return/^0\d{10}$/.test(t)}function l(t,e){const i=n(t);e(i)}export{l as h,s as i};

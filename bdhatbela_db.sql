@@ -127,6 +127,7 @@ CREATE TABLE `products` (
   `weight` decimal(10,2) NOT NULL DEFAULT 0.00,
   `weightUnit` varchar(20) NOT NULL DEFAULT 'kg',
   `product_type` varchar(20) DEFAULT 'simple',
+  `sku` varchar(255) DEFAULT NULL,
   `cost_of_goods` decimal(10,2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -259,20 +260,30 @@ ALTER TABLE `contact_messages`
 -- Indexes for table `orders`
 --
 ALTER TABLE `orders`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `date` (`date`),
+  ADD KEY `status` (`status`);
 
 --
 -- Indexes for table `order_items`
 --
 ALTER TABLE `order_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `order_id` (`order_id`);
+  ADD KEY `order_id` (`order_id`),
+  ADD KEY `product_id` (`product_id`),
+  ADD KEY `variation_id` (`variation_id`);
 
 --
 -- Indexes for table `products`
 --
 ALTER TABLE `products`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `category` (`category`),
+  ADD KEY `rating` (`rating`),
+  ADD KEY `price` (`price`),
+  ADD KEY `discountPrice` (`discountPrice`),
+  ADD KEY `product_type` (`product_type`),
+  ADD UNIQUE KEY `sku` (`sku`);
 
 --
 -- Indexes for table `product_features`
@@ -293,7 +304,8 @@ ALTER TABLE `product_images`
 --
 ALTER TABLE `product_variations`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `product_id` (`product_id`);
+  ADD KEY `product_id` (`product_id`),
+  ADD KEY `product_id_is_default` (`product_id`, `is_default`);
 
 --
 -- Indexes for table `reviews`

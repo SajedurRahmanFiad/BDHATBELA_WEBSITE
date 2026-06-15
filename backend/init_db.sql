@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `status` VARCHAR(50) DEFAULT 'Pending',
   `date` VARCHAR(50) NOT NULL,
   `paymentMethod` VARCHAR(50) NOT NULL,
-  `note` TEXT
+  `note` TEXT,
+  `eventId` VARCHAR(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `order_items` (
@@ -182,7 +183,23 @@ ALTER TABLE `order_items`
 
 ALTER TABLE `order_items`
   ADD INDEX IF NOT EXISTS `idx_order_items_order_id` (`order_id`),
-  ADD INDEX IF NOT EXISTS `idx_order_items_product_id` (`product_id`);
+  ADD INDEX IF NOT EXISTS `idx_order_items_product_id` (`product_id`),
+  ADD INDEX IF NOT EXISTS `idx_order_items_variation_id` (`variation_id`);
+
+ALTER TABLE `products`
+  ADD INDEX IF NOT EXISTS `idx_products_category` (`category`),
+  ADD INDEX IF NOT EXISTS `idx_products_rating` (`rating`),
+  ADD INDEX IF NOT EXISTS `idx_products_price` (`price`),
+  ADD INDEX IF NOT EXISTS `idx_products_discount_price` (`discountPrice`),
+  ADD INDEX IF NOT EXISTS `idx_products_product_type` (`product_type`);
+
+ALTER TABLE `product_variations`
+  ADD INDEX IF NOT EXISTS `idx_product_variations_product_default` (`product_id`, `is_default`);
+
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `eventId` VARCHAR(100) DEFAULT NULL,
+  ADD INDEX IF NOT EXISTS `idx_orders_date` (`date`),
+  ADD INDEX IF NOT EXISTS `idx_orders_status` (`status`);
 
 ALTER TABLE `banners`
   ADD COLUMN IF NOT EXISTS `showButton` TINYINT(1) DEFAULT 0,
@@ -203,7 +220,16 @@ SET `setting_value` = JSON_SET(
   '$.shippingCharges.base', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.base'), JSON_EXTRACT(`setting_value`, '$.shippingCharges.insideDhaka'), 0),
   '$.shippingCharges.exceptions', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.exceptions'), JSON_ARRAY()),
   '$.shippingCharges.dynamicShipping', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping'), JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0)),
-  '$.shippingCharges.dynamicShipping.startKg', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.startKg'), 0)
+  '$.shippingCharges.dynamicShipping.startKg', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.startKg'), 0),
+  '$.shippingCharges.dynamicShipping.perKgCharge', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.perKgCharge'), 0),
+  '$.metaPixel', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel'), JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka')),
+  '$.metaPixel.enabled', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.enabled'), false),
+  '$.metaPixel.pixelId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.pixelId'), ''),
+  '$.metaPixel.businessAccountId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.businessAccountId'), ''),
+  '$.metaPixel.accessToken', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.accessToken'), ''),
+  '$.metaPixel.domain', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.domain'), ''),
+  '$.metaPixel.currency', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.currency'), 'BDT'),
+  '$.metaPixel.timezone', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.timezone'), 'Asia/Dhaka')
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
 

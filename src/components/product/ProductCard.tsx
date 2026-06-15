@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Zap, Star } from 'lucide-react';
-import { Product } from '../../types';
+import { Product, ProductListing } from '../../types';
 import { useCart } from '../../CartContext';
+import { formatMoney } from '../../utils/money';
 import { motion } from 'motion/react';
 
 const normalizeSrc = (src?: string | null) => {
@@ -12,7 +13,7 @@ const normalizeSrc = (src?: string | null) => {
 };
 
 interface ProductCardProps {
-  product: Product;
+  product: Product | ProductListing;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
@@ -22,26 +23,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
     const variation = product.productType === 'variation' && product.variations && product.variations.length > 0 ? (product.variations.find(v => v.isDefault) ?? product.variations[0]) : undefined;
-    addToCart(product, 1, false, variation);
+    addToCart(product as Product, 1, false, variation);
     navigate('/checkout');
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     const variation = product.productType === 'variation' && product.variations && product.variations.length > 0 ? (product.variations.find(v => v.isDefault) ?? product.variations[0]) : undefined;
-    addToCart(product, 1, true, variation);
+    addToCart(product as Product, 1, true, variation);
   };
 
   const normalizeMedia = (media?: string | string[] | null) => {
     if (!media) return null;
     if (Array.isArray(media)) return String(media[0] || '');
     return media;
-  };
-
-  const normalizeSrc = (src?: string | null) => {
-    if (!src || typeof src !== 'string') return null;
-    const trimmed = src.trim();
-    return trimmed ? trimmed : null;
   };
 
   const displayVar = product.productType === 'variation' ? (product.variations?.find(v => v.isDefault) ?? product.variations?.[0]) : undefined;
@@ -61,9 +56,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           const img = normalizeSrc(rawImg);
           if (!img) return <div className="w-full h-full flex items-center justify-center text-gray-300">No image</div>;
           if (img.match(/\.(mp4|webm|ogg|mov)$/i)) {
-            return <video src={img} autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />;
+            return <video src={img} preload="metadata" autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />;
           }
-          return <img src={img} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />;
+          return <img src={img} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />;
         })()}
         {product.discountPrice && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">
@@ -89,9 +84,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-lg font-bold text-gray-900">৳{displayPrice}</span>
+            <span className="text-lg font-bold text-gray-900">৳{formatMoney(displayPrice)}</span>
             {displayBasePrice && (
-              <span className="text-sm text-gray-400 line-through">৳{displayBasePrice}</span>
+              <span className="text-sm text-gray-400 line-through">৳{formatMoney(displayBasePrice)}</span>
             )}
           </div>
 

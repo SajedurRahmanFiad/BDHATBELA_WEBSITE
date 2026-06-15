@@ -6,11 +6,12 @@ import { useAuth } from '../AuthContext';
 import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { motion, AnimatePresence } from 'motion/react';
+import { trackViewContent } from '../utils/facebookPixel';
 
 export const ProductDetail: React.FC = () => {
   const { key } = useParams();
   const navigate = useNavigate();
-  const { products, addReview } = useAdmin();
+  const { products, addReview, fetchProduct, fetchProductListings } = useAdmin();
   const { addToCart } = useCart();
   const { user } = useAuth();
   const [quantity, setQuantity] = useState(1);
@@ -26,6 +27,9 @@ export const ProductDetail: React.FC = () => {
     name: user?.name || '',
     phone: user?.phone || ''
   });
+  const [product, setProduct] = useState<typeof products[number] | null>(() => products.find(p => p.id === key || p.sku === key) ?? null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(!product);
+  const [relatedProducts, setRelatedProducts] = useState<typeof products>([]);
 
   React.useEffect(() => {
     if (user) {
@@ -37,9 +41,66 @@ export const ProductDetail: React.FC = () => {
     }
   }, [user]);
 
-  const product = products.find(p => p.id === key || p.sku === key);
+  React.useEffect(() => {
+    let cancelled = false;
+    const cached = products.find(p => p.id === key || p.sku === key);
+    if (cached) {
+      setProduct(cached);
+      setIsLoadingProduct(false);
+      return;
+    }
 
-  if (!product) return <div className="py-20 text-center font-bold text-xl">Product not found.</div>;
+    const load = async () => {
+      if (!key) return;
+      setIsLoadingProduct(true);
+      const loaded = await fetchProduct(key);
+      if (!cancelled) {
+        setProduct(loaded);
+        setIsLoadingProduct(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [key, products, fetchProduct]);
+
+  React.useEffect(() => {
+    if (!product) return;
+    let cancelled = false;
+    fetchProductListings({ categories: product.category, limit: 4, page: 1, sort: 'rating' })
+      .then(response => {
+        if (!cancelled) setRelatedProducts(response.items as typeof products);
+      })
+      .catch(console.error);
+    return () => { cancelled = true; };
+  }, [product?.id, product?.category, fetchProductListings]);
+
+  React.useEffect(() => {
+    // Track product view with Facebook Pixel
+    if (product) {
+      trackViewContent({
+        id: product.id,
+        name: product.name,
+        price: product.discountPrice || product.price,
+        category: product.category,
+        sku: product.sku || product.id
+      });
+    }
+  }, [product?.id]);
+
+  React.useEffect(() => {
+    if (product && product.productType === 'variation' && (product.variations || []).length > 0 && activeVariationIndex === null) {
+      const def = (product.variations || []).findIndex(v => v.isDefault);
+      setActiveVariationIndex(def >= 0 ? def : 0);
+    }
+  }, [product, activeVariationIndex]);
+
+  React.useEffect(() => {
+    setActiveImage(0);
+  }, [activeVariationIndex]);
+
+  if (!product) {
+    return <div className="py-20 text-center font-bold text-xl">{isLoadingProduct ? 'Loading product...' : 'Product not found.'}</div>;
+  }
 
   const images = product.images || [];
   const selectedVariation = product.productType === 'variation' && product.variations && product.variations.length > 0 && (activeVariationIndex !== null) ? product.variations[activeVariationIndex] : undefined;
@@ -63,17 +124,6 @@ export const ProductDetail: React.FC = () => {
   const displayImage = normalizeSrc(gallery[activeImage] ?? gallery[0] ?? null);
   const displayPrice = selectedVariation?.discountPrice ?? selectedVariation?.price ?? product.discountPrice ?? product.price;
   const basePrice = selectedVariation?.price ?? product.price;
-
-  React.useEffect(() => {
-    if (product && product.productType === 'variation' && (product.variations || []).length > 0 && activeVariationIndex === null) {
-      const def = (product.variations || []).findIndex(v => v.isDefault);
-      setActiveVariationIndex(def >= 0 ? def : 0);
-    }
-  }, [product]);
-
-  React.useEffect(() => {
-    setActiveImage(0);
-  }, [activeVariationIndex]);
 
   const handleBuyNowDirect = () => {
     addToCart(product, quantity, false, selectedVariation);
@@ -118,7 +168,7 @@ export const ProductDetail: React.FC = () => {
     setReviewForm({ ...reviewForm, comment: '', rating: 5 });
   };
 
-  const relatedProducts = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const relatedProductsToRender = relatedProducts.filter(p => p.id !== product.id).slice(0, 4);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-12">
@@ -578,7 +628,7 @@ export const ProductDetail: React.FC = () => {
            <div>
              <h3 className="font-bold mb-4">Related Products</h3>
              <div className="grid grid-cols-1 gap-4">
-                {relatedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                {relatedProductsToRender.map(p => <ProductCard key={p.id} product={p} />)}
              </div>
            </div>
         </div>

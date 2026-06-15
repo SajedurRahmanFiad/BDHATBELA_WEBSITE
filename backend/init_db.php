@@ -210,7 +210,17 @@ try {
     try { $pdo->exec("ALTER TABLE `product_variations` ADD COLUMN `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `product_variations` ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `product_variations` ADD INDEX `idx_product_variations_product_id` (`product_id`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `product_variations` ADD INDEX `idx_product_variations_product_default` (`product_id`, `is_default`)"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `product_variations` ADD CONSTRAINT `fk_product_variations_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE"); } catch(Exception $e) {}
+
+    try { $pdo->exec("ALTER TABLE `products` ADD INDEX `idx_products_category` (`category`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD INDEX `idx_products_rating` (`rating`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD INDEX `idx_products_price` (`price`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD INDEX `idx_products_discount_price` (`discountPrice`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD INDEX `idx_products_product_type` (`product_type`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD INDEX `idx_orders_date` (`date`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD INDEX `idx_orders_status` (`status`)"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `order_items` ADD INDEX `idx_order_items_variation_id` (`variation_id`)"); } catch(Exception $e) {}
 
     // Normalize old settings into the current StoreSettings shape used by the frontend.
     $pdo->exec("UPDATE `settings`
@@ -220,7 +230,15 @@ try {
             '$.shippingCharges.exceptions', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.exceptions'), JSON_ARRAY()),
             '$.shippingCharges.dynamicShipping', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping'), JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0)),
             '$.shippingCharges.dynamicShipping.startKg', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.startKg'), 0),
-            '$.shippingCharges.dynamicShipping.perKgCharge', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.perKgCharge'), 0)
+            '$.shippingCharges.dynamicShipping.perKgCharge', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.perKgCharge'), 0),
+            '$.metaPixel', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel'), JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka')),
+            '$.metaPixel.enabled', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.enabled'), false),
+            '$.metaPixel.pixelId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.pixelId'), ''),
+            '$.metaPixel.businessAccountId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.businessAccountId'), ''),
+            '$.metaPixel.accessToken', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.accessToken'), ''),
+            '$.metaPixel.domain', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.domain'), ''),
+            '$.metaPixel.currency', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.currency'), 'BDT'),
+            '$.metaPixel.timezone', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.timezone'), 'Asia/Dhaka')
         )
         WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`)");
 

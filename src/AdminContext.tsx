@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, Category, Banner, StoreSettings, Order, OrderStatus, Staff, Review } from './types';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { Product, Category, Banner, StoreSettings, Order, OrderStatus, Staff, Review, PaginatedProducts } from './types';
 import { API_BASE_URL } from './constants';
 
 interface AdminContextType {
@@ -11,9 +11,14 @@ interface AdminContextType {
   staff: Staff[];
   addProduct: (product: Product) => Promise<boolean>;
   updateProduct: (product: Product) => Promise<boolean>;
+  loadProducts: () => Promise<Product[]>;
+  fetchProduct: (idOrSku: string) => Promise<Product | null>;
+  fetchProductListings: (params?: Record<string, string | number | boolean | undefined>) => Promise<PaginatedProducts>;
+  searchProducts: (query: string) => Promise<PaginatedProducts['items']>;
   deleteProduct: (id: string) => Promise<void>;
   updateSettings: (settings: StoreSettings) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  loadOrders: () => Promise<Order[]>;
   deleteOrder: (id: string) => Promise<void>;
   addOrder: (order: Order) => Promise<{ success: boolean; error?: string; order?: Order }>;
   updateBanners: (banners: Banner[]) => Promise<void>;
@@ -30,6 +35,26 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
+const parseJsonText = (text: string, url: string) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = text.trim().slice(0, 400);
+    throw new Error(`${url} returned invalid JSON${preview ? `: ${preview}` : ''}`);
+  }
+};
+
+const readJsonResponse = async (res: Response, url: string) => {
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`${url} returned ${res.status} ${res.statusText}${text.trim() ? `: ${text.trim().slice(0, 400)}` : ''}`);
+  }
+  if (text.trim().startsWith('<')) {
+    throw new Error(`${url} returned HTML instead of JSON: ${text.trim().slice(0, 400)}`);
+  }
+  return parseJsonText(text, url);
+};
+
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -40,37 +65,17 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Fetch initial data
   useEffect(() => {
-    const parseJsonResponse = async (res: Response, url: string) => {
-      const text = await res.text();
-      if (!res.ok) {
-        throw new Error(`${url} returned ${res.status} ${res.statusText}: ${text}`);
-      }
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error(`${url} returned non-JSON content type ${contentType}: ${text.slice(0, 400)}`);
-      }
-      try {
-        return JSON.parse(text);
-      } catch {
-        throw new Error(`${url} returned invalid JSON: ${text.slice(0, 400)}`);
-      }
-    };
-
     const fetchData = async () => {
       try {
-        const [prodRes, catRes, banRes, setRes, ordRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/products.php`),
+        const [catRes, banRes, setRes] = await Promise.all([
           fetch(`${API_BASE_URL}/categories.php`),
           fetch(`${API_BASE_URL}/banners.php`),
-          fetch(`${API_BASE_URL}/settings.php`),
-          fetch(`${API_BASE_URL}/orders.php`)
+          fetch(`${API_BASE_URL}/settings.php`)
         ]);
 
-        setProducts(await parseJsonResponse(prodRes, `${API_BASE_URL}/products.php`));
-        setCategories(await parseJsonResponse(catRes, `${API_BASE_URL}/categories.php`));
-        setBanners(await parseJsonResponse(banRes, `${API_BASE_URL}/banners.php`));
-        setSettings(await parseJsonResponse(setRes, `${API_BASE_URL}/settings.php`));
-        setOrders(await parseJsonResponse(ordRes, `${API_BASE_URL}/orders.php`));
+        setCategories(await readJsonResponse(catRes, `${API_BASE_URL}/categories.php`));
+        setBanners(await readJsonResponse(banRes, `${API_BASE_URL}/banners.php`));
+        setSettings(await readJsonResponse(setRes, `${API_BASE_URL}/settings.php`));
       } catch (e) {
         console.error('Failed to fetch admin data', e);
       }
@@ -78,7 +83,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchData();
   }, []);
 
-  const addProduct = async (p: Product): Promise<boolean> => {
+  const addProduct = useCallback(async (p: Product): Promise<boolean> => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php`, {
         method: 'POST',
@@ -88,7 +93,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const text = await res.text();
       if (res.ok) {
         const savedProduct = JSON.parse(text);
-        setProducts([savedProduct, ...products]);
+        setProducts(prev => [savedProduct, ...prev]);
         return true;
       }
       let err = {} as any;
@@ -103,9 +108,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error(e);
       return false;
     }
-  };
+  }, []);
 
-  const updateProduct = async (p: Product): Promise<boolean> => {
+  const updateProduct = useCallback(async (p: Product): Promise<boolean> => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php`, {
         method: 'PUT',
@@ -115,7 +120,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const text = await res.text();
       if (res.ok) {
         const savedProduct = JSON.parse(text);
-        setProducts(products.map(item => item.id === p.id ? savedProduct : item));
+        setProducts(prev => prev.map(item => item.id === p.id ? savedProduct : item));
         return true;
       }
       let err = {} as any;
@@ -130,16 +135,49 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error(e);
       return false;
     }
-  };
+  }, []);
 
-  const deleteProduct = async (id: string) => {
+  const deleteProduct = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php?id=${id}`, { method: 'DELETE' });
-      if (res.ok) setProducts(products.filter(item => item.id !== id));
+      if (res.ok) setProducts(prev => prev.filter(item => item.id !== id));
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const updateSettings = async (s: StoreSettings) => {
+  const loadProducts = useCallback(async (): Promise<Product[]> => {
+    const loaded = await readJsonResponse(await fetch(`${API_BASE_URL}/products.php`), `${API_BASE_URL}/products.php`);
+    const products = Array.isArray(loaded) ? loaded : [];
+    setProducts(products);
+    return products;
+  }, []);
+
+  const fetchProduct = useCallback(async (idOrSku: string): Promise<Product | null> => {
+    try {
+      return await readJsonResponse(await fetch(`${API_BASE_URL}/products.php?id=${encodeURIComponent(idOrSku)}`), `${API_BASE_URL}/products.php`);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const fetchProductListings = useCallback(async (params: Record<string, string | number | boolean | undefined> = {}): Promise<PaginatedProducts> => {
+    const query = new URLSearchParams();
+    query.set('list', '1');
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') query.set(key, String(value));
+    });
+    return await readJsonResponse(
+      await fetch(`${API_BASE_URL}/products.php?${query.toString()}`),
+      `${API_BASE_URL}/products.php`
+    );
+  }, []);
+
+  const searchProducts = useCallback(async (query: string): Promise<PaginatedProducts['items']> => {
+    if (!query.trim()) return [];
+    const result = await fetchProductListings({ search: query.trim(), limit: 5, page: 1 });
+    return result.items;
+  }, [fetchProductListings]);
+
+  const updateSettings = useCallback(async (s: StoreSettings) => {
     try {
       const res = await fetch(`${API_BASE_URL}/settings.php`, {
         method: 'PUT',
@@ -148,9 +186,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) setSettings(await res.json());
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const updateOrderStatus = async (id: string, status: OrderStatus) => {
+  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus) => {
     try {
       const res = await fetch(`${API_BASE_URL}/orders.php`, {
         method: 'PUT',
@@ -159,19 +197,26 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const updated = await res.json();
-        setOrders(orders.map(o => o.id === id ? updated : o));
+        setOrders(prev => prev.map(o => o.id === id ? updated : o));
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const deleteOrder = async (id: string) => {
+  const deleteOrder = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/orders.php?id=${id}`, { method: 'DELETE' });
-      if (res.ok) setOrders(orders.filter(o => o.id !== id));
+      if (res.ok) setOrders(prev => prev.filter(o => o.id !== id));
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const addOrder = async (o: Order) => {
+  const loadOrders = useCallback(async (): Promise<Order[]> => {
+    const loaded = await readJsonResponse(await fetch(`${API_BASE_URL}/orders.php`), `${API_BASE_URL}/orders.php`);
+    const orders = Array.isArray(loaded) ? loaded : [];
+    setOrders(orders);
+    return orders;
+  }, []);
+
+  const addOrder = useCallback(async (o: Order) => {
     try {
       const res = await fetch(`${API_BASE_URL}/orders.php`, {
         method: 'POST',
@@ -180,22 +225,22 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const savedOrder = await res.json();
-        setOrders([savedOrder, ...orders]);
+        setOrders(prev => [savedOrder, ...prev]);
         return { success: true, order: savedOrder };
       }
       const err = await res.json().catch(() => ({}));
       return { success: false, error: err.error || 'Failed to place order.' };
-    } catch (e: any) { 
-        console.error(e); 
-        return { success: false, error: e.message || 'Network error.' };
+    } catch (e: any) {
+      console.error(e);
+      return { success: false, error: e.message || 'Network error.' };
     }
-  };
+  }, []);
 
-  const updateBanners = async (b: Banner[]) => {
+  const updateBanners = useCallback(async (b: Banner[]) => {
     setBanners(b);
-  };
+  }, []);
 
-  const addBanner = async (b: Banner) => {
+  const addBanner = useCallback(async (b: Banner) => {
     try {
       const res = await fetch(`${API_BASE_URL}/banners.php`, {
         method: 'POST',
@@ -204,15 +249,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const saved = await res.json();
-        setBanners([saved, ...banners]);
+        setBanners(prev => [saved, ...prev]);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || 'Failed to add banner. The image might be too large.');
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const updateBanner = async (b: Banner) => {
+  const updateBanner = useCallback(async (b: Banner) => {
     try {
       const res = await fetch(`${API_BASE_URL}/banners.php`, {
         method: 'PUT',
@@ -221,25 +266,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const saved = await res.json();
-        setBanners(banners.map(item => item.id === b.id ? saved : item));
+        setBanners(prev => prev.map(item => item.id === b.id ? saved : item));
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || 'Failed to update banner. The image might be too large.');
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const deleteBanner = async (id: string) => {
+  const deleteBanner = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/banners.php?id=${id}`, { method: 'DELETE' });
-      if (res.ok) setBanners(banners.filter(item => item.id !== id));
+      if (res.ok) setBanners(prev => prev.filter(item => item.id !== id));
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const addStaff = (s: Staff) => setStaff([s, ...staff]);
-  const removeStaff = (id: string) => setStaff(staff.filter(s => s.id !== id));
+  const addStaff = useCallback((s: Staff) => setStaff(prev => [s, ...prev]), []);
+  const removeStaff = useCallback((id: string) => setStaff(prev => prev.filter(s => s.id !== id)), []);
 
-  const addCategory = async (c: Category) => {
+  const addCategory = useCallback(async (c: Category) => {
     try {
       const res = await fetch(`${API_BASE_URL}/categories.php`, {
         method: 'POST',
@@ -248,12 +293,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const saved = await res.json();
-        setCategories([saved, ...categories]);
+        setCategories(prev => [saved, ...prev]);
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const updateCategory = async (c: Category) => {
+  const updateCategory = useCallback(async (c: Category) => {
     try {
       const res = await fetch(`${API_BASE_URL}/categories.php`, {
         method: 'PUT',
@@ -262,19 +307,19 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       if (res.ok) {
         const saved = await res.json();
-        setCategories(categories.map(item => item.id === c.id ? saved : item));
+        setCategories(prev => prev.map(item => item.id === c.id ? saved : item));
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const deleteCategory = async (id: string) => {
+  const deleteCategory = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/categories.php?id=${id}`, { method: 'DELETE' });
-      if (res.ok) setCategories(categories.filter(item => item.id !== id));
+      if (res.ok) setCategories(prev => prev.filter(item => item.id !== id));
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const addReview = async (productId: string, review: Review) => {
+  const addReview = useCallback(async (productId: string, review: Review) => {
     try {
       const res = await fetch(`${API_BASE_URL}/products.php?action=review&id=${productId}`, {
         method: 'POST',
@@ -282,22 +327,77 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         body: JSON.stringify(review)
       });
       if (res.ok) {
-        // Refetch product to get updated reviews and rating
         const pRes = await fetch(`${API_BASE_URL}/products.php?id=${productId}`);
         if (pRes.ok) {
           const updatedProduct = await pRes.json();
-          setProducts(products.map(p => p.id === productId ? updatedProduct : p));
+          setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
         }
       }
     } catch (e) { console.error(e); }
-  };
+  }, [fetchProduct]);
+
+  const value = useMemo(() => ({
+    products,
+    categories,
+    banners,
+    settings,
+    orders,
+    staff,
+    addProduct,
+    updateProduct,
+    loadProducts,
+    fetchProduct,
+    fetchProductListings,
+    searchProducts,
+    deleteProduct,
+    updateSettings,
+    updateOrderStatus,
+    loadOrders,
+    addOrder,
+    updateBanners,
+    addBanner,
+    updateBanner,
+    deleteBanner,
+    addStaff,
+    removeStaff,
+    deleteOrder,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addReview,
+  }), [
+    products,
+    categories,
+    banners,
+    settings,
+    orders,
+    staff,
+    addProduct,
+    updateProduct,
+    loadProducts,
+    fetchProduct,
+    fetchProductListings,
+    searchProducts,
+    deleteProduct,
+    updateSettings,
+    updateOrderStatus,
+    loadOrders,
+    addOrder,
+    updateBanners,
+    addBanner,
+    updateBanner,
+    deleteBanner,
+    addStaff,
+    removeStaff,
+    deleteOrder,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addReview,
+  ]);
 
   return (
-    <AdminContext.Provider value={{
-      products, categories, banners, settings, orders, staff,
-      addProduct, updateProduct, deleteProduct, updateSettings, updateOrderStatus, addOrder, updateBanners, addBanner, updateBanner, deleteBanner, addStaff, removeStaff, deleteOrder,
-      addCategory, updateCategory, deleteCategory, addReview
-    }}>
+    <AdminContext.Provider value={value}>
       {children}
     </AdminContext.Provider>
   );

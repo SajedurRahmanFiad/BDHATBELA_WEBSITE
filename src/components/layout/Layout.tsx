@@ -6,10 +6,11 @@ import { useAdmin } from '../../AdminContext';
 import { useAuth } from '../../AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartSidebar } from './CartSidebar';
+import { formatMoney } from '../../utils/money';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { totalItems, isSidebarOpen, openSidebar, closeSidebar, toast, clearToast } = useCart();
-  const { settings, categories, products } = useAdmin();
+  const { settings, categories, searchProducts } = useAdmin();
   const { user } = useAuth();
 
 
@@ -36,6 +37,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showResults, setShowResults] = React.useState(false);
+  const [searchResults, setSearchResults] = React.useState<Awaited<ReturnType<typeof searchProducts>>>([]);
+  const [isSearching, setIsSearching] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,13 +60,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return typeof link === 'string' ? !!link : !!link.enabled && !!link.url;
   };
 
-  const searchResults = searchQuery.trim()
-    ? products.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5)
-    : [];
-
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -71,6 +67,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       setShowResults(false);
     }
   };
+
+  React.useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        setSearchResults(await searchProducts(trimmed));
+      } catch (e) {
+        console.error(e);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery, searchProducts]);
 
   if (!settings) {
     return (
@@ -167,7 +185,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
               {/* Search Results Dropdown */}
               <AnimatePresence>
-                {showResults && searchResults.length > 0 && (
+                {showResults && (searchResults.length > 0 || isSearching) && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowResults(false)} />
                     <motion.div
@@ -177,20 +195,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
                     >
                       <div className="p-2">
-                        {searchResults.map(product => (
+                        {isSearching ? (
+                          <div className="py-6 text-center text-sm text-gray-500">Searching products...</div>
+                        ) : searchResults.map(product => (
                           <button
                             key={product.id}
                             onClick={() => {
-                              navigate(`/product/${product.id}`);
+                              navigate(`/product/${product.sku ?? product.id}`);
                               setShowResults(false);
                               setSearchQuery('');
                             }}
                             className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-all text-left group"
                           >
-                            <img src={product.images?.[0]} className="w-12 h-12 object-cover rounded-lg border group-hover:border-primary" alt="" />
+                            <img src={product.images?.[0]} loading="lazy" decoding="async" className="w-12 h-12 object-cover rounded-lg border group-hover:border-primary" alt="" />
                             <div className="flex-1 min-w-0">
                               <h4 className="font-bold text-sm truncate">{product.name}</h4>
-                              <p className="text-xs text-primary font-black">৳{product.discountPrice || product.price}</p>
+                              <p className="text-xs text-primary font-black">৳{formatMoney(product.discountPrice || product.price)}</p>
                             </div>
                           </button>
                         ))}

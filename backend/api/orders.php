@@ -33,6 +33,59 @@ function getOrderDetails($pdo, $order_id) {
     return $order;
 }
 
+function getStoreSettings($pdo) {
+    $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'store_settings'");
+    $row = $stmt->fetch();
+    if (!$row) return null;
+    $settings = json_decode($row['setting_value'], true);
+    return is_array($settings) ? $settings : null;
+}
+
+function hashUserData($value) {
+    if (!$value) return null;
+    $normalized = trim(strtolower($value));
+    return hash('sha256', $normalized);
+}
+
+function sendFacebookConversionsEvent($pixelId, $accessToken, $eventName, $eventId, $customData, $userData = []) {
+    $eventSourceUrl = $_SERVER['HTTP_REFERER'] ?? null;
+    if (!$eventSourceUrl) {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $eventSourceUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    }
+
+    $payload = [
+        'data' => [[
+            'event_name' => $eventName,
+            'event_time' => time(),
+            'event_source_url' => $eventSourceUrl,
+            'page_url' => $eventSourceUrl,
+            'event_id' => $eventId,
+            'user_data' => array_filter($userData),
+            'custom_data' => $customData,
+            'action_source' => 'website'
+        ]]
+    ];
+
+    $url = "https://graph.facebook.com/v17.0/{$pixelId}/events?access_token=" . urlencode($accessToken);
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        error_log('Facebook Conversions API error (' . $httpCode . '): ' . $response);
+        return false;
+    }
+    return true;
+}
+
 if ($method === 'GET') {
     $customerId = $_GET['customerId'] ?? null;
     $id = $_GET['id'] ?? null;
@@ -85,15 +138,25 @@ if ($method === 'GET') {
 
         foreach ($items as $item) {
             $prod = $item['product'];
-            $variationId = $item['variationId'] ?? null;
+            $variation = $item['variation'] ?? null;
+            $variationId = $variation['id'] ?? null;
+            $quantity = $item['quantity'];
+            $itemPrice = $variation['price'] ?? $prod['price'];
+            $image = null;
+
+            if (!empty($variation['media'])) {
+                $image = is_array($variation['media']) ? $variation['media'][0] : $variation['media'];
+            } elseif (!empty($prod['images'])) {
+                $image = $prod['images'][0];
+            }
             
             // Deduct stock first
             if ($variationId) {
                 $stmt_stock = $pdo->prepare("UPDATE product_variations SET stock = stock - ? WHERE id = ? AND stock >= ?");
-                $stmt_stock->execute([$item['quantity'], $variationId, $item['quantity']]);
+                $stmt_stock->execute([$quantity, $variationId, $quantity]);
             } else {
                 $stmt_stock = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?");
-                $stmt_stock->execute([$item['quantity'], $prod['id'], $item['quantity']]);
+                $stmt_stock->execute([$quantity, $prod['id'], $quantity]);
             }
 
             if ($stmt_stock->rowCount() === 0) {
@@ -101,11 +164,40 @@ if ($method === 'GET') {
             }
 
             $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image, variation_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $image = !empty($prod['images']) ? $prod['images'][0] : null;
-            $stmt->execute([$id, $prod['id'], $prod['name'], $prod['price'], $item['quantity'], $image, $variationId]);
+            $stmt->execute([$id, $prod['id'], $prod['name'], $itemPrice, $quantity, $image, $variationId]);
         }
         
         $pdo->commit();
+
+        $storeSettings = getStoreSettings($pdo);
+        if (!empty($storeSettings['metaPixel']['enabled']) && !empty($storeSettings['metaPixel']['pixelId']) && !empty($storeSettings['metaPixel']['accessToken'])) {
+            $customData = [
+                'currency' => $storeSettings['metaPixel']['currency'] ?? 'BDT',
+                'value' => (float)$total,
+                'content_ids' => array_map(function ($item) { return $item['product']['id']; }, $items),
+                'content_name' => implode(', ', array_map(function ($item) { return $item['product']['name']; }, $items)),
+                'content_type' => 'product',
+                'num_items' => array_sum(array_map(function ($item) { return (int)$item['quantity']; }, $items)),
+                'order_id' => $id,
+                'shipping' => 0,
+            ];
+
+            $userData = [
+                'phone' => hashUserData($phone),
+                'first_name' => hashUserData(explode(' ', trim($customerName))[0] ?? ''),
+                'last_name' => hashUserData(implode(' ', array_slice(explode(' ', trim($customerName)), 1)) ?: ''),
+            ];
+
+            sendFacebookConversionsEvent(
+                $storeSettings['metaPixel']['pixelId'],
+                $storeSettings['metaPixel']['accessToken'],
+                'Purchase',
+                $id,
+                $customData,
+                $userData
+            );
+        }
+
         echo json_encode(getOrderDetails($pdo, $id));
     } catch (Exception $e) {
         $pdo->rollBack();

@@ -47,6 +47,31 @@ export interface Product {
   badge?: string;
 }
 
+export interface ProductListing {
+  id: string;
+  sku?: string;
+  name: string;
+  price: number;
+  discountPrice?: number;
+  productType?: 'simple' | 'variation';
+  variations?: Variation[];
+  category: string;
+  images: string[];
+  stock: number;
+  rating: number;
+  badge?: string;
+}
+
+export interface PaginatedProducts {
+  items: ProductListing[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 export interface Staff {
   id: string;
   name: string;
@@ -91,6 +116,7 @@ export interface Order {
   date: string;
   paymentMethod: string;
   note?: string;
+  eventId?: string;
 }
 
 export interface Category {
@@ -152,4 +178,13 @@ export interface StoreSettings {
     bank: { enabled: boolean; accountName: string; accountNumber: string; bankName: string; branchName: string; instructions: string; };
   };
   thankYouPage?: { title: string; subtitle: string; description: string; };
+  metaPixel?: {
+    enabled: boolean;
+    pixelId: string;
+    businessAccountId?: string;
+    accessToken?: string;
+    domain?: string;
+    currency: string;
+    timezone?: string;
+  };
 }

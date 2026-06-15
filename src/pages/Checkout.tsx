@@ -7,6 +7,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone } from 'lucide-react';
 import { DISTRICTS } from '../constants';
 import { OrderStatus } from '../types';
+import { formatMoney, toFiniteNumber } from '../utils/money';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart, showToast } = useCart();
@@ -36,23 +37,23 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
 
-  const shippingBase = Number(settings?.shippingCharges?.base ?? 0);
+  const shippingBase = toFiniteNumber(settings?.shippingCharges?.base ?? 0);
   // Only use legacy insideDhaka/outsideDhaka if base is not explicitly set (i.e. old settings format)
   const hasBase = settings?.shippingCharges?.base !== undefined && settings?.shippingCharges?.base !== null;
   const legacyBase = formData.district === 'Dhaka'
-    ? Number(settings?.shippingCharges?.insideDhaka ?? 0)
-    : Number(settings?.shippingCharges?.outsideDhaka ?? 0);
+    ? toFiniteNumber(settings?.shippingCharges?.insideDhaka ?? 0)
+    : toFiniteNumber(settings?.shippingCharges?.outsideDhaka ?? 0);
   const defaultCharge = hasBase ? shippingBase : legacyBase;
 
   const exceptionItem = Array.isArray(settings?.shippingCharges?.exceptions)
     ? settings.shippingCharges.exceptions.find(ex => ex.district === formData.district)
     : undefined;
   const exceptionCharge = exceptionItem !== undefined
-    ? Number(exceptionItem.charge)
+    ? toFiniteNumber(exceptionItem.charge)
     : undefined;
 
   // Exception overrides base; base overrides legacy
-  const districtShippingCost = Number(exceptionCharge !== undefined ? exceptionCharge : defaultCharge);
+  const districtShippingCost = toFiniteNumber(exceptionCharge !== undefined ? exceptionCharge : defaultCharge);
 
   const totalWeight = cart.reduce((sum, item) => {
     // Use live product data to avoid stale localStorage weight
@@ -61,21 +62,21 @@ export const Checkout: React.FC = () => {
       // For variation products, find the matching live variation
       const liveVariation = liveProduct?.variations?.find(v => v.id === item.variation!.id);
       const varWeight = liveVariation?.weight ?? item.variation.weight;
-      const w = (varWeight !== null && varWeight !== undefined) ? varWeight
-        : (liveProduct?.weight ?? item.product.weight ?? 0);
-      return sum + w * item.quantity;
+      const w = (varWeight !== null && varWeight !== undefined) ? toFiniteNumber(varWeight)
+        : toFiniteNumber(liveProduct?.weight ?? item.product.weight ?? 0);
+      return sum + w * toFiniteNumber(item.quantity);
     }
-    const w = liveProduct?.weight ?? item.product.weight ?? 0;
-    return sum + w * item.quantity;
+    const w = toFiniteNumber(liveProduct?.weight ?? item.product.weight ?? 0);
+    return sum + w * toFiniteNumber(item.quantity);
   }, 0);
   const dynamicEnabled = settings?.shippingCharges?.dynamicShipping?.enabled ?? false;
-  const dynamicStartKg = Number(settings?.shippingCharges?.dynamicShipping?.startKg ?? 0);
-  const dynamicPerKg = Number(settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0);
+  const dynamicStartKg = toFiniteNumber(settings?.shippingCharges?.dynamicShipping?.startKg ?? 0);
+  const dynamicPerKg = toFiniteNumber(settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0);
   const extraWeightCharge = dynamicEnabled
     ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
-  const shippingCost = Number(districtShippingCost + extraWeightCharge);
-  const totalAmount = Number(subtotal) + Number(shippingCost);
+  const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
+  const totalAmount = toFiniteNumber(subtotal) + shippingCost;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,7 +298,7 @@ export const Checkout: React.FC = () => {
                     <span className="w-6 h-6 bg-white/20 rounded flex items-center justify-center text-[10px] font-bold shrink-0">{item.quantity}x</span>
                     <span className="text-sm opacity-80 truncate">{item.product.name}{item.variation ? ` (${item.variation.name})` : ''}</span>
                   </div>
-                  <span className="font-bold text-sm shrink-0">৳{((item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice ?? item.product.price))) * item.quantity}</span>
+                  <span className="font-bold text-sm shrink-0">৳{formatMoney(toFiniteNumber(item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice ?? item.product.price)) * toFiniteNumber(item.quantity))}</span>
                 </div>
               ))}
             </div>
@@ -305,11 +306,11 @@ export const Checkout: React.FC = () => {
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Subtotal</span>
-                <span>৳{subtotal}</span>
+                <span>৳{formatMoney(subtotal)}</span>
               </div>
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Delivery Charge</span>
-                <span>৳{districtShippingCost}</span>
+                <span>৳{formatMoney(districtShippingCost)}</span>
               </div>
               {dynamicEnabled && (
                 <div className="flex justify-between opacity-70 text-xs">
@@ -317,13 +318,13 @@ export const Checkout: React.FC = () => {
                     {dynamicStartKg > 0 && ` (free up to ${dynamicStartKg} kg)`}
                   </span>
                   <span className={extraWeightCharge > 0 ? 'text-yellow-300 font-bold' : ''}>
-                    {extraWeightCharge > 0 ? `+৳${extraWeightCharge.toFixed(2)}` : 'No surcharge'}
+                    {extraWeightCharge > 0 ? `+৳${formatMoney(extraWeightCharge)}` : 'No surcharge'}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-2xl font-black pt-4">
                 <span>Total</span>
-                <span className="text-primary text-3xl">৳{totalAmount}</span>
+                <span className="text-primary text-3xl">৳{formatMoney(totalAmount)}</span>
               </div>
             </div>
 

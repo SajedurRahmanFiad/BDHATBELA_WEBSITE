@@ -3,11 +3,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Trash2, ChevronRight, Minus, Plus } from 'lucide-react';
 import { useCart } from '../../CartContext';
 import { Link } from 'react-router-dom';
+import { CartItem } from '../../types';
+import { formatMoney, toFiniteNumber } from '../../utils/money';
 
 const normalizeSrc = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
   const trimmed = src.trim();
   return trimmed ? trimmed : null;
+};
+
+const getCartItemUnitPrice = (item: CartItem): number => {
+  const priceSource = item.variation ?? item.product;
+  return toFiniteNumber(priceSource.discountPrice ?? priceSource.price);
 };
 
 interface CartSidebarProps {
@@ -88,7 +95,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
                               <Trash2 size={16} />
                             </button>
                           </div>
-                          <p className="text-xs font-black text-primary mt-1">৳{item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)}</p>
+                          <p className="text-xs font-black text-primary mt-1">৳{formatMoney(getCartItemUnitPrice(item))}</p>
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center bg-gray-50 rounded-lg p-1 border">
@@ -106,7 +113,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
                               <Plus size={14} />
                             </button>
                           </div>
-                          <p className="text-sm font-black">৳{(item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice || item.product.price)) * item.quantity}</p>
+                          <p className="text-sm font-black">৳{formatMoney(getCartItemUnitPrice(item) * toFiniteNumber(item.quantity))}</p>
                         </div>
                       </div>
                     </div>
@@ -136,7 +143,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => 
               <div className="p-6 border-t bg-gray-50/50 space-y-4">
                 <div className="flex justify-between items-center bg-white p-4 rounded-2xl border shadow-sm">
                   <span className="font-bold text-gray-500">Subtotal</span>
-                  <span className="text-xl font-black text-primary">৳{subtotal}</span>
+                  <span className="text-xl font-black text-primary">৳{formatMoney(subtotal)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Link 

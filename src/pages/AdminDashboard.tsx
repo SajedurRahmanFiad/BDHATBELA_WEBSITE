@@ -21,6 +21,7 @@ import { BrandingSettings } from './settings/BrandingSettings';
 import { ShippingSettings } from './settings/ShippingSettings';
 import { GatewaySettings } from './settings/GatewaySettings';
 import { ThankYouSettings } from './settings/ThankYouSettings';
+import { formatMoney, toFiniteNumber } from '../utils/money';
 
 const normalizeSrc = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
@@ -737,7 +738,7 @@ const AdminOrders = () => {
                                             <tbody className="divide-y text-sm">
                                                 {selectedOrder.items.map((item: any, idx: number) => {
                                                     const itemImage = normalizeSrc(item.product.images?.[0] ?? item.product.variations?.[0]?.media);
-                                                    const itemPrice = item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price;
+                                                    const itemPrice = toFiniteNumber(item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price);
                                                     return (
                                                         <tr key={idx}>
                                                             <td className="px-6 py-4 flex items-center gap-3">
@@ -749,7 +750,7 @@ const AdminOrders = () => {
                                                                 <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
                                                             </td>
                                                             <td className="px-6 py-4 text-gray-600">{item.quantity}</td>
-                                                            <td className="px-6 py-4 font-black text-right text-gray-900">৳{itemPrice}</td>
+                                                            <td className="px-6 py-4 font-black text-right text-gray-900">৳{formatMoney(itemPrice)}</td>
                                                         </tr>
                                                     );
                                                 })}
@@ -757,7 +758,7 @@ const AdminOrders = () => {
                                             <tfoot className="bg-gray-50 font-black">
                                                 <tr>
                                                     <td colSpan={2} className="px-6 py-4 text-right">Grand Total:</td>
-                                                    <td className="px-6 py-4 text-right text-primary text-xl">৳{selectedOrder.total}</td>
+                                                    <td className="px-6 py-4 text-right text-primary text-xl">৳{formatMoney(selectedOrder.total)}</td>
                                                 </tr>
                                             </tfoot>
                                         </table>

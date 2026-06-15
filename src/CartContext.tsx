@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Product } from './types';
+import { toFiniteNumber } from './utils/money';
 
 interface CartContextType {
   cart: CartItem[];
@@ -22,7 +23,14 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; show: boolean; type?: 'success' | 'error' } | null>(null);
@@ -36,6 +44,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearToast = () => setToast(null);
 
   const addToCart = (product: Product, quantity = 1, openSidebar = true, variation?: any) => {
+    const normalizedQuantity = toFiniteNumber(quantity, 1);
+    if (normalizedQuantity <= 0) return;
+
     setCart(prev => {
       const existing = prev.find(item => {
         if (item.product.id !== product.id) return false;
@@ -43,13 +54,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return !item.variation && !variation;
       });
       if (existing) {
-        return prev.map(item => 
+        return prev.map(item =>
           (item.product.id === product.id && ((item.variation && variation && item.variation.id === variation.id) || (!item.variation && !variation)))
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: item.quantity + normalizedQuantity }
             : item
         );
       }
-      return [...prev, { product, variation, quantity }];
+      return [...prev, { product, variation, quantity: normalizedQuantity }];
     });
     const name = variation ? `${product.name} (${variation.name})` : product.name;
     setToast({ message: `${name} has been added to cart!`, show: true, type: 'success' });
@@ -80,21 +91,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateQuantity = (productId: string, quantity: number, variationId?: any) => {
-    if (quantity <= 0) {
+    const normalizedQuantity = toFiniteNumber(quantity, 0);
+    if (normalizedQuantity <= 0) {
       removeFromCart(productId, variationId);
       return;
     }
-    setCart(prev => prev.map(item => 
-      (item.product.id === productId && ((variationId && item.variation && item.variation.id == variationId) || (!variationId && !item.variation))) ? { ...item, quantity } : item
+    setCart(prev => prev.map(item =>
+      (item.product.id === productId && ((variationId && item.variation && item.variation.id == variationId) || (!variationId && !item.variation))) ? { ...item, quantity: normalizedQuantity } : item
     ));
   };
 
   const clearCart = () => setCart([]);
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const getCartItemUnitPrice = (item: CartItem): number => {
+    const priceSource = item.variation ?? item.product;
+    return toFiniteNumber(priceSource.discountPrice ?? priceSource.price);
+  };
+
+  const totalItems = cart.reduce((sum, item) => sum + toFiniteNumber(item.quantity), 0);
   const subtotal = cart.reduce((sum, item) => {
-    const price = Number(item.variation ? (item.variation.discountPrice ?? item.variation.price) : (item.product.discountPrice ?? item.product.price));
-    return sum + price * item.quantity;
+    return sum + getCartItemUnitPrice(item) * toFiniteNumber(item.quantity);
   }, 0);
 
   return (

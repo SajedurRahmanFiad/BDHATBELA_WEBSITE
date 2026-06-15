@@ -100,7 +100,9 @@ CREATE TABLE IF NOT EXISTS `order_items` (
   `image` LONGTEXT,
   `variation_id` INT DEFAULT NULL,
   INDEX `idx_order_items_order_id` (`order_id`),
-  CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON DELETE CASCADE
+  INDEX `idx_order_items_product_id` (`product_id`),
+  CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_order_items_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `banners` (
@@ -177,6 +179,10 @@ ALTER TABLE `products`
 
 ALTER TABLE `order_items`
   ADD COLUMN IF NOT EXISTS `variation_id` INT DEFAULT NULL;
+
+ALTER TABLE `order_items`
+  ADD INDEX IF NOT EXISTS `idx_order_items_order_id` (`order_id`),
+  ADD INDEX IF NOT EXISTS `idx_order_items_product_id` (`product_id`);
 
 ALTER TABLE `banners`
   ADD COLUMN IF NOT EXISTS `showButton` TINYINT(1) DEFAULT 0,

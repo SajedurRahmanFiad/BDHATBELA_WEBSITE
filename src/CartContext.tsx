@@ -21,18 +21,25 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    if (!saved) return [];
-
-    try {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const saved = localStorage.getItem('cart');
+      if (!saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setCart(parsed);
+        }
+      } catch {
+        localStorage.removeItem('cart');
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
   const [toast, setToast] = useState<{ message: string; show: boolean; type?: 'success' | 'error' } | null>(null);
 
   useEffect(() => {

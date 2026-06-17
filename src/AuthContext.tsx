@@ -15,10 +15,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user_session');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+
+  const userHydrated = React.useRef(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const saved = localStorage.getItem('user_session');
+      if (!saved) {
+        userHydrated.current = true;
+        return;
+      }
+      try {
+        setUser(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem('user_session');
+      } finally {
+        userHydrated.current = true;
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!user || !userHydrated.current) return;
+
+    let refreshed = false;
+    const refreshIfNeeded = async () => {
+      if (refreshed) return;
+      refreshed = true;
+      await refreshUser();
+    };
+
+    refreshIfNeeded();
+  }, [user]);
 
   useEffect(() => {
     if (user) {

@@ -55,32 +55,74 @@ const readJsonResponse = async (res: Response, url: string) => {
   return parseJsonText(text, url);
 };
 
+const getCachedAdminData = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const setCachedAdminData = (key: string, value: unknown) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore localStorage failures
+  }
+};
+
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [categories, setCategories] = useState<Category[]>(() => getCachedAdminData<Category[]>('admin_categories', []));
+  const [banners, setBanners] = useState<Banner[]>(() => getCachedAdminData<Banner[]>('admin_banners', []));
+  const [settings, setSettings] = useState<StoreSettings | null>(() => getCachedAdminData<StoreSettings | null>('admin_settings', null));
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
 
-  // Fetch initial data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSettings = async () => {
       try {
-        const [catRes, banRes, setRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/categories.php`),
-          fetch(`${API_BASE_URL}/banners.php`),
-          fetch(`${API_BASE_URL}/settings.php`)
-        ]);
-
-        setCategories(await readJsonResponse(catRes, `${API_BASE_URL}/categories.php`));
-        setBanners(await readJsonResponse(banRes, `${API_BASE_URL}/banners.php`));
-        setSettings(await readJsonResponse(setRes, `${API_BASE_URL}/settings.php`));
+        const setRes = await fetch(`${API_BASE_URL}/settings.php`);
+        const freshSettings = await readJsonResponse(setRes, `${API_BASE_URL}/settings.php`);
+        setSettings(freshSettings);
+        setCachedAdminData('admin_settings', freshSettings);
       } catch (e) {
-        console.error('Failed to fetch admin data', e);
+        console.error('Failed to fetch settings', e);
       }
     };
-    fetchData();
+
+    const fetchOptionalData = async () => {
+      try {
+        const [catRes, banRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/categories.php`),
+          fetch(`${API_BASE_URL}/banners.php`)
+        ]);
+
+        const freshCategories = await readJsonResponse(catRes, `${API_BASE_URL}/categories.php`);
+        const freshBanners = await readJsonResponse(banRes, `${API_BASE_URL}/banners.php`);
+
+        setCategories(freshCategories);
+        setCachedAdminData('admin_categories', freshCategories);
+        setBanners(freshBanners);
+        setCachedAdminData('admin_banners', freshBanners);
+      } catch (e) {
+        console.error('Failed to fetch categories or banners', e);
+      }
+    };
+
+    fetchSettings();
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(fetchOptionalData, { timeout: 2000 });
+      } else {
+        globalThis.setTimeout(fetchOptionalData, 100);
+      }
+    }
   }, []);
 
   const addProduct = useCallback(async (p: Product): Promise<boolean> => {

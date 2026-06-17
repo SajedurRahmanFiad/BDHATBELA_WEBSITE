@@ -267,3 +267,35 @@ SET `setting_value` = JSON_SET(
   )
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
+
+-- Migration: YouTube Embedding Support (2026-06-18)
+-- Feature: Add YouTube video embedding to product gallery alongside uploaded images/videos
+-- 
+-- Storage Implementation:
+-- - YouTube URLs are stored within the existing JSON array columns:
+--   * `products.images` (stored via product_images.image_url)
+--   * `product_variations.media` (stored as JSON array)
+-- 
+-- Data Structure:
+-- The images/media arrays contain both image URLs and YouTube URLs merged with priority ordering:
+-- Example: ["https://www.youtube.com/watch?v=VIDEO_ID", "https://example.com/image1.jpg", "https://example.com/image2.jpg"]
+-- 
+-- Where the first item is the YouTube video marked with "show first" checkbox (if selected),
+-- followed by uploaded images, then additional YouTube videos.
+--
+-- Schema Compatibility:
+-- - Existing UTF8MB4 charset supports YouTube URL storage
+-- - No new columns required (leverages existing image/media JSON columns)
+-- - Backward compatible: existing image-only galleries continue to work unchanged
+--
+-- Admin Features:
+-- - Add/remove multiple YouTube video links per product and variation
+-- - Checkbox for "show first" ensures only one primary video per product/variation (mutually exclusive)
+-- - URLs normalized to https://www.youtube.com/watch?v=VIDEO_ID format
+--
+-- Frontend Rendering:
+-- - ProductDetail gallery detects YouTube URLs via regex and renders as iframe
+-- - Thumbnails show YouTube video thumbnail with play indicator
+-- - Supports mixed galleries: YouTube videos + images + video files
+--
+-- No direct schema changes needed; YouTube URLs coexist with image URLs in JSON arrays

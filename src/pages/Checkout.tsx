@@ -128,7 +128,9 @@ export const Checkout: React.FC = () => {
       status: OrderStatus.PENDING,
       date: new Date().toLocaleDateString('en-US'),
       paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase(),
-      note: formData.note + (transactionId ? ` | TrxID: ${transactionId}` : '')
+      note: formData.note + (transactionId ? ` | TrxID: ${transactionId}` : ''),
+      event_source_url: window.location.href,
+      page_url: window.location.href
     };
 
     const result = await addOrder(newOrder);

@@ -13,19 +13,54 @@ function getOrderDetails($pdo, $order_id) {
 
     $order['total'] = (float)$order['total'];
 
-    $stmt = $pdo->prepare("SELECT product_id, product_name, price, quantity, image FROM order_items WHERE order_id = ?");
+    $stmt = $pdo->prepare("
+        SELECT
+            oi.product_id,
+            oi.product_name,
+            oi.price,
+            oi.quantity,
+            oi.image,
+            oi.variation_id,
+            p.cost_of_goods AS product_cost_of_goods,
+            p.weight AS product_weight,
+            p.sku AS product_sku,
+            v.name AS variation_name,
+            v.cost_of_goods AS variation_cost_of_goods,
+            v.weight AS variation_weight,
+            v.sku AS variation_sku
+        FROM order_items oi
+        LEFT JOIN products p ON p.id = oi.product_id
+        LEFT JOIN product_variations v ON v.id = oi.variation_id
+        WHERE oi.order_id = ?
+        ORDER BY oi.id ASC
+    ");
     $stmt->execute([$order_id]);
     $items = $stmt->fetchAll();
-    
+
     $order['items'] = [];
     foreach ($items as $item) {
+        $variation = null;
+        if ($item['variation_id']) {
+            $variation = [
+                'id' => (string)$item['variation_id'],
+                'name' => $item['variation_name'] ?? '',
+                'costOfGoods' => (float)($item['variation_cost_of_goods'] ?? 0),
+                'weight' => (float)($item['variation_weight'] ?? 0),
+                'sku' => $item['variation_sku'] ?: null,
+            ];
+        }
+
         $order['items'][] = [
             'product' => [
-                'id' => $item['product_id'],
+                'id' => (string)$item['product_id'],
                 'name' => $item['product_name'],
                 'price' => (float)$item['price'],
+                'costOfGoods' => (float)($item['product_cost_of_goods'] ?? 0),
+                'weight' => (float)($item['product_weight'] ?? 0),
+                'sku' => $item['product_sku'] ?: null,
                 'images' => [$item['image']]
             ],
+            'variation' => $variation,
             'quantity' => (int)$item['quantity']
         ];
     }
@@ -47,19 +82,22 @@ function hashUserData($value) {
     return hash('sha256', $normalized);
 }
 
-function sendFacebookConversionsEvent($pixelId, $accessToken, $eventName, $eventId, $customData, $userData = []) {
-    $eventSourceUrl = $_SERVER['HTTP_REFERER'] ?? null;
+function sendFacebookConversionsEvent($pixelId, $accessToken, $eventName, $eventId, $customData, $userData = [], $eventSourceUrl = null, $pageUrl = null) {
+    if (!$eventSourceUrl) {
+        $eventSourceUrl = $_SERVER['HTTP_REFERER'] ?? null;
+    }
     if (!$eventSourceUrl) {
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $eventSourceUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     }
+    $pageUrl = $pageUrl ?: $eventSourceUrl;
 
     $payload = [
         'data' => [[
             'event_name' => $eventName,
             'event_time' => time(),
             'event_source_url' => $eventSourceUrl,
-            'page_url' => $eventSourceUrl,
+            'page_url' => $pageUrl,
             'event_id' => $eventId,
             'user_data' => array_filter($userData),
             'custom_data' => $customData,
@@ -67,7 +105,7 @@ function sendFacebookConversionsEvent($pixelId, $accessToken, $eventName, $event
         ]]
     ];
 
-    $url = "https://graph.facebook.com/v17.0/{$pixelId}/events?access_token=" . urlencode($accessToken);
+    $url = "https://graph.facebook.com/v21.0/{$pixelId}/events?access_token=" . urlencode($accessToken);
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -194,7 +232,9 @@ if ($method === 'GET') {
                 'Purchase',
                 $id,
                 $customData,
-                $userData
+                $userData,
+                $data['event_source_url'] ?? null,
+                $data['page_url'] ?? null
             );
         }
 

@@ -13,6 +13,7 @@ export interface Variation {
   name: string;
   // one or more media items (image or video)
   media?: string | string[];
+  youtubeLinks?: string[];
   price: number;
   discountPrice?: number;
   costOfGoods?: number;
@@ -38,6 +39,7 @@ export interface Product {
   variations?: Variation[];
   category: string;
   images: string[];
+  youtubeLinks?: string[];
   stock: number;
   weight?: number;
   weightUnit?: 'kg';
@@ -117,6 +119,8 @@ export interface Order {
   paymentMethod: string;
   note?: string;
   eventId?: string;
+  event_source_url?: string;
+  page_url?: string;
 }
 
 export interface Category {
@@ -184,6 +188,7 @@ export interface StoreSettings {
     businessAccountId?: string;
     accessToken?: string;
     domain?: string;
+    domainVerificationTag?: string;
     currency: string;
     timezone?: string;
   };

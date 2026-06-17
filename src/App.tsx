@@ -35,6 +35,19 @@ const PixelPageTracker = () => {
   const { settings } = useAdmin();
 
   React.useEffect(() => {
+    const verificationTag = settings?.metaPixel?.domainVerificationTag?.trim();
+    document.querySelector('meta[name="facebook-domain-verification"]')?.remove();
+
+    if (verificationTag) {
+      const contentMatch = verificationTag.match(/content=["']([^"']+)["']/i);
+      const meta = document.createElement('meta');
+      meta.name = 'facebook-domain-verification';
+      meta.content = contentMatch?.[1] || verificationTag;
+      document.head.appendChild(meta);
+    }
+  }, [settings?.metaPixel?.domainVerificationTag]);
+
+  React.useEffect(() => {
     // Initialize pixel when settings are available
     if (settings?.metaPixel?.enabled && settings?.metaPixel?.pixelId) {
       initializeFacebookPixel(settings);

@@ -8,6 +8,19 @@ import { ProductCard } from '../components/product/ProductCard';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackViewContent } from '../utils/facebookPixel';
 
+const extractYouTubeId = (src?: string | null) => {
+  if (!src || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  const normalized = trimmed.startsWith('youtube:') ? trimmed.slice(8) : trimmed;
+  const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  return match ? match[1] : null;
+};
+
+const getYouTubeEmbedUrl = (src?: string | null) => {
+  const videoId = extractYouTubeId(src);
+  return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&showinfo=0` : null;
+};
+
 export const ProductDetail: React.FC = () => {
   const { key } = useParams();
   const navigate = useNavigate();
@@ -177,7 +190,15 @@ export const ProductDetail: React.FC = () => {
         <div className="space-y-4 flex flex-col items-center">
             <div onClick={() => setShowLightbox(true)} role="button" aria-label="Open image" className="w-[90%] aspect-square bg-gray-50 rounded-2xl overflow-hidden border flex items-center justify-center cursor-zoom-in">
               {displayImage ? (
-                displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                extractYouTubeId(displayImage) ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(displayImage) || ''}
+                    title={product.name}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                ) : displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
                   <video src={displayImage} controls className="w-full h-full object-contain bg-black" />
                 ) : (
                   <img src={displayImage} alt={product.name} className="w-full h-full object-contain" />
@@ -196,7 +217,14 @@ export const ProductDetail: React.FC = () => {
                   className={`w-20 h-20 rounded-lg border-2 overflow-hidden shrink-0 relative ${activeImage === idx ? 'border-primary' : 'border-gray-200 opacity-60 hover:opacity-100'}`}
                 >
                   {safeImg ? (
-                    safeImg.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                    extractYouTubeId(safeImg) ? (
+                      <>
+                        <img src={`https://img.youtube.com/vi/${extractYouTubeId(safeImg)}/hqdefault.jpg`} alt="YouTube thumbnail" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center text-black text-sm font-black">▶</div>
+                        </div>
+                      </>
+                    ) : safeImg.match(/\.(mp4|webm|ogg|mov)$/i) ? (
                       <>
                         <video src={safeImg} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
@@ -274,13 +302,13 @@ export const ProductDetail: React.FC = () => {
             {/* Variation thumbnails (for variation products) */}
             {product.productType === 'variation' && product.variations && product.variations.length > 0 && (
               <div className="mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-nowrap md:flex-wrap items-center gap-3 overflow-x-auto md:overflow-visible no-scrollbar pb-2">
                   {product.variations.map((v, idx) => {
                     // media can be array or string; extract first URL
                     const varMediaArr = Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : []);
                     const varMediaSrc = varMediaArr.length > 0 ? varMediaArr[0] : null;
                     return (
-                    <div key={idx} className="flex flex-col items-center">
+                    <div key={idx} className="flex-none flex flex-col items-center min-w-[72px]">
                       <button onClick={() => { setActiveVariationIndex(idx); setActiveImage(0); }} className={`w-16 h-16 rounded-lg border overflow-hidden ${activeVariationIndex === idx ? 'border-primary' : 'border-gray-200'}`}>
                         {varMediaSrc ? (
                           varMediaSrc.match(/\.(mp4|webm|ogg|mov)$/i) ? (
@@ -349,7 +377,9 @@ export const ProductDetail: React.FC = () => {
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-bold mb-6 border-b pb-4">Product Details</h2>
             <div className="prose prose-gray max-w-none">
-              <p className="text-gray-600 leading-relaxed">{product.description}</p>
+              <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                {product.description}
+              </div>
             </div>
           </div>
 

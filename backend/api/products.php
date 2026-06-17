@@ -128,7 +128,9 @@ function getProductPriceStats($pdo, $params) {
     [$page, $limit, $search, $categories, $minPrice, $maxPrice, $sort] = sanitizeProductListParams($params);
     $where = [];
     $bind = [];
-    buildProductListWhere($pdo, $params, $where, $bind);
+    $statsParams = $params;
+    unset($statsParams['minPrice'], $statsParams['maxPrice']);
+    buildProductListWhere($pdo, $statsParams, $where, $bind);
 
     $whereSql = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     $stmt = $pdo->prepare("SELECT MIN(COALESCE(NULLIF(discountPrice, 0), price)) AS minPrice, MAX(COALESCE(NULLIF(discountPrice, 0), price)) AS maxPrice FROM products p {$whereSql}");

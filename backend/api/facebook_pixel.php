@@ -27,6 +27,7 @@ $userData = $data['user_data'] ?? [];
 $customData = $data['custom_data'] ?? [];
 $eventSourceUrl = $data['event_source_url'] ?? null;
 $pageUrl = $data['page_url'] ?? null;
+$testEventCode = $data['test_event_code'] ?? null;
 
 if (!$pixelId || !$accessToken || !$eventName) {
     http_response_code(400);
@@ -47,7 +48,8 @@ $payload = [
     ]]
 ];
 
-$url = "https://graph.facebook.com/v17.0/{$pixelId}/events?access_token=" . urlencode($accessToken);
+$testEventQuery = $testEventCode ? '&test_event_code=' . urlencode($testEventCode) : '';
+$url = "https://graph.facebook.com/v21.0/{$pixelId}/events?access_token=" . urlencode($accessToken) . $testEventQuery;
 
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

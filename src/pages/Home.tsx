@@ -159,7 +159,7 @@ export const Home: React.FC = () => {
                 </div>
               ))
             ) : (
-              categories.map((cat) => (
+              categories.filter(c => !c.parentId).map((cat) => (
                 <Link
                   key={cat.id}
                   to={`/products?category=${encodeURIComponent(cat.name)}`}
@@ -197,7 +197,7 @@ export const Home: React.FC = () => {
                 </div>
               ))
             ) : (
-              categories.map((cat, idx) => (
+              categories.filter(c => !c.parentId).map((cat, idx) => (
                 <Link
                   key={cat.id}
                   to={`/products?category=${encodeURIComponent(cat.name)}`}

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAdmin } from '../AdminContext';
 import { ProductCard } from '../components/product/ProductCard';
 import { Filter, ChevronDown, Search as SearchIcon } from 'lucide-react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { PaginatedProducts, ProductListing } from '../types';
 
 const PAGE_SIZE = 24;
@@ -22,29 +22,53 @@ const getSortValue = (value: string) => {
   return 'newest';
 };
 
+const normalizePriceRange = (min: number, max: number, boundsMin: number, boundsMax: number): [number, number] => {
+  const lowerBound = Number.isFinite(boundsMin) ? boundsMin : 0;
+  const upperBound = Number.isFinite(boundsMax) && boundsMax > lowerBound ? boundsMax : lowerBound + 100000;
+  const numericMin = Number.isFinite(min) ? min : lowerBound;
+  const numericMax = Number.isFinite(max) ? max : upperBound;
+  const orderedMin = Math.min(numericMin, numericMax);
+  const orderedMax = Math.max(numericMin, numericMax);
+
+  let clampedMin = Math.max(lowerBound, Math.min(orderedMin, upperBound));
+  let clampedMax = Math.min(upperBound, Math.max(orderedMax, lowerBound));
+
+  if (clampedMax - clampedMin < 1) {
+    if (clampedMax < upperBound) {
+      clampedMax = Math.min(upperBound, clampedMin + 1);
+    } else {
+      clampedMin = Math.max(lowerBound, clampedMax - 1);
+    }
+  }
+
+  return [clampedMin, clampedMax];
+};
+
 export const ProductList: React.FC = () => {
   const { categories, fetchProductListings } = useAdmin();
   const { categoryName } = useParams();
-  const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsString = searchParams.toString();
 
   const searchParam = searchParams.get('search') || '';
   const initialCat = searchParams.get('categories') || searchParams.get('category') || categoryName || 'all';
   const initialCategories = initialCat === 'all' ? [] : initialCat.split(',');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
-  const [minPriceInput, setMinPriceInput] = useState('0');
-  const [maxPriceInput, setMaxPriceInput] = useState('100000');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const [tempPriceRange, setTempPriceRange] = useState<[number, number]>([0, 0]);
+  const [minPriceInput, setMinPriceInput] = useState('');
+  const [maxPriceInput, setMaxPriceInput] = useState('');
   const [sortOrder, setSortOrder] = useState<string>(getSortValue(searchParams.get('sort') || 'newest'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(searchParam);
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
-  const [listings, setListings] = useState<PaginatedProducts>({ items: [], total: 0, page: 1, limit: PAGE_SIZE, totalPages: 0, minPrice: 0, maxPrice: 100000 });
+  const [listings, setListings] = useState<PaginatedProducts>({ items: [], total: 0, page: 1, limit: PAGE_SIZE, totalPages: 0, minPrice: 0, maxPrice: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const editingPriceInputRef = useRef<'min' | 'max' | null>(null);
 
   useEffect(() => {
     setSearchTerm(searchParam);
@@ -56,34 +80,58 @@ export const ProductList: React.FC = () => {
   }, [searchParams.get('categories'), searchParams.get('category'), categoryName]);
 
   useEffect(() => {
-    if (listings.minPrice || listings.maxPrice) {
-      const urlMin = searchParams.get('minPrice');
-      const urlMax = searchParams.get('maxPrice');
-      const min = urlMin ? Number(urlMin) : listings.minPrice;
-      const max = urlMax ? Number(urlMax) : listings.maxPrice;
-      setPriceRange([Math.max(min, listings.minPrice), Math.min(max, listings.maxPrice)]);
-      setMinPriceInput(String(Math.max(min, listings.minPrice)));
-      setMaxPriceInput(String(Math.min(max, listings.maxPrice)));
-    }
-  }, [listings.minPrice, listings.maxPrice, searchParams]);
+    if (isLoading) return;
+    const boundsMin = listings.minPrice || 0;
+    const boundsMax = listings.maxPrice || 100000;
+    const urlMin = searchParams.get('minPrice');
+    const urlMax = searchParams.get('maxPrice');
+    const min = urlMin ? Number(urlMin) : boundsMin;
+    const max = urlMax ? Number(urlMax) : boundsMax;
+    const [clampedMin, clampedMax] = normalizePriceRange(min, max, boundsMin, boundsMax);
 
-  const query = useMemo(() => ({
-    search: searchTerm.trim(),
-    categories: expandCategoryTree(categories, selectedCategories).join(','),
-    minPrice: String(priceRange[0]),
-    maxPrice: String(priceRange[1]),
-    sort: sortOrder
-  }), [categories, selectedCategories, priceRange, sortOrder, searchTerm]);
+    if (priceRange[0] !== clampedMin || priceRange[1] !== clampedMax) {
+      setPriceRange([clampedMin, clampedMax]);
+    }
+    if (tempPriceRange[0] !== clampedMin || tempPriceRange[1] !== clampedMax) {
+      setTempPriceRange([clampedMin, clampedMax]);
+    }
+    if (editingPriceInputRef.current !== 'min' && minPriceInput !== String(clampedMin)) {
+      setMinPriceInput(String(clampedMin));
+    }
+    if (editingPriceInputRef.current !== 'max' && maxPriceInput !== String(clampedMax)) {
+      setMaxPriceInput(String(clampedMax));
+    }
+  }, [listings.minPrice, listings.maxPrice, searchParamsString, isLoading]);
+
+  const hasUrlPriceParams = searchParams.get('minPrice') !== null || searchParams.get('maxPrice') !== null;
+  const query = useMemo(() => {
+    const params: Record<string, string> = {
+      search: searchTerm.trim(),
+      categories: expandCategoryTree(categories, selectedCategories).join(','),
+      sort: sortOrder
+    };
+
+    const shouldApplyPriceRange = hasUrlPriceParams || listings.maxPrice > 0;
+    if (shouldApplyPriceRange && priceRange[1] > 0) {
+      params.minPrice = String(priceRange[0]);
+      params.maxPrice = String(priceRange[1]);
+    }
+
+    return params;
+  }, [categories, selectedCategories, priceRange, sortOrder, searchTerm, hasUrlPriceParams, listings.maxPrice]);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
-    if (priceRange[0] > (listings.minPrice || 0)) params.set('minPrice', priceRange[0].toString());
-    if (priceRange[1] < (listings.maxPrice || 100000)) params.set('maxPrice', priceRange[1].toString());
+    if (priceRange[0] > listings.minPrice) params.set('minPrice', priceRange[0].toString());
+    if (priceRange[1] < listings.maxPrice) params.set('maxPrice', priceRange[1].toString());
     if (sortOrder !== 'newest') params.set('sort', sortOrder);
     if (searchTerm.trim()) params.set('search', searchTerm.trim());
-    setSearchParams(params, { replace: true });
-  }, [selectedCategories, priceRange, sortOrder, searchTerm, setSearchParams, listings.minPrice, listings.maxPrice]);
+    const nextSearch = params.toString();
+    if (nextSearch !== searchParamsString) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [selectedCategories, priceRange, sortOrder, searchTerm, setSearchParams, listings.minPrice, listings.maxPrice, searchParamsString]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,20 +178,44 @@ export const ProductList: React.FC = () => {
     setSelectedCategories(prev => prev.includes(catName) ? prev.filter(c => c !== catName) : [...prev, catName]);
   };
 
-  const handlePriceChange = () => {
-    const min = Number(minPriceInput) || listings.minPrice;
-    const max = Number(maxPriceInput) || listings.maxPrice;
-    const clampedMin = Math.max(listings.minPrice, Math.min(min, max));
-    const clampedMax = Math.min(listings.maxPrice, Math.max(max, min));
+  const commitPriceRange = (min: number, max: number) => {
+    const [clampedMin, clampedMax] = normalizePriceRange(min, max, listings.minPrice || 0, listings.maxPrice || 100000);
     setPriceRange([clampedMin, clampedMax]);
+    setTempPriceRange([clampedMin, clampedMax]);
     setMinPriceInput(clampedMin.toString());
     setMaxPriceInput(clampedMax.toString());
   };
 
+  const handlePriceChange = () => {
+    const min = Number(minPriceInput);
+    const max = Number(maxPriceInput);
+    commitPriceRange(
+      Number.isFinite(min) ? min : listings.minPrice,
+      Number.isFinite(max) ? max : listings.maxPrice
+    );
+  };
+
+  const handlePriceInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handlePriceChange();
+    }
+  };
+
+  const handleTempPriceRange = (newRange: [number, number]) => {
+    const [min, max] = normalizePriceRange(newRange[0], newRange[1], listings.minPrice || 0, listings.maxPrice || 100000);
+    setTempPriceRange([min, max]);
+    setMinPriceInput(String(min));
+    setMaxPriceInput(String(max));
+  };
+
+  const commitTempPriceRange = () => {
+    commitPriceRange(tempPriceRange[0], tempPriceRange[1]);
+  };
+
   const filteredProducts: ProductListing[] = listings.items;
   const rangeDiff = (listings.maxPrice || 100000) - (listings.minPrice || 0);
-  const leftPct = rangeDiff > 0 ? ((priceRange[0] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
-  const rightPct = rangeDiff > 0 ? 100 - ((priceRange[1] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
+  const leftPct = rangeDiff > 0 ? ((tempPriceRange[0] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
+  const rightPct = rangeDiff > 0 ? 100 - ((tempPriceRange[1] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -172,21 +244,69 @@ export const ProductList: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 space-y-1">
                       <label className="text-[10px] font-black text-gray-400 uppercase">Min Price (৳)</label>
-                      <input type="number" value={minPriceInput} onChange={e => { setMinPriceInput(e.target.value); setPriceRange([Number(e.target.value) || listings.minPrice, priceRange[1]]); }} onBlur={handlePriceChange} className="w-full bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary font-mono" />
+                      <input
+                        type="number"
+                        value={minPriceInput}
+                        placeholder={isLoading ? 'Loading...' : String(listings.minPrice)}
+                        disabled={isLoading}
+                        onFocus={() => { editingPriceInputRef.current = 'min'; }}
+                        onChange={e => { setMinPriceInput(e.target.value); }}
+                        onBlur={() => { editingPriceInputRef.current = null; handlePriceChange(); }}
+                        onKeyDown={handlePriceInputKeyDown}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary font-mono disabled:cursor-not-allowed disabled:bg-gray-100"
+                      />
                     </div>
                     <div className="flex-1 space-y-1">
                       <label className="text-[10px] font-black text-gray-400 uppercase">Max Price (৳)</label>
-                      <input type="number" value={maxPriceInput} onChange={e => { setMaxPriceInput(e.target.value); setPriceRange([priceRange[0], Number(e.target.value) || listings.maxPrice]); }} onBlur={handlePriceChange} className="w-full bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary font-mono" />
+                      <input
+                        type="number"
+                        value={maxPriceInput}
+                        placeholder={isLoading ? 'Loading...' : String(listings.maxPrice)}
+                        disabled={isLoading}
+                        onFocus={() => { editingPriceInputRef.current = 'max'; }}
+                        onChange={e => { setMaxPriceInput(e.target.value); }}
+                        onBlur={() => { editingPriceInputRef.current = null; handlePriceChange(); }}
+                        onKeyDown={handlePriceInputKeyDown}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary font-mono disabled:cursor-not-allowed disabled:bg-gray-100"
+                      />
                     </div>
                   </div>
                   <div className="relative h-6 flex items-center select-none mt-2 dual-slider mb-2">
                     <style>{`
                       .dual-slider{position:relative;width:100%}.dual-slider input[type=range]{-webkit-appearance:none;appearance:none;position:absolute;width:100%;height:0;background:transparent;pointer-events:none;outline:none;margin:0;padding:0}.dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--color-primary,#ef4444);cursor:pointer;pointer-events:auto;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}.dual-slider input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--color-primary,#ef4444);cursor:pointer;pointer-events:auto;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
                     `}</style>
-                    <div className="absolute left-0 right-0 h-1 bg-gray-200 rounded-lg pointer-events-none" />
-                    <div className="absolute h-1 bg-primary rounded-lg pointer-events-none" style={{ left: `${Math.min(100, Math.max(0, leftPct))}%`, right: `${Math.min(100, Math.max(0, rightPct))}%` }} />
-                    <input type="range" min={listings.minPrice || 0} max={listings.maxPrice || 100000} step="1" value={priceRange[0]} onChange={e => { const val = Math.min(Number(e.target.value), priceRange[1] - 1); setMinPriceInput(String(val)); setPriceRange([val, priceRange[1]]); }} className="w-full accent-primary pointer-events-none appearance-none bg-transparent" style={{ zIndex: priceRange[0] > ((listings.maxPrice || 100000) - rangeDiff * 0.1) ? 5 : 3 }} />
-                    <input type="range" min={listings.minPrice || 0} max={listings.maxPrice || 100000} step="1" value={priceRange[1]} onChange={e => { const val = Math.max(Number(e.target.value), priceRange[0] + 1); setMaxPriceInput(String(val)); setPriceRange([priceRange[0], val]); }} className="w-full accent-primary pointer-events-none appearance-none bg-transparent" style={{ zIndex: 4 }} />
+                    <div className="absolute left-0 right-0 h-1 bg-gray-200 rounded-lg" />
+                    <div className="absolute h-1 bg-primary rounded-lg" style={{ left: `${Math.min(100, Math.max(0, leftPct))}%`, right: `${Math.min(100, Math.max(0, rightPct))}%` }} />
+                    <input
+                      type="range"
+                      min={listings.minPrice}
+                      max={listings.maxPrice}
+                      step="1"
+                      value={tempPriceRange[0]}
+                      disabled={isLoading || listings.maxPrice === 0}
+                      onChange={e => { const val = Math.min(Number(e.target.value), tempPriceRange[1] - 1); handleTempPriceRange([val, tempPriceRange[1]]); }}
+                      onMouseUp={commitTempPriceRange}
+                      onTouchEnd={commitTempPriceRange}
+                      onPointerUp={commitTempPriceRange}
+                      onBlur={commitTempPriceRange}
+                      className="w-full accent-primary appearance-none bg-transparent"
+                      style={{ zIndex: tempPriceRange[0] > (listings.maxPrice - rangeDiff * 0.1) ? 5 : 3 }}
+                    />
+                    <input
+                      type="range"
+                      min={listings.minPrice}
+                      max={listings.maxPrice}
+                      step="1"
+                      value={tempPriceRange[1]}
+                      disabled={isLoading || listings.maxPrice === 0}
+                      onChange={e => { const val = Math.max(Number(e.target.value), tempPriceRange[0] + 1); handleTempPriceRange([tempPriceRange[0], val]); }}
+                      onMouseUp={commitTempPriceRange}
+                      onTouchEnd={commitTempPriceRange}
+                      onPointerUp={commitTempPriceRange}
+                      onBlur={commitTempPriceRange}
+                      className="w-full accent-primary appearance-none bg-transparent"
+                      style={{ zIndex: 4 }}
+                    />
                   </div>
                 </div>
               </div>
@@ -223,7 +343,7 @@ export const ProductList: React.FC = () => {
         <div className="flex-1 space-y-6">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500 hidden sm:block">{listings.total} Products Found</span>
+              <span className="text-sm text-gray-500 hidden sm:block">{isLoading ? 'Loading...' : `${listings.total} Products Found`}</span>
               <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden flex items-center gap-2 p-3 bg-gray-100 rounded-lg text-sm cursor-pointer"><Filter size={16} /> Filter</button>
             </div>
             <div className="flex items-center gap-3">
@@ -255,7 +375,7 @@ export const ProductList: React.FC = () => {
               <div className="text-6xl">🔍</div>
               <h2 className="text-xl font-bold">No Products Found</h2>
               <p className="text-gray-400 italic font-medium">Try adjusting your search or filters</p>
-              <button onClick={() => { setSelectedCategories([]); setPriceRange([listings.minPrice || 0, listings.maxPrice || 100000]); setMinPriceInput(String(listings.minPrice || 0)); setMaxPriceInput(String(listings.maxPrice || 100000)); setSearchTerm(''); }} className="text-primary font-bold underline cursor-pointer">Reset All Filters</button>
+              <button onClick={() => { setSelectedCategories([]); commitPriceRange(listings.minPrice || 0, listings.maxPrice || 100000); setSearchTerm(''); }} className="text-primary font-bold underline cursor-pointer">Reset All Filters</button>
             </div>
           )}
         </div>

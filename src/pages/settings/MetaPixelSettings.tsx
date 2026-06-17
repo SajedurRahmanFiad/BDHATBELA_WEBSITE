@@ -14,9 +14,33 @@ export const MetaPixelSettings = () => {
         businessAccountId: settings?.metaPixel?.businessAccountId ?? '',
         accessToken: settings?.metaPixel?.accessToken ?? '',
         domain: settings?.metaPixel?.domain ?? '',
+        domainVerificationTag: settings?.metaPixel?.domainVerificationTag ?? '',
         currency: settings?.metaPixel?.currency ?? 'BDT',
         timezone: settings?.metaPixel?.timezone ?? 'Asia/Dhaka',
     });
+
+    React.useEffect(() => {
+        if (!settings?.metaPixel) return;
+        setLocalSettings({
+            enabled: settings.metaPixel.enabled ?? false,
+            pixelId: settings.metaPixel.pixelId ?? '',
+            businessAccountId: settings.metaPixel.businessAccountId ?? '',
+            accessToken: settings.metaPixel.accessToken ?? '',
+            domain: settings.metaPixel.domain ?? '',
+            domainVerificationTag: settings.metaPixel.domainVerificationTag ?? '',
+            currency: settings.metaPixel.currency ?? 'BDT',
+            timezone: settings.metaPixel.timezone ?? 'Asia/Dhaka',
+        });
+    }, [
+        settings?.metaPixel?.enabled,
+        settings?.metaPixel?.pixelId,
+        settings?.metaPixel?.businessAccountId,
+        settings?.metaPixel?.accessToken,
+        settings?.metaPixel?.domain,
+        settings?.metaPixel?.domainVerificationTag,
+        settings?.metaPixel?.currency,
+        settings?.metaPixel?.timezone,
+    ]);
 
     const handleChange = (field: string, value: any) => {
         setLocalSettings(prev => ({
@@ -26,9 +50,24 @@ export const MetaPixelSettings = () => {
     };
 
     const handleSave = () => {
+        const sanitized = {
+            ...localSettings,
+            pixelId: localSettings.pixelId.trim(),
+            businessAccountId: localSettings.businessAccountId.trim(),
+            accessToken: localSettings.accessToken.trim(),
+            domain: localSettings.domain.trim(),
+            domainVerificationTag: localSettings.domainVerificationTag.trim(),
+            currency: localSettings.currency.trim().toUpperCase(),
+        };
+
+        if (sanitized.enabled && !sanitized.pixelId) {
+            showToast('Pixel ID is required when Meta Pixel is enabled.', 'error');
+            return;
+        }
+
         updateSettings({
             ...settings,
-            metaPixel: localSettings
+            metaPixel: sanitized
         } as any);
         showToast('Meta Pixel Settings saved successfully!');
     };
@@ -40,7 +79,7 @@ export const MetaPixelSettings = () => {
     };
 
     const demoCode = `// Usage in your components
-import { trackPixelEvent } from '../utils/facebookPixel';
+import { trackPixelEvent } from '../../utils/facebookPixel';
 
 // Track view content (product page)
 trackPixelEvent('ViewContent', {
@@ -152,6 +191,21 @@ trackPixelEvent('Purchase', {
                             />
                         </div>
 
+                        {/* Domain Verification Tag */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                Domain Verification Meta Tag (Optional)
+                            </label>
+                            <p className="text-xs text-gray-500 mb-2">Paste the meta tag from Meta Business Settings if Meta says the domain is not configured.</p>
+                            <input
+                                type="text"
+                                placeholder='<meta name="facebook-domain-verification" content="abc123..." />'
+                                value={localSettings.domainVerificationTag}
+                                onChange={(e) => handleChange('domainVerificationTag', e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </div>
+
                         {/* Currency */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -208,6 +262,7 @@ trackPixelEvent('Purchase', {
                         <li>Checkout Initiation</li>
                         <li>Completed Purchases</li>
                         <li>Page Views</li>
+                    <li>Domain verification meta tag, if provided from Meta Business Settings</li>
                     </ul>
                 </div>
 

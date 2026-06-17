@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Zap, Star } from 'lucide-react';
+import { ShoppingCart, Zap, Star, Play } from 'lucide-react';
 import { Product, ProductListing } from '../../types';
 import { useCart } from '../../CartContext';
 import { formatMoney } from '../../utils/money';
@@ -12,6 +12,21 @@ const normalizeSrc = (src?: string | null) => {
   return trimmed ? trimmed : null;
 };
 
+const extractYouTubeId = (src?: string | null) => {
+  if (!src || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  const normalized = trimmed.startsWith('youtube:') ? trimmed.slice(8) : trimmed;
+  const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  return match ? match[1] : null;
+};
+
+const isYouTubeUrl = (src?: string | null) => !!extractYouTubeId(src);
+
+const isVideoUrl = (src?: string | null) => {
+  if (!src) return false;
+  return !!src.match(/\.(mp4|webm|ogg|mov)$/i);
+};
+
 interface ProductCardProps {
   product: Product | ProductListing;
 }
@@ -19,6 +34,8 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const [isVideoHovered, setIsVideoHovered] = React.useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -39,26 +56,102 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     return media;
   };
 
+  const handleMouseEnter = () => {
+    setIsVideoHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsVideoHovered(false);
+  };
+
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isVideo || !isVideoUrl(img)) return;
+
+    if (isVideoHovered) {
+      video.currentTime = 0;
+      video.muted = true;
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, [isVideoHovered, img, isVideo]);
+
   const displayVar = product.productType === 'variation' ? (product.variations?.find(v => v.isDefault) ?? product.variations?.[0]) : undefined;
   const displayPrice = displayVar?.discountPrice ?? displayVar?.price ?? product.discountPrice ?? product.price;
   const displayBasePrice = displayVar?.discountPrice ? displayVar.price : (product.discountPrice ? product.price : undefined);
+
+  const rawImg = product.productType === 'variation'
+    ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
+    : normalizeMedia((product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null)));
+  const img = normalizeSrc(rawImg);
+
+  const youtubeId = isYouTubeUrl(img) ? extractYouTubeId(img) : null;
+  const isVideo = isVideoUrl(img);
 
   return (
     <motion.div 
       whileHover={{ y: -5 }}
       className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group"
     >
-      <Link to={`/product/${encodeURIComponent(product.sku ?? product.id)}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
+      <Link
+        to={`/product/${encodeURIComponent(product.sku ?? product.id)}`}
+        className="relative aspect-square overflow-hidden bg-gray-100 block"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {(() => {
-          const rawImg = product.productType === 'variation'
-            ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
-            : normalizeMedia((product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null)));
-          const img = normalizeSrc(rawImg);
           if (!img) return <div className="w-full h-full flex items-center justify-center text-gray-300">No image</div>;
-          if (img.match(/\.(mp4|webm|ogg|mov)$/i)) {
-            return <video src={img} preload="metadata" autoPlay loop muted playsInline className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none" />;
+
+          // YouTube video - show thumbnail
+          if (youtubeId) {
+            return (
+              <div className="relative w-full h-full">
+                <img
+                  src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+                  alt={product.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                  <Play size={48} className="text-white fill-white" />
+                </div>
+              </div>
+            );
           }
-          return <img src={img} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />;
+
+          // Regular video - show first frame and play on hover
+          if (isVideo) {
+            return (
+              <div className="relative w-full h-full">
+                <video
+                  ref={videoRef}
+                  src={img}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  loop
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                  <Play size={48} className="text-white fill-white" />
+                </div>
+              </div>
+            );
+          }
+
+          // Regular image
+          return (
+            <img
+              src={img}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          );
         })()}
         {product.discountPrice && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">
@@ -78,7 +171,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </Link>
         
         <div className="flex items-center gap-1 mb-2">
-          <Star size={12} className="fill-yellow-400 text-yellow-400" />
+          {[0, 1, 2, 3, 4].map(i => (
+            <Star
+              key={i}
+              size={12}
+              className={i < Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+            />
+          ))}
           <span className="text-xs text-gray-500">{product.rating}</span>
         </div>
 

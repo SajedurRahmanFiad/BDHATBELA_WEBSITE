@@ -31,6 +31,58 @@ const normalizeSrc = (src?: string | null) => {
     return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
 };
 
+const extractYouTubeId = (src?: string | null) => {
+    if (!src || typeof src !== 'string') return null;
+    const trimmed = src.trim();
+    const normalized = trimmed.startsWith('youtube:') ? trimmed.slice(8) : trimmed;
+    const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+    return match ? match[1] : null;
+};
+
+const isYouTubeUrl = (src?: string | null) => !!extractYouTubeId(src);
+
+const normalizeYouTubeUrl = (src?: string | null) => {
+    const id = extractYouTubeId(src);
+    return id ? `https://www.youtube.com/watch?v=${id}` : null;
+};
+
+const normalizeArrayValues = (values: any[] | any) => {
+    if (Array.isArray(values)) return values;
+    if (values === undefined || values === null) return [];
+    return [values];
+};
+
+const splitMediaAndYoutube = (values: any[] | string = []) => {
+    const images: string[] = [];
+    const youtubeLinks: string[] = [];
+    const normalizedValues = normalizeArrayValues(values);
+
+    normalizedValues.forEach(value => {
+        const raw = String(value ?? '').trim();
+        if (!raw) return;
+        const normalized = normalizeYouTubeUrl(raw);
+        if (normalized) {
+            youtubeLinks.push(normalized);
+        } else {
+            images.push(raw);
+        }
+    });
+
+    return { images, youtubeLinks };
+};
+
+const mergeMediaAndYouTubeLinks = (images: any[] = [], youtubeLinks: any[] = []) => {
+    const normalizedImages = normalizeArrayValues(images)
+        .map(value => String(value ?? '').trim())
+        .filter(Boolean);
+
+    const normalizedLinks = normalizeArrayValues(youtubeLinks)
+        .map(value => normalizeYouTubeUrl(String(value ?? '').trim()))
+        .filter((url): url is string => !!url);
+
+    return [...normalizedImages, ...normalizedLinks];
+};
+
 const AdminSidebarContent = ({
     isSettingsOpen,
     setIsSettingsOpen,
@@ -1089,6 +1141,7 @@ const AdminProducts = () => {
         weight: string;
         weightUnit: 'kg';
         images: string[];
+        youtubeLinks: string[];
         features: string[];
         badge: string;
         productType: 'simple' | 'variation';
@@ -1106,6 +1159,7 @@ const AdminProducts = () => {
         weight: '',
         weightUnit: 'kg',
         images: [] as string[],
+        youtubeLinks: [],
         features: [] as string[],
         badge: '',
         productType: 'simple',
@@ -1115,6 +1169,7 @@ const AdminProducts = () => {
 
     React.useEffect(() => {
         if (editingProduct) {
+            const mainSplit = splitMediaAndYoutube(editingProduct.images || []);
             setNewProduct({
                 sku: editingProduct.sku || '',
                 name: editingProduct.name,
@@ -1126,24 +1181,33 @@ const AdminProducts = () => {
                 stock: editingProduct.stock.toString(),
                 weight: editingProduct.weight?.toString() || '',
                 weightUnit: editingProduct.weightUnit || 'kg',
-                images: editingProduct.images || [],
+                images: mainSplit.images,
+                youtubeLinks: mainSplit.youtubeLinks,
                 features: editingProduct.features || [],
                 badge: editingProduct.badge || '',
                 productType: editingProduct.productType || 'simple',
                 costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
-                variations: editingProduct.variations || []
+                variations: (editingProduct.variations || []).map((v: any) => {
+                    const values = Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : []);
+                    const split = splitMediaAndYoutube(values);
+                    return {
+                        ...v,
+                        media: split.images,
+                        youtubeLinks: split.youtubeLinks
+                    };
+                })
             });
         } else {
-            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
-    }, [editingProduct]);
+    }, [editingProduct, categories]);
 
     const handleSave = async () => {
         if (!newProduct.name) return alert('Please provide a product name.');
 
         if (newProduct.productType === 'simple') {
-            if (!newProduct.price || (newProduct.images || []).length === 0) {
-                return alert('Simple products require a price and at least one image.');
+            if (!newProduct.price || (((newProduct.images || []).length === 0) && ((newProduct.youtubeLinks || []).length === 0))) {
+                return alert('Simple products require a price and at least one image or YouTube video.');
             }
         } else if (newProduct.productType === 'variation') {
             const vars = newProduct.variations || [];
@@ -1155,6 +1219,7 @@ const AdminProducts = () => {
             }
         }
 
+        const mergedProductImages = mergeMediaAndYouTubeLinks(newProduct.images, newProduct.youtubeLinks);
         const productData = {
             id: editingProduct ? editingProduct.id : `p-${Date.now()}`,
             sku: newProduct.sku || undefined,
@@ -1167,25 +1232,29 @@ const AdminProducts = () => {
             stock: Number(newProduct.stock) || (newProduct.productType === 'variation' ? (newProduct.variations || []).reduce((s:any, v:any) => s + (Number(v.stock)||0), 0) : 0),
             weight: Number(newProduct.weight) || 0,
             weightUnit: newProduct.weightUnit || 'kg',
-            images: newProduct.images,
+            images: mergedProductImages,
             features: newProduct.features || [],
             badge: newProduct.badge,
-            rating: editingProduct ? editingProduct.rating : 5
-            , productType: newProduct.productType,
+            rating: editingProduct ? editingProduct.rating : 5,
+            productType: newProduct.productType,
             costOfGoods: newProduct.costOfGoods ? Number(newProduct.costOfGoods) : undefined,
             reviews: editingProduct?.reviews ?? [],
-            variations: newProduct.productType === 'variation' ? (newProduct.variations || []).map((v:any) => ({
-                id: v.id || undefined,
-                name: v.name,
-                media: v.media,
-                price: Number(v.price) || 0,
-                discountPrice: v.discountPrice ? Number(v.discountPrice) : undefined,
-                costOfGoods: v.costOfGoods ? Number(v.costOfGoods) : undefined,
-                weight: v.weight ? Number(v.weight) : undefined,
-                stock: v.stock ? Number(v.stock) : 0,
-                sku: v.sku || undefined,
-                isDefault: !!v.isDefault
-            })) : undefined
+            variations: newProduct.productType === 'variation' ? (newProduct.variations || []).map((v:any) => {
+                const variationMedia = Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : []);
+                const variationYoutube = Array.isArray(v.youtubeLinks) ? v.youtubeLinks : [];
+                return {
+                    id: v.id || undefined,
+                    name: v.name,
+                    media: mergeMediaAndYouTubeLinks(variationMedia, variationYoutube),
+                    price: Number(v.price) || 0,
+                    discountPrice: v.discountPrice ? Number(v.discountPrice) : undefined,
+                    costOfGoods: v.costOfGoods ? Number(v.costOfGoods) : undefined,
+                    weight: v.weight ? Number(v.weight) : undefined,
+                    stock: v.stock ? Number(v.stock) : 0,
+                    sku: v.sku || undefined,
+                    isDefault: !!v.isDefault
+                };
+            }) : undefined
         };
 
         const success = editingProduct ? await updateProduct(productData) : await addProduct(productData);
@@ -1199,6 +1268,7 @@ const AdminProducts = () => {
     const closeProductModal = () => {
         // revert unsaved edits by resetting `newProduct` to the current `editingProduct` state
         if (editingProduct) {
+            const mainSplit = splitMediaAndYoutube(editingProduct.images || []);
             setNewProduct({
                 sku: editingProduct.sku || '',
                 name: editingProduct.name,
@@ -1210,15 +1280,24 @@ const AdminProducts = () => {
                 stock: editingProduct.stock.toString(),
                 weight: editingProduct.weight?.toString() || '',
                 weightUnit: editingProduct.weightUnit || 'kg',
-                images: editingProduct.images || [],
+                images: mainSplit.images,
+                youtubeLinks: mainSplit.youtubeLinks,
                 features: editingProduct.features || [],
                 badge: editingProduct.badge || '',
                 productType: editingProduct.productType || 'simple',
                 costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
-                variations: editingProduct.variations || []
+                variations: (editingProduct.variations || []).map((v: any) => {
+                    const values = Array.isArray(v.media) ? v.media : (v.media ? [String(v.media)] : []);
+                    const split = splitMediaAndYoutube(values);
+                    return {
+                        ...v,
+                        media: split.images,
+                        youtubeLinks: split.youtubeLinks
+                    };
+                })
             });
         } else {
-            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
         setShowModal(false);
     };
@@ -1244,10 +1323,10 @@ const AdminProducts = () => {
                     </div>
                     <button
                         onClick={() => {
-                                            setEditingProduct(null);
-                                            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
-                                            setShowModal(true);
-                                        }}
+                            setEditingProduct(null);
+                            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+                            setShowModal(true);
+                        }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
                     >+ Add Product</button>
                 </div>
@@ -1259,7 +1338,9 @@ const AdminProducts = () => {
                     const displayPrice = defaultVariation ? (defaultVariation.discountPrice ?? defaultVariation.price) : (p.discountPrice ?? p.price);
                     const defaultMedia = Array.isArray(defaultVariation?.media) ? defaultVariation?.media[0] : defaultVariation?.media;
                     const firstVariationMedia = Array.isArray(p.variations?.[0]?.media) ? p.variations?.[0]?.media[0] : p.variations?.[0]?.media;
-                    const previewImage = normalizeSrc(p.images?.[0] ?? defaultMedia ?? firstVariationMedia);
+                    const previewSrc = normalizeSrc(p.images?.[0] ?? defaultMedia ?? firstVariationMedia);
+                    const previewYouTubeId = extractYouTubeId(previewSrc);
+                    const previewIsVideo = previewSrc ? !!previewSrc.match(/\.(mp4|webm|ogg|mov)$/i) : false;
 
                     return (
                         <div
@@ -1267,8 +1348,24 @@ const AdminProducts = () => {
                             className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex gap-4 hover:border-primary transition-all group relative"
                         >
                             <div className="w-20 h-20 shrink-0 bg-gray-50 rounded-2xl overflow-hidden border">
-                                {previewImage ? (
-                                    <img src={previewImage} className="w-full h-full object-cover group-hover:scale-110 transition-all" alt="" />
+                                {previewSrc ? (
+                                    previewYouTubeId ? (
+                                        <img
+                                            src={`https://img.youtube.com/vi/${previewYouTubeId}/hqdefault.jpg`}
+                                            className="w-full h-full object-cover"
+                                            alt="YouTube thumbnail"
+                                        />
+                                    ) : previewIsVideo ? (
+                                        <video
+                                            src={previewSrc}
+                                            muted
+                                            playsInline
+                                            loop
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <img src={previewSrc} className="w-full h-full object-cover group-hover:scale-110 transition-all" alt="" />
+                                    )
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No image</div>
                                 )}
@@ -1433,20 +1530,57 @@ const AdminProducts = () => {
                                                     onChange={vals => setNewProduct({ ...newProduct, images: vals })}
                                                 />
                                             </div>
+                                    <div className="space-y-4 sm:col-span-2">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">YouTube Video Links</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewProduct({ ...newProduct, youtubeLinks: [...(newProduct.youtubeLinks || []), ''] })}
+                                                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all"
+                                            >
+                                                + Add YouTube Unit
+                                            </button>
                                         </div>
-                                    ) : (
-                                        /* variations handled below */ null
-                                    )}
+                                        <div className="space-y-3">
+                                            {(newProduct.youtubeLinks || []).map((link, idx) => (
+                                                <div key={idx} className="p-3 border rounded-2xl bg-gray-50">
+                                                    <div className="flex flex-col gap-3">
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://youtube.com/watch?v=..."
+                                                            value={link}
+                                                            onChange={e => {
+                                                                const updated = [...(newProduct.youtubeLinks || [])];
+                                                                updated[idx] = e.target.value;
+                                                                setNewProduct({ ...newProduct, youtubeLinks: updated });
+                                                            }}
+                                                            className="w-full bg-white border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const updated = (newProduct.youtubeLinks || []).filter((_, index) => index !== idx);
+                                                                setNewProduct({ ...newProduct, youtubeLinks: updated });
+                                                            }}
+                                                            className="text-red-500 text-xs font-bold text-left"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 italic">YouTube videos will appear at the end of the product gallery, after all uploaded images.</p>
+                                    </div>
 
-                                    {/* Category and Badge placed above variations */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 sm:col-span-2">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Category *</label>
                                         <select
                                             value={newProduct.category ?? ''}
                                             onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600 bg-white"
+                                            className="w-full bg-white border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600"
                                         >
-                                                                    {categories.map((cat: Category) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                                            {categories.map((cat: Category) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                                         </select>
                                     </div>
 
@@ -1478,6 +1612,8 @@ const AdminProducts = () => {
                                             )}
                                         </div>
                                     </div>
+                                        </div>
+                                    ) : null}
                                     {newProduct.productType === 'variation' && (
                                         <div className="sm:col-span-2 space-y-4">
                                             <h3 className="text-sm font-bold">Variations</h3>
@@ -1495,6 +1631,62 @@ const AdminProducts = () => {
                                                                     onChange={(vals) => { const nv = [...(newProduct.variations || [])]; nv[idx] = { ...nv[idx], media: vals }; setNewProduct({ ...newProduct, variations: nv }); }}
                                                                     label="Media (image/video)"
                                                                 />
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center justify-between gap-4">
+                                                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">YouTube Video Links</label>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const nv = [...(newProduct.variations || [])];
+                                                                            const variation = nv[idx] || {};
+                                                                            nv[idx] = {
+                                                                                ...variation,
+                                                                                youtubeLinks: [...(Array.isArray(variation.youtubeLinks) ? variation.youtubeLinks : []), '']
+                                                                            };
+                                                                            setNewProduct({ ...newProduct, variations: nv });
+                                                                        }}
+                                                                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all"
+                                                                    >
+                                                                        + Add YouTube Unit
+                                                                    </button>
+                                                                </div>
+                                                                <div className="space-y-3">
+                                                                    {(Array.isArray(v.youtubeLinks) ? v.youtubeLinks : []).map((link: string, linkIdx: number) => (
+                                                                        <div key={linkIdx} className="p-3 border rounded-2xl bg-gray-50">
+                                                                            <div className="flex flex-col gap-3">
+                                                                                <input
+                                                                                    type="url"
+                                                                                    placeholder="https://youtube.com/watch?v=..."
+                                                                                    value={link}
+                                                                                    onChange={e => {
+                                                                                        const nv = [...(newProduct.variations || [])];
+                                                                                        const variation = nv[idx] || {};
+                                                                                        const updatedLinks = [...(Array.isArray(variation.youtubeLinks) ? variation.youtubeLinks : [])];
+                                                                                        updatedLinks[linkIdx] = e.target.value;
+                                                                                        nv[idx] = { ...variation, youtubeLinks: updatedLinks };
+                                                                                        setNewProduct({ ...newProduct, variations: nv });
+                                                                                    }}
+                                                                                    className="w-full bg-white border border-gray-200 px-4 py-3 rounded-2xl outline-none text-sm font-bold"
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        const nv = [...(newProduct.variations || [])];
+                                                                                        const variation = nv[idx] || {};
+                                                                                        const updatedLinks = (Array.isArray(variation.youtubeLinks) ? variation.youtubeLinks : []).filter((_: string, index: number) => index !== linkIdx);
+                                                                                        nv[idx] = { ...variation, youtubeLinks: updatedLinks };
+                                                                                        setNewProduct({ ...newProduct, variations: nv });
+                                                                                    }}
+                                                                                    className="text-red-500 text-xs font-bold text-left"
+                                                                                >
+                                                                                    Remove
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <p className="text-[10px] text-gray-500 italic">YouTube videos will appear at the end of the variation gallery, after all uploaded images.</p>
                                                             </div>
                                                             <div className="flex flex-col md:flex-row gap-3 items-start">
                                                                 <div className="flex-1 min-w-0 space-y-1">
@@ -1545,7 +1737,7 @@ const AdminProducts = () => {
                                                     </div>
                                                 ))}
                                                 <div>
-                                                    <button type="button" onClick={() => setNewProduct({ ...newProduct, variations: [...(newProduct.variations || []), { name: '', media: '', price: '', discountPrice: '', costOfGoods: '', weight: '', stock: '', isDefault: (newProduct.variations || []).length === 0 }] })} className="px-4 py-2 bg-primary text-white rounded-xl font-bold">+ Add Variation</button>
+                                                    <button type="button" onClick={() => setNewProduct({ ...newProduct, variations: [...(newProduct.variations || []), { name: '', media: [], youtubeLinks: [], price: '', discountPrice: '', costOfGoods: '', weight: '', stock: '', isDefault: (newProduct.variations || []).length === 0 }] })} className="px-4 py-2 bg-primary text-white rounded-xl font-bold">+ Add Variation</button>
                                                 </div>
                                             </div>
                                         </div>

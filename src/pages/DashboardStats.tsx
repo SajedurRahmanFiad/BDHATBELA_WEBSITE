@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 import { OrderStatus, Product } from '../types';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
+import { toFiniteNumber } from '../utils/money';
 import {
     TrendingUp, Clock, AlertCircle, ShoppingBag,
     BarChart3, Activity, Package, Layers
@@ -22,21 +23,22 @@ export const DashboardStats = () => {
 
     // 1. Filtered Orders for KPIs
     const filteredOrders = useMemo(() => {
-        if (!dateFilter || dateFilter.type === 'All') return orders;
-        return orders.filter(o => {
+        const filtered = !dateFilter || dateFilter.type === 'All' ? orders : orders.filter(o => {
             const d = new Date(o.date);
             if (dateFilter.startDate && d < dateFilter.startDate) return false;
             if (dateFilter.endDate && d > dateFilter.endDate) return false;
             return true;
         });
+
+        return filtered.filter(o => o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.RETURNED);
     }, [orders, dateFilter]);
 
     // KPIs
-    const totalSales = filteredOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalSales = filteredOrders.reduce((sum, o) => sum + toFiniteNumber(o.total), 0);
     const totalOrdersCount = filteredOrders.length;
     const pendingOrdersCount = filteredOrders.filter(o => o.status === OrderStatus.PENDING).length;
     // For insights list we use < 10 (which includes 0). The prompt says merge them.
-    const lowStockProducts = products.filter(p => p.stock < 10);
+    const lowStockProducts = products.filter(p => toFiniteNumber(p.stock) < 10);
 
     // 2. Trend Charts (Last 7/30 days, ignores DateFilterBar)
     const trendData = useMemo(() => {
@@ -55,11 +57,12 @@ export const DashboardStats = () => {
         cutoffDate.setDate(cutoffDate.getDate() - (trendDays - 1));
 
         orders.forEach(o => {
+            if (o.status === OrderStatus.CANCELLED || o.status === OrderStatus.RETURNED) return;
             const od = new Date(o.date);
             if (od >= cutoffDate) {
                 const key = od.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 if (dataMap[key]) {
-                    dataMap[key].sales += o.total;
+                    dataMap[key].sales += toFiniteNumber(o.total);
                     dataMap[key].orders += 1;
                 }
             }
@@ -77,7 +80,7 @@ export const DashboardStats = () => {
                 if (!salesMap[item.product.id]) {
                     salesMap[item.product.id] = { product: item.product, quantity: 0 };
                 }
-                salesMap[item.product.id].quantity += item.quantity;
+                salesMap[item.product.id].quantity += toFiniteNumber(item.quantity);
             });
         });
         return Object.values(salesMap).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
@@ -92,7 +95,7 @@ export const DashboardStats = () => {
                 if (!catMap[cat]) {
                     catMap[cat] = { name: cat, quantity: 0 };
                 }
-                catMap[cat].quantity += item.quantity;
+                catMap[cat].quantity += toFiniteNumber(item.quantity);
             });
         });
         return Object.values(catMap).sort((a, b) => b.quantity - a.quantity).slice(0, 5);

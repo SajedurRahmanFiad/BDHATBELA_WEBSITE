@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useAdmin } from '../AdminContext';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { OrderStatus, Order, StoreSettings } from '../types';
+import { toFiniteNumber } from '../utils/money';
 import {
     LineChart, Line, AreaChart, Area, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -21,22 +22,22 @@ const calculateOrderShippingCost = (order: Order, settings: StoreSettings) => {
         ? settings.shippingCharges.exceptions.find(ex => ex.district === order.area)
         : undefined;
     const exceptionCharge = exceptionItem !== undefined
-        ? Number(exceptionItem.charge)
+        ? toFiniteNumber(exceptionItem.charge)
         : undefined;
 
     const districtShippingCost = exceptionCharge !== undefined ? exceptionCharge : defaultCharge;
 
     const totalWeight = order.items.reduce((sum, item) => {
-        const w = item.variation?.weight ?? item.product?.weight ?? 0;
-        return sum + (w * item.quantity);
+        const w = toFiniteNumber(item.variation?.weight ?? item.product?.weight ?? 0);
+        return sum + (w * toFiniteNumber(item.quantity));
     }, 0);
 
-    const dynamicStartKg = settings.shippingCharges.dynamicShipping?.startKg ?? 1;
+    const dynamicStartKg = toFiniteNumber(settings.shippingCharges.dynamicShipping?.startKg ?? 1);
     const extraWeightCharge = settings.shippingCharges.dynamicShipping?.enabled
-        ? Math.max(totalWeight - dynamicStartKg, 0) * (settings.shippingCharges.dynamicShipping?.perKgCharge ?? 0)
+        ? Math.max(totalWeight - dynamicStartKg, 0) * toFiniteNumber(settings.shippingCharges.dynamicShipping?.perKgCharge ?? 0)
         : 0;
 
-    return districtShippingCost + extraWeightCharge;
+    return toFiniteNumber(districtShippingCost) + extraWeightCharge;
 };
 
 export const AdminAnalytics = () => {
@@ -67,15 +68,15 @@ export const AdminAnalytics = () => {
         let totalCostOfGoods = 0;
 
         filteredOrders.forEach(order => {
-            grossSales += order.total;
-            
+            grossSales += toFiniteNumber(order.total);
+
             const shipping = settings ? calculateOrderShippingCost(order, settings) : 0;
             totalShipping += shipping;
 
             let orderCog = 0;
             order.items.forEach(item => {
-                const cog = item.variation?.costOfGoods ?? item.product?.costOfGoods ?? 0;
-                orderCog += (cog * item.quantity);
+                const cog = toFiniteNumber(item.variation?.costOfGoods ?? item.product?.costOfGoods ?? 0);
+                orderCog += cog * toFiniteNumber(item.quantity);
             });
             totalCostOfGoods += orderCog;
         });
@@ -91,8 +92,8 @@ export const AdminAnalytics = () => {
             
             let orderCog = 0;
             order.items.forEach(item => {
-                const cog = item.variation?.costOfGoods ?? item.product?.costOfGoods ?? 0;
-                orderCog += (cog * item.quantity);
+                const cog = toFiniteNumber(item.variation?.costOfGoods ?? item.product?.costOfGoods ?? 0);
+                orderCog += cog * toFiniteNumber(item.quantity);
             });
 
             const orderDate = new Date(order.date);
@@ -102,7 +103,7 @@ export const AdminAnalytics = () => {
             if (!monthMap[monthKey]) {
                 monthMap[monthKey] = { month: monthLabel, revenue: 0, expenses: 0 };
             }
-            monthMap[monthKey].revenue += order.total;
+            monthMap[monthKey].revenue += toFiniteNumber(order.total);
             monthMap[monthKey].expenses += (shipping + orderCog);
         });
 
@@ -110,12 +111,9 @@ export const AdminAnalytics = () => {
     }, [orders, settings]);
 
     const totalExpenses = totalShipping + totalCostOfGoods;
-    const netSales = grossSales; // or grossSales - something else if needed, but per prompt Net Sales = Gross - Expenses
-    // "Net Sales: Gross Sales - Total Expenses" -> According to your spec, wait let's use standard definitions
-    // "Gross Profit = Revenue - Cost of Goods"
+    const netSales = grossSales;
     const grossProfit = grossSales - totalCostOfGoods;
-    // "Net Profit = Net Sales" -> I assume you meant Net Profit = Gross Profit - Expenses (shipping)
-    const netProfit = grossSales - totalExpenses;
+    const netProfit = netSales - totalExpenses;
     const profitMargin = grossSales > 0 ? ((netProfit / grossSales) * 100).toFixed(2) : '0.00';
 
     const StatCard = ({ title, value, icon: Icon, colorClass, subtitle }: any) => (
@@ -148,12 +146,12 @@ export const AdminAnalytics = () => {
                     colorClass="bg-green-50 text-green-500" 
                     subtitle="Total revenue collected"
                 />
-                <StatCard 
-                    title="Net Sales" 
-                    value={`৳${netProfit.toLocaleString()}`} 
-                    icon={Activity} 
-                    colorClass="bg-blue-50 text-blue-500" 
-                    subtitle="Gross Sales minus Total Expenses"
+                <StatCard
+                    title="Net Sales"
+                    value={`৳${netSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    icon={Activity}
+                    colorClass="bg-blue-50 text-blue-500"
+                    subtitle="Gross sales after excluded orders"
                 />
                 <StatCard 
                     title="Total Expenses" 

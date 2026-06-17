@@ -64,6 +64,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     setIsVideoHovered(false);
   };
 
+
+  const displayVar = product.productType === 'variation' ? (product.variations?.find(v => v.isDefault) ?? product.variations?.[0]) : undefined;
+  const displayPrice = displayVar?.discountPrice ?? displayVar?.price ?? product.discountPrice ?? product.price;
+  const displayBasePrice = displayVar?.discountPrice ? displayVar.price : (product.discountPrice ? product.price : undefined);
+
+  const rawImg = product.productType === 'variation'
+    ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
+    : normalizeMedia((product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null)));
+  const img = normalizeSrc(rawImg);
+
+  const youtubeId = isYouTubeUrl(img) ? extractYouTubeId(img) : null;
+  const isVideo = isVideoUrl(img);
+
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video || !isVideo || !isVideoUrl(img)) return;
@@ -77,18 +90,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       video.currentTime = 0;
     }
   }, [isVideoHovered, img, isVideo]);
-
-  const displayVar = product.productType === 'variation' ? (product.variations?.find(v => v.isDefault) ?? product.variations?.[0]) : undefined;
-  const displayPrice = displayVar?.discountPrice ?? displayVar?.price ?? product.discountPrice ?? product.price;
-  const displayBasePrice = displayVar?.discountPrice ? displayVar.price : (product.discountPrice ? product.price : undefined);
-
-  const rawImg = product.productType === 'variation'
-    ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
-    : normalizeMedia((product.images && product.images.length ? product.images[0] : (product.variations && product.variations.length ? product.variations[0].media : null)));
-  const img = normalizeSrc(rawImg);
-
-  const youtubeId = isYouTubeUrl(img) ? extractYouTubeId(img) : null;
-  const isVideo = isVideoUrl(img);
 
   return (
     <motion.div 

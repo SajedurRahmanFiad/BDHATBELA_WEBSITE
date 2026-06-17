@@ -48,7 +48,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       whileHover={{ y: -5 }}
       className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group"
     >
-      <Link to={`/product/${product.sku ?? product.id}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
+      <Link to={`/product/${encodeURIComponent(product.sku ?? product.id)}`} className="relative aspect-square overflow-hidden bg-gray-100 block">
         {(() => {
           const rawImg = product.productType === 'variation'
             ? normalizeMedia(product.variations?.find(v => v.isDefault)?.media ?? product.variations?.[0]?.media)
@@ -73,7 +73,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </Link>
 
       <div className="p-3 md:p-4 flex flex-col flex-1">
-        <Link to={`/product/${product.sku ?? product.id}`} className="hover:text-primary transition-colors mb-1 line-clamp-1 font-medium text-sm md:text-base">
+        <Link to={`/product/${encodeURIComponent(product.sku ?? product.id)}`} className="hover:text-primary transition-colors mb-1 line-clamp-1 font-medium text-sm md:text-base">
           {product.name}
         </Link>
         

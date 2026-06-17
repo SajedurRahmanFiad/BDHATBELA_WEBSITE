@@ -6,7 +6,7 @@ import { ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
-  const { banners, categories, fetchProductListings } = useAdmin();
+  const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings } = useAdmin();
   const [currentBanner, setCurrentBanner] = React.useState(0);
   const [featuredProducts, setFeaturedProducts] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
   const [newArrivals, setNewArrivals] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
@@ -48,7 +48,7 @@ export const Home: React.FC = () => {
   return (
     <div className="space-y-12 pb-12">
       {/* Hero Slider */}
-      {banners.length > 0 && (
+      {(bannersLoading || banners.length > 0) && (
         <section className="container mx-auto px-4 mt-4">
           <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg bg-gray-900">
             <AnimatePresence mode="wait">
@@ -60,52 +60,58 @@ export const Home: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="absolute inset-0"
               >
-                <img src={banners[currentBanner].image} alt={banners[currentBanner].title} className="w-full h-full object-cover" />
-                {(banners[currentBanner].title?.trim() || Boolean(banners[currentBanner].showButton)) && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
-                    <div className="max-w-xl text-white space-y-4">
-                      {banners[currentBanner].title && (
-                        <motion.h1
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-3xl md:text-5xl font-bold leading-tight"
-                          style={{ color: banners[currentBanner].titleColor || '#FFFFFF' }}
-                        >
-                          {banners[currentBanner].title}
-                        </motion.h1>
-                      )}
-                      {Boolean(banners[currentBanner].showButton) && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 }}
-                        >
-                          {(banners[currentBanner].buttonLink || banners[currentBanner].link) ? (
-                            <Link 
-                              to={(banners[currentBanner].buttonLink || banners[currentBanner].link) as string} 
-                              className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
-                              style={{
-                                backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
-                                color: banners[currentBanner].buttonTextColor || '#FFFFFF'
-                              }}
+                {bannersLoading ? (
+                  <div className="w-full h-full bg-gray-200 animate-pulse" />
+                ) : (
+                  <>
+                    <img src={banners[currentBanner].image} alt={banners[currentBanner].title} className="w-full h-full object-cover" />
+                    {(banners[currentBanner].title?.trim() || Boolean(banners[currentBanner].showButton)) && (
+                      <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
+                        <div className="max-w-xl text-white space-y-4">
+                          {banners[currentBanner].title && (
+                            <motion.h1
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="text-3xl md:text-5xl font-bold leading-tight"
+                              style={{ color: banners[currentBanner].titleColor || '#FFFFFF' }}
                             >
-                              {banners[currentBanner].buttonText || 'Shop Now'}
-                            </Link>
-                          ) : (
-                            <span
-                              className="inline-block px-8 py-3 rounded-full font-bold shadow-lg"
-                              style={{
-                                backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
-                                color: banners[currentBanner].buttonTextColor || '#FFFFFF'
-                              }}
-                            >
-                              {banners[currentBanner].buttonText || 'Shop Now'}
-                            </span>
+                              {banners[currentBanner].title}
+                            </motion.h1>
                           )}
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
+                          {Boolean(banners[currentBanner].showButton) && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 }}
+                            >
+                              {(banners[currentBanner].buttonLink || banners[currentBanner].link) ? (
+                                <Link
+                                  to={(banners[currentBanner].buttonLink || banners[currentBanner].link) as string}
+                                  className="inline-block px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all shadow-lg"
+                                  style={{
+                                    backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                                    color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                                  }}
+                                >
+                                  {banners[currentBanner].buttonText || 'Shop Now'}
+                                </Link>
+                              ) : (
+                                <span
+                                  className="inline-block px-8 py-3 rounded-full font-bold shadow-lg"
+                                  style={{
+                                    backgroundColor: banners[currentBanner].buttonBgColor || '#EF4444',
+                                    color: banners[currentBanner].buttonTextColor || '#FFFFFF'
+                                  }}
+                                >
+                                  {banners[currentBanner].buttonText || 'Shop Now'}
+                                </span>
+                              )}
+                            </motion.div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -140,56 +146,81 @@ export const Home: React.FC = () => {
             className="flex md:hidden overflow-x-auto no-scrollbar gap-3 pb-2 flex-nowrap cursor-grab active:cursor-grabbing select-none"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                to={`/products?category=${encodeURIComponent(cat.name)}`}
-                className="flex-none w-[22vw] min-w-[72px] max-w-[96px]"
-                draggable={false}
-              >
-                <motion.div
-                  whileHover={{ y: -4 }}
-                  className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all cursor-pointer group w-full h-full justify-between"
+            {categoriesLoading ? (
+              [1, 2, 3, 4].map((placeholder) => (
+                <div
+                  key={placeholder}
+                  className="flex-none w-[22vw] min-w-[72px] max-w-[96px]"
+                >
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all w-full h-full justify-between animate-pulse">
+                    <div className="w-full aspect-square bg-gray-200 rounded-xl" />
+                    <div className="h-3 w-3/4 rounded-full bg-gray-200" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              categories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  to={`/products?category=${encodeURIComponent(cat.name)}`}
+                  className="flex-none w-[22vw] min-w-[72px] max-w-[96px]"
                   draggable={false}
                 >
-                  <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
-                    {cat.image ? (
-                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
-                    ) : (
-                      <div className="scale-110">📦</div>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold text-center line-clamp-1 select-none pointer-events-none w-full">{cat.name}</span>
-                </motion.div>
-              </Link>
-            ))}
+                  <motion.div
+                    whileHover={{ y: -4 }}
+                    className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 transition-all cursor-pointer group w-full h-full justify-between"
+                    draggable={false}
+                  >
+                    <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                      ) : (
+                        <div className="scale-110">📦</div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-center line-clamp-1 select-none pointer-events-none w-full">{cat.name}</span>
+                  </motion.div>
+                </Link>
+              ))
+            )}
           </div>
 
           {/* Desktop View */}
           <div className="hidden md:flex flex-wrap justify-center gap-6 pb-4">
-            {categories.map((cat, idx) => (
-              <Link
-                key={cat.id}
-                to={`/products?category=${encodeURIComponent(cat.name)}`}
-                className="w-32"
-                draggable={false}
-              >
-                <motion.div
-                  whileHover={{ y: -5 }}
-                  className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 transition-all cursor-pointer group h-full justify-between"
+            {categoriesLoading ? (
+              [1, 2, 3, 4].map((placeholder) => (
+                <div key={placeholder} className="w-32 animate-pulse">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 transition-all h-full justify-between">
+                    <div className="w-full aspect-square bg-gray-200 rounded-xl" />
+                    <div className="h-3 w-3/4 rounded-full bg-gray-200" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              categories.map((cat, idx) => (
+                <Link
+                  key={cat.id}
+                  to={`/products?category=${encodeURIComponent(cat.name)}`}
+                  className="w-32"
                   draggable={false}
                 >
-                  <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
-                    {cat.image ? (
-                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
-                    ) : (
-                      <div className="scale-150">📦</div>
-                    )}
-                  </div>
-                  <span className="text-xs font-bold text-center line-clamp-2 select-none pointer-events-none">{cat.name}</span>
-                </motion.div>
-              </Link>
-            ))}
+                  <motion.div
+                    whileHover={{ y: -5 }}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 transition-all cursor-pointer group h-full justify-between"
+                    draggable={false}
+                  >
+                    <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all overflow-hidden" draggable={false}>
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                      ) : (
+                        <div className="scale-150">📦</div>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-center line-clamp-2 select-none pointer-events-none">{cat.name}</span>
+                  </motion.div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

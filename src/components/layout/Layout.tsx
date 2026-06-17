@@ -201,7 +201,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           <button
                             key={product.id}
                             onClick={() => {
-                              navigate(`/product/${product.sku ?? product.id}`);
+                              navigate(`/product/${encodeURIComponent(product.sku ?? product.id)}`);
                               setShowResults(false);
                               setSearchQuery('');
                             }}

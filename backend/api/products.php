@@ -110,6 +110,7 @@ function getProductListingDetails($pdo, $product, $variationsByProductId, $image
 
     return [
         'id' => $product['id'],
+        'sku' => $product['sku'] ?? null,
         'name' => $product['name'],
         'price' => (float)$product['price'],
         'discountPrice' => isset($product['discountPrice']) ? (float)$product['discountPrice'] : null,

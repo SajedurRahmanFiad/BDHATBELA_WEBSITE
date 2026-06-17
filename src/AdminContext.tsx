@@ -9,6 +9,8 @@ interface AdminContextType {
   settings: StoreSettings | null;
   orders: Order[];
   staff: Staff[];
+  categoriesLoading: boolean;
+  bannersLoading: boolean;
   addProduct: (product: Product) => Promise<boolean>;
   updateProduct: (product: Product) => Promise<boolean>;
   loadProducts: () => Promise<Product[]>;
@@ -76,12 +78,16 @@ const setCachedAdminData = (key: string, value: unknown) => {
 };
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const cachedCategories = getCachedAdminData<Category[]>('admin_categories', []);
+  const cachedBanners = getCachedAdminData<Banner[]>('admin_banners', []);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>(() => getCachedAdminData<Category[]>('admin_categories', []));
-  const [banners, setBanners] = useState<Banner[]>(() => getCachedAdminData<Banner[]>('admin_banners', []));
+  const [categories, setCategories] = useState<Category[]>(cachedCategories);
+  const [banners, setBanners] = useState<Banner[]>(cachedBanners);
   const [settings, setSettings] = useState<StoreSettings | null>(() => getCachedAdminData<StoreSettings | null>('admin_settings', null));
   const [orders, setOrders] = useState<Order[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(cachedCategories.length === 0);
+  const [bannersLoading, setBannersLoading] = useState(cachedBanners.length === 0);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -96,6 +102,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const fetchOptionalData = async () => {
+      setCategoriesLoading(true);
+      setBannersLoading(true);
       try {
         const [catRes, banRes] = await Promise.all([
           fetch(`${API_BASE_URL}/categories.php`),
@@ -111,6 +119,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCachedAdminData('admin_banners', freshBanners);
       } catch (e) {
         console.error('Failed to fetch categories or banners', e);
+      } finally {
+        setCategoriesLoading(false);
+        setBannersLoading(false);
       }
     };
 
@@ -407,6 +418,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateCategory,
     deleteCategory,
     addReview,
+    categoriesLoading,
+    bannersLoading,
   }), [
     products,
     categories,
@@ -414,6 +427,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     settings,
     orders,
     staff,
+    categoriesLoading,
+    bannersLoading,
     addProduct,
     updateProduct,
     loadProducts,

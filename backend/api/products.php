@@ -35,16 +35,19 @@ function sanitizeProductListParams($params) {
 function buildProductListWhere($pdo, $params, &$where, &$bind) {
     [$page, $limit, $search, $categories, $minPrice, $maxPrice, $sort] = sanitizeProductListParams($params);
     $hasSku = productTableHasColumn($pdo, 'sku');
+    $hasTags = productTableHasColumn($pdo, 'tags');
 
     if ($search !== '') {
         $searchConditions = ['p.name LIKE ?', 'p.category LIKE ?'];
         if ($hasSku) $searchConditions[] = 'p.sku LIKE ?';
+        if ($hasTags) $searchConditions[] = 'p.tags LIKE ?';
 
         $where[] = '(' . implode(' OR ', $searchConditions) . ')';
         $like = "%{$search}%";
         $bind[] = $like;
         $bind[] = $like;
         if ($hasSku) $bind[] = $like;
+        if ($hasTags) $bind[] = $like;
     }
 
     if (count($categories) > 0) {
@@ -120,7 +123,8 @@ function getProductListingDetails($pdo, $product, $variationsByProductId, $image
         'images' => $images,
         'stock' => (int)$product['stock'],
         'rating' => (float)$product['rating'],
-        'badge' => $product['badge'] ?? null
+        'badge' => $product['badge'] ?? null,
+        'tags' => $product['tags'] ?? null
     ];
 }
 
@@ -181,6 +185,7 @@ function getProductFullDetails($pdo, $product_id) {
     if (isset($product['product_type'])) $product['productType'] = $product['product_type'];
     if (isset($product['productType'])) $product['productType'] = $product['productType'];
     if (isset($product['sku'])) $product['sku'] = $product['sku'];
+    if (isset($product['tags'])) $product['tags'] = $product['tags'];
 
     // Get variations (if any)
     $product['variations'] = [];
@@ -239,9 +244,11 @@ function getProductListings($pdo, $params) {
     $countStmt->execute($bind);
     $total = (int)$countStmt->fetchColumn();
 
+    $hasTags = productTableHasColumn($pdo, 'tags');
     $selectColumns = ['id', 'name', 'price', 'discountPrice', 'category', 'stock', 'rating', 'badge'];
     if ($hasProductType) $selectColumns[] = 'product_type';
     if ($hasSku) $selectColumns[] = 'sku';
+    if ($hasTags) $selectColumns[] = 'tags';
 
     $stmt = $pdo->prepare("SELECT " . implode(', ', $selectColumns) . " FROM products p {$whereSql} ORDER BY " . getProductListingSort($sort) . " LIMIT ? OFFSET ?");
     foreach ($bind as $index => $value) {
@@ -370,6 +377,7 @@ try {
         $category = $data['category'];
         $stock = $data['stock'] ?? 0;
         $badge = $data['badge'] ?? null;
+        $tags = $data['tags'] ?? null;
         $images = $data['images'] ?? [];
         $features = $data['features'] ?? [];
         $productType = $data['productType'] ?? 'simple';
@@ -378,8 +386,8 @@ try {
         try {
             $pdo->beginTransaction();
             
-            $stmt = $pdo->prepare("INSERT INTO products (id, sku, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge, product_type, cost_of_goods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$id, $data['sku'] ?? null, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge, $productType, $costOfGoods]);
+            $stmt = $pdo->prepare("INSERT INTO products (id, sku, name, shortDescription, description, price, discountPrice, category, stock, weight, weightUnit, badge, tags, product_type, cost_of_goods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$id, $data['sku'] ?? null, $name, $shortDesc, $desc, $price, $discountPrice, $category, $stock, $data['weight'] ?? 0, $data['weightUnit'] ?? 'kg', $badge, $tags, $productType, $costOfGoods]);
 
             if (is_array($images) && count($images) > 0) {
                 foreach ($images as $img) {
@@ -482,7 +490,7 @@ try {
             $productType = $data['productType'] ?? 'simple';
             $costOfGoods = $data['costOfGoods'] ?? 0;
 
-            $stmt = $pdo->prepare("UPDATE products SET sku=?, name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=?, product_type=?, cost_of_goods=? WHERE id=?");
+            $stmt = $pdo->prepare("UPDATE products SET sku=?, name=?, shortDescription=?, description=?, price=?, discountPrice=?, category=?, stock=?, weight=?, weightUnit=?, badge=?, tags=?, product_type=?, cost_of_goods=? WHERE id=?");
             $result = $stmt->execute([
                 $data['sku'] ?? null,
                 $data['name'] ?? '', 
@@ -495,6 +503,7 @@ try {
                 $data['weight'] ?? 0,
                 $data['weightUnit'] ?? 'kg',
                 $data['badge'] ?? null,
+                $data['tags'] ?? null,
                 $productType,
                 $costOfGoods,
                 $id

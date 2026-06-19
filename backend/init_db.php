@@ -59,6 +59,7 @@ try {
             `weightUnit` VARCHAR(20) NOT NULL DEFAULT 'kg',
             `rating` DECIMAL(3, 2) DEFAULT 0,
             `badge` VARCHAR(50),
+            `tags` TEXT,
             `product_type` VARCHAR(20) DEFAULT 'simple',
             `cost_of_goods` DECIMAL(10, 2) DEFAULT 0.00
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
@@ -180,6 +181,7 @@ try {
 
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weight` DECIMAL(10, 2) NOT NULL DEFAULT 0"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `weightUnit` VARCHAR(20) NOT NULL DEFAULT 'kg'"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `tags` TEXT"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `product_type` VARCHAR(20) DEFAULT 'simple'"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `products` ADD COLUMN `cost_of_goods` DECIMAL(10, 2) DEFAULT 0.00"); } catch(Exception $e) {}
 

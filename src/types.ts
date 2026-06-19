@@ -47,6 +47,7 @@ export interface Product {
   reviews: Review[];
   features?: string[];
   badge?: string;
+  tags?: string;
 }
 
 export interface ProductListing {
@@ -62,6 +63,7 @@ export interface ProductListing {
   stock: number;
   rating: number;
   badge?: string;
+  tags?: string;
 }
 
 export interface PaginatedProducts {

@@ -12,7 +12,7 @@ const extractYouTubeId = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
   const trimmed = src.trim();
   const normalized = trimmed.startsWith('youtube:') ? trimmed.slice(8) : trimmed;
-  const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
   return match ? match[1] : null;
 };
 

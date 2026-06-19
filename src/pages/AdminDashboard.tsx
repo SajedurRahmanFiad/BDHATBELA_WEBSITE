@@ -35,7 +35,7 @@ const extractYouTubeId = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
     const trimmed = src.trim();
     const normalized = trimmed.startsWith('youtube:') ? trimmed.slice(8) : trimmed;
-    const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+    const match = normalized.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
     return match ? match[1] : null;
 };
 
@@ -1144,6 +1144,7 @@ const AdminProducts = () => {
         youtubeLinks: string[];
         features: string[];
         badge: string;
+        tags: string;
         productType: 'simple' | 'variation';
         costOfGoods: string;
         variations: any[];
@@ -1162,6 +1163,7 @@ const AdminProducts = () => {
         youtubeLinks: [],
         features: [] as string[],
         badge: '',
+        tags: '',
         productType: 'simple',
         costOfGoods: '',
         variations: [] as any[]
@@ -1185,6 +1187,7 @@ const AdminProducts = () => {
                 youtubeLinks: mainSplit.youtubeLinks,
                 features: editingProduct.features || [],
                 badge: editingProduct.badge || '',
+                tags: editingProduct.tags || '',
                 productType: editingProduct.productType || 'simple',
                 costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
                 variations: (editingProduct.variations || []).map((v: any) => {
@@ -1198,7 +1201,7 @@ const AdminProducts = () => {
                 })
             });
         } else {
-            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', tags: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
     }, [editingProduct, categories]);
 
@@ -1220,6 +1223,7 @@ const AdminProducts = () => {
         }
 
         const mergedProductImages = mergeMediaAndYouTubeLinks(newProduct.images, newProduct.youtubeLinks);
+        const cleanTags = (newProduct.tags || '').split(',').map((tag: string) => tag.trim()).filter(Boolean).join(', ');
         const productData = {
             id: editingProduct ? editingProduct.id : `p-${Date.now()}`,
             sku: newProduct.sku || undefined,
@@ -1235,7 +1239,8 @@ const AdminProducts = () => {
             images: mergedProductImages,
             features: newProduct.features || [],
             badge: newProduct.badge,
-            rating: editingProduct ? editingProduct.rating : 5,
+            tags: cleanTags || undefined,
+            rating: editingProduct?.rating ?? 0,
             productType: newProduct.productType,
             costOfGoods: newProduct.costOfGoods ? Number(newProduct.costOfGoods) : undefined,
             reviews: editingProduct?.reviews ?? [],
@@ -1284,6 +1289,7 @@ const AdminProducts = () => {
                 youtubeLinks: mainSplit.youtubeLinks,
                 features: editingProduct.features || [],
                 badge: editingProduct.badge || '',
+                tags: editingProduct.tags || '',
                 productType: editingProduct.productType || 'simple',
                 costOfGoods: editingProduct.costOfGoods ? String(editingProduct.costOfGoods) : '',
                 variations: (editingProduct.variations || []).map((v: any) => {
@@ -1297,14 +1303,15 @@ const AdminProducts = () => {
                 })
             });
         } else {
-            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', tags: '', productType: 'simple', costOfGoods: '', variations: [] });
         }
         setShowModal(false);
     };
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchTerm.toLowerCase())
+        p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.tags || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -1324,7 +1331,7 @@ const AdminProducts = () => {
                     <button
                         onClick={() => {
                             setEditingProduct(null);
-                            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', productType: 'simple', costOfGoods: '', variations: [] });
+                            setNewProduct({ sku: '', name: '', shortDescription: '', description: '', price: '', discountPrice: '', category: categories[0]?.name || '', stock: '', weight: '', weightUnit: 'kg', images: [], youtubeLinks: [], features: [], badge: '', tags: '', productType: 'simple', costOfGoods: '', variations: [] });
                             setShowModal(true);
                         }}
                         className="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-red-200 hover-primary-dark transition-all shrink-0"
@@ -1463,6 +1470,53 @@ const AdminProducts = () => {
                                         onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
                                         className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all h-32 resize-none text-sm leading-relaxed"
                                         placeholder="Describe full benefits, materials, sizing parameters..."
+                                    />
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Category *</label>
+                                    <select
+                                        value={newProduct.category ?? ''}
+                                        onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                                        className="w-full bg-white border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600"
+                                    >
+                                        {categories.map((cat: Category) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Status Badge</label>
+                                    <div className="flex gap-2 flex-wrap pb-2">
+                                        {['New', 'Hot', 'Top', 'Sale'].map(b => (
+                                            <button
+                                                key={b}
+                                                type="button"
+                                                onClick={() => setNewProduct({ ...newProduct, badge: b })}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${newProduct.badge === b ? 'border-primary bg-primary text-white' : 'border-gray-100 hover:border-gray-200'}`}
+                                            >{b}</button>
+                                        ))}
+                                        <input
+                                            value={['New', 'Hot', 'Top', 'Sale'].includes(newProduct.badge || '') ? '' : newProduct.badge}
+                                            onChange={e => setNewProduct({ ...newProduct, badge: e.target.value })}
+                                            className="flex-1 min-w-[120px] bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs font-bold"
+                                            placeholder="Custom Badge text..."
+                                        />
+                                        {newProduct.badge && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewProduct({ ...newProduct, badge: '' })}
+                                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tags (comma-separated)</label>
+                                    <input
+                                        value={newProduct.tags ?? ''}
+                                        onChange={e => setNewProduct({ ...newProduct, tags: e.target.value })}
+                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-bold"
+                                        placeholder="e.g. summer, new-arrival, cotton"
                                     />
                                 </div>
                                 <>

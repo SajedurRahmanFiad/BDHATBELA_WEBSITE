@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS `products` (
   `weightUnit` VARCHAR(20) NOT NULL DEFAULT 'kg',
   `rating` DECIMAL(3, 2) DEFAULT 0,
   `badge` VARCHAR(50),
+  `tags` TEXT,
   `product_type` VARCHAR(20) DEFAULT 'simple',
   `cost_of_goods` DECIMAL(10, 2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -175,6 +176,7 @@ ALTER TABLE `products`
   ADD COLUMN IF NOT EXISTS `weightUnit` VARCHAR(20) NOT NULL DEFAULT 'kg',
   ADD COLUMN IF NOT EXISTS `rating` DECIMAL(3, 2) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `badge` VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS `tags` TEXT,
   ADD COLUMN IF NOT EXISTS `product_type` VARCHAR(20) DEFAULT 'simple',
   ADD COLUMN IF NOT EXISTS `cost_of_goods` DECIMAL(10, 2) DEFAULT 0.00;
 

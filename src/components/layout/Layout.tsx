@@ -7,6 +7,7 @@ import { useAuth } from '../../AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartSidebar } from './CartSidebar';
 import { formatMoney } from '../../utils/money';
+import { trackSearch } from '../../utils/facebookPixel';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { totalItems, isSidebarOpen, openSidebar, closeSidebar, toast, clearToast } = useCart();
@@ -62,8 +63,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    const trimmed = searchQuery.trim();
+    if (trimmed) {
+      trackSearch(trimmed, searchResults.length);
+      navigate(`/products?search=${encodeURIComponent(trimmed)}`);
       setShowResults(false);
     }
   };

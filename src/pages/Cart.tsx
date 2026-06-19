@@ -5,7 +5,6 @@ import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { CartItem } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
-import { trackAddToCart } from '../utils/facebookPixel';
 
 const normalizeSrc = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
@@ -22,19 +21,6 @@ export const Cart: React.FC = () => {
   const { cart, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
   const { settings } = useAdmin();
 
-  React.useEffect(() => {
-    // Track add to cart with Facebook Pixel
-    if (cart.length > 0) {
-      const cartItems = cart.map(item => ({
-        id: item.product.id,
-        name: item.product.name,
-        price: getCartItemUnitPrice(item),
-        quantity: item.quantity,
-        sku: item.product.sku
-      }));
-      trackAddToCart(cartItems);
-    }
-  }, [cart.length]); // Only track when items count changes
 
   if (cart.length === 0) {
     return (

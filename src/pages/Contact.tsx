@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { motion } from 'motion/react';
 import { API_BASE_URL } from '../constants';
 import { normalizePhone, isValidPhone, handlePhoneChange } from '../utils/phone';
+import { trackContact } from '../utils/facebookPixel';
 
 export const Contact: React.FC = () => {
   const { settings } = useAdmin();
@@ -44,6 +45,7 @@ export const Contact: React.FC = () => {
         body: JSON.stringify(formData)
       });
       setSubmitted(true);
+      trackContact();
       setFormData({ 
         name: user?.name || '', 
         phone: user?.phone || '', 

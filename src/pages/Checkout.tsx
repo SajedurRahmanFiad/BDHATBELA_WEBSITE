@@ -8,7 +8,7 @@ import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone } from 'lucide
 import { DISTRICTS } from '../constants';
 import { OrderStatus } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
-import { trackInitiateCheckout } from '../utils/facebookPixel';
+import { trackInitiateCheckout, trackAddPaymentInfo } from '../utils/facebookPixel';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart, showToast } = useCart();
@@ -51,6 +51,7 @@ export const Checkout: React.FC = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
+  const [hasTrackedPaymentInfo, setHasTrackedPaymentInfo] = useState(false);
 
   const shippingCharges = settings?.shippingCharges;
   const shippingBase = toFiniteNumber(shippingCharges?.base ?? 0);
@@ -93,6 +94,21 @@ export const Checkout: React.FC = () => {
     : 0;
   const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
   const totalAmount = toFiniteNumber(subtotal) + shippingCost;
+
+  React.useEffect(() => {
+    if (paymentMethod === 'cod' || cart.length === 0) return;
+    if (hasTrackedPaymentInfo) return;
+
+    trackAddPaymentInfo({
+      totalPrice: totalAmount,
+      paymentMethod,
+      numItems: cart.reduce((sum, item) => sum + item.quantity, 0),
+      contentIds: cart.map(item => item.variation?.id ?? item.product.id),
+      contentNames: cart.map(item => item.product.name),
+    });
+
+    setHasTrackedPaymentInfo(true);
+  }, [paymentMethod, totalAmount, cart, hasTrackedPaymentInfo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

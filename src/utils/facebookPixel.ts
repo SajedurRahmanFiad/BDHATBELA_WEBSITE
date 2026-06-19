@@ -8,6 +8,7 @@ type MetaPixelSettings = {
   currency?: string;
   domain?: string;
   businessAccountId?: string;
+  timezone?: string;
 };
 
 type FbqQueueItem = IArguments | unknown[];
@@ -191,10 +192,47 @@ export const trackInitiateCheckout = (items: Array<{
 /**
  * Track add payment info event
  */
-export const trackAddPaymentInfo = (totalPrice: number) => {
+export const trackAddPaymentInfo = (params: {
+  totalPrice: number;
+  paymentMethod?: string;
+  numItems?: number;
+  contentIds?: string[];
+  contentNames?: string[];
+}) => {
   trackPixelEvent('AddPaymentInfo', {
-    value: Number(totalPrice) || 0,
+    value: Number(params.totalPrice) || 0,
     content_type: 'product',
+    payment_method: params.paymentMethod,
+    num_items: params.numItems,
+    content_ids: params.contentIds,
+    content_names: params.contentNames,
+  });
+};
+
+export const trackSearch = (searchQuery: string, totalResults?: number) => {
+  trackPixelEvent('Search', {
+    search_string: searchQuery,
+    content_type: 'product',
+    value: 0,
+    currency: pixelSettings?.currency,
+    num_items: totalResults,
+  });
+};
+
+export const trackContact = () => {
+  trackPixelEvent('Contact', {
+    content_name: 'Contact Form',
+    content_category: 'Support',
+    status: 'submitted',
+    value: 0,
+  });
+};
+
+export const trackCompleteRegistration = () => {
+  trackPixelEvent('CompleteRegistration', {
+    content_name: 'Account Signup',
+    status: 'success',
+    value: 0,
   });
 };
 

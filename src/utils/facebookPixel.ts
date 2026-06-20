@@ -29,7 +29,27 @@ let pixelInitialized = false;
 let activePixelId: string | null = null;
 let pixelSettings: MetaPixelSettings | null = null;
 
-const normalizePixelId = (pixelId?: string) => String(pixelId ?? '').trim();
+const normalizePixelId = (pixelId?: string) => {
+  const raw = String(pixelId ?? '').trim();
+  return raw.replace(/^['"]+|['"]+$/g, '').trim();
+};
+
+const escapeSelectorValue = (value: string) => {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value);
+  }
+  return value.replace(/([ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+};
+
+const hasFacebookPixelScript = (pixelId: string) => {
+  try {
+    return !!document.querySelector(`script[data-facebook-pixel="${escapeSelectorValue(pixelId)}"]`);
+  } catch {
+    return Array.from(document.querySelectorAll('script[data-facebook-pixel]')).some(
+      (el) => el.getAttribute('data-facebook-pixel') === pixelId
+    );
+  }
+};
 
 const ensureFbq = () => {
   if (window.fbq) return window.fbq;
@@ -84,7 +104,7 @@ export const initializeFacebookPixel = (settings: any) => {
  * Load Facebook Pixel script
  */
 const loadFacebookPixelScript = (pixelId: string) => {
-  if (document.querySelector(`script[data-facebook-pixel="${pixelId}"]`)) {
+  if (hasFacebookPixelScript(pixelId)) {
     return;
   }
 

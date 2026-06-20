@@ -52,7 +52,7 @@ export const MetaPixelSettings = () => {
     const handleSave = () => {
         const sanitized = {
             ...localSettings,
-            pixelId: localSettings.pixelId.trim(),
+            pixelId: localSettings.pixelId.trim().replace(/^['"]+|['"]+$/g, ''),
             businessAccountId: localSettings.businessAccountId.trim(),
             accessToken: localSettings.accessToken.trim(),
             domain: localSettings.domain.trim(),

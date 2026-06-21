@@ -24,22 +24,15 @@ const getSortValue = (value: string) => {
 
 const normalizePriceRange = (min: number, max: number, boundsMin: number, boundsMax: number): [number, number] => {
   const lowerBound = Number.isFinite(boundsMin) ? boundsMin : 0;
-  const upperBound = Number.isFinite(boundsMax) && boundsMax > lowerBound ? boundsMax : lowerBound + 100000;
-  const numericMin = Number.isFinite(min) ? min : lowerBound;
-  const numericMax = Number.isFinite(max) ? max : upperBound;
+  const upperBound = Number.isFinite(boundsMax) ? boundsMax : lowerBound;
+  const safeLower = Math.max(0, lowerBound);
+  const safeUpper = Math.max(safeLower, upperBound);
+  const numericMin = Number.isFinite(min) ? min : safeLower;
+  const numericMax = Number.isFinite(max) ? max : safeUpper;
   const orderedMin = Math.min(numericMin, numericMax);
   const orderedMax = Math.max(numericMin, numericMax);
-
-  let clampedMin = Math.max(lowerBound, Math.min(orderedMin, upperBound));
-  let clampedMax = Math.min(upperBound, Math.max(orderedMax, lowerBound));
-
-  if (clampedMax - clampedMin < 1) {
-    if (clampedMax < upperBound) {
-      clampedMax = Math.min(upperBound, clampedMin + 1);
-    } else {
-      clampedMin = Math.max(lowerBound, clampedMax - 1);
-    }
-  }
+  const clampedMin = Math.max(safeLower, Math.min(orderedMin, safeUpper));
+  const clampedMax = Math.min(safeUpper, Math.max(orderedMax, safeLower));
 
   return [clampedMin, clampedMax];
 };
@@ -111,14 +104,14 @@ export const ProductList: React.FC = () => {
       sort: sortOrder
     };
 
-    const shouldApplyPriceRange = hasUrlPriceParams || listings.maxPrice > 0;
-    if (shouldApplyPriceRange && priceRange[1] > 0) {
+    const appliedPriceRange = priceRange[0] > listings.minPrice || priceRange[1] < listings.maxPrice;
+    if ((hasUrlPriceParams || appliedPriceRange) && priceRange[1] > 0) {
       params.minPrice = String(priceRange[0]);
       params.maxPrice = String(priceRange[1]);
     }
 
     return params;
-  }, [categories, selectedCategories, priceRange, sortOrder, searchTerm, hasUrlPriceParams, listings.maxPrice]);
+  }, [categories, selectedCategories, priceRange, sortOrder, searchTerm, hasUrlPriceParams, listings.minPrice, listings.maxPrice]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -213,9 +206,12 @@ export const ProductList: React.FC = () => {
   };
 
   const filteredProducts: ProductListing[] = listings.items;
-  const rangeDiff = (listings.maxPrice || 100000) - (listings.minPrice || 0);
-  const leftPct = rangeDiff > 0 ? ((tempPriceRange[0] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
-  const rightPct = rangeDiff > 0 ? 100 - ((tempPriceRange[1] - (listings.minPrice || 0)) / rangeDiff) * 100 : 0;
+  const rangeMin = listings.minPrice || 0;
+  const rangeMax = listings.maxPrice || 0;
+  const rangeDiff = rangeMax - rangeMin;
+  const hasPriceRange = rangeDiff > 0;
+  const leftPct = hasPriceRange ? ((tempPriceRange[0] - rangeMin) / rangeDiff) * 100 : 0;
+  const rightPct = hasPriceRange ? 100 - ((tempPriceRange[1] - rangeMin) / rangeDiff) * 100 : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -279,27 +275,27 @@ export const ProductList: React.FC = () => {
                     <div className="absolute h-1 bg-primary rounded-lg" style={{ left: `${Math.min(100, Math.max(0, leftPct))}%`, right: `${Math.min(100, Math.max(0, rightPct))}%` }} />
                     <input
                       type="range"
-                      min={listings.minPrice}
-                      max={listings.maxPrice}
+                      min={rangeMin}
+                      max={rangeMax}
                       step="1"
                       value={tempPriceRange[0]}
-                      disabled={isLoading || listings.maxPrice === 0}
-                      onChange={e => { const val = Math.min(Number(e.target.value), tempPriceRange[1] - 1); handleTempPriceRange([val, tempPriceRange[1]]); }}
+                      disabled={isLoading || rangeMax === 0}
+                      onChange={e => { const val = Math.min(Number(e.target.value), tempPriceRange[1]); handleTempPriceRange([val, tempPriceRange[1]]); }}
                       onMouseUp={commitTempPriceRange}
                       onTouchEnd={commitTempPriceRange}
                       onPointerUp={commitTempPriceRange}
                       onBlur={commitTempPriceRange}
                       className="w-full accent-primary appearance-none bg-transparent"
-                      style={{ zIndex: tempPriceRange[0] > (listings.maxPrice - rangeDiff * 0.1) ? 5 : 3 }}
+                      style={{ zIndex: hasPriceRange && tempPriceRange[0] > (rangeMax - rangeDiff * 0.1) ? 5 : 3 }}
                     />
                     <input
                       type="range"
-                      min={listings.minPrice}
-                      max={listings.maxPrice}
+                      min={rangeMin}
+                      max={rangeMax}
                       step="1"
                       value={tempPriceRange[1]}
-                      disabled={isLoading || listings.maxPrice === 0}
-                      onChange={e => { const val = Math.max(Number(e.target.value), tempPriceRange[0] + 1); handleTempPriceRange([tempPriceRange[0], val]); }}
+                      disabled={isLoading || rangeMax === 0}
+                      onChange={e => { const val = Math.max(Number(e.target.value), tempPriceRange[0]); handleTempPriceRange([tempPriceRange[0], val]); }}
                       onMouseUp={commitTempPriceRange}
                       onTouchEnd={commitTempPriceRange}
                       onPointerUp={commitTempPriceRange}
@@ -375,7 +371,7 @@ export const ProductList: React.FC = () => {
               <div className="text-6xl">🔍</div>
               <h2 className="text-xl font-bold">No Products Found</h2>
               <p className="text-gray-400 italic font-medium">Try adjusting your search or filters</p>
-              <button onClick={() => { setSelectedCategories([]); commitPriceRange(listings.minPrice || 0, listings.maxPrice || 100000); setSearchTerm(''); }} className="text-primary font-bold underline cursor-pointer">Reset All Filters</button>
+              <button onClick={() => { setSelectedCategories([]); commitPriceRange(rangeMin, rangeMax || 100000); setSearchTerm(''); }} className="text-primary font-bold underline cursor-pointer">Reset All Filters</button>
             </div>
           )}
         </div>

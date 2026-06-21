@@ -4,15 +4,15 @@ import { useAdmin } from '../AdminContext';
 import { useAuth } from '../AuthContext';
 import { handlePhoneChange, isValidPhone } from '../utils/phone';
 import { useNavigate, Link } from 'react-router-dom';
-import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone } from 'lucide-react';
+import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone, Tag, Percent, Loader2 } from 'lucide-react';
 import { DISTRICTS } from '../constants';
-import { OrderStatus } from '../types';
+import { OrderStatus, CouponApplicationResult } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 import { trackInitiateCheckout, trackAddPaymentInfo } from '../utils/facebookPixel';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart, showToast } = useCart();
-  const { settings, addOrder, products: liveProducts } = useAdmin();
+  const { settings, addOrder, products: liveProducts, validateCoupon } = useAdmin();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -35,6 +35,11 @@ export const Checkout: React.FC = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    setCouponResult(null);
+    setCouponError('');
+  }, [cart]);
+
   // Track initiate checkout with Facebook Pixel
   useEffect(() => {
     if (cart.length > 0) {
@@ -52,6 +57,42 @@ export const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
   const [hasTrackedPaymentInfo, setHasTrackedPaymentInfo] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponResult, setCouponResult] = useState<CouponApplicationResult | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  const couponDiscount = couponResult?.valid ? toFiniteNumber(couponResult.discount) : 0;
+  const discountedSubtotal = Math.max(0, toFiniteNumber(subtotal) - couponDiscount);
+
+  const applyCoupon = async () => {
+    const normalizedCode = couponCode.trim();
+    if (!normalizedCode) {
+      setCouponResult(null);
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    setCouponError('');
+
+    try {
+      const result = await validateCoupon(normalizedCode, cart);
+      setCouponResult(result);
+
+      if (result.valid) {
+        setCouponError('');
+        showToast(result.message || 'Coupon applied successfully.');
+      } else {
+        setCouponError(result.error || 'This coupon could not be applied to your cart.');
+      }
+    } catch {
+      setCouponResult(null);
+      setCouponError('Unable to validate coupon. Please try again.');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
 
   const shippingCharges = settings?.shippingCharges;
   const shippingBase = toFiniteNumber(shippingCharges?.base ?? 0);
@@ -93,7 +134,7 @@ export const Checkout: React.FC = () => {
     ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
     : 0;
   const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
-  const totalAmount = toFiniteNumber(subtotal) + shippingCost;
+  const totalAmount = discountedSubtotal + shippingCost;
 
   React.useEffect(() => {
     if (paymentMethod === 'cod' || cart.length === 0) return;
@@ -126,14 +167,20 @@ export const Checkout: React.FC = () => {
         return;
     }
 
+    if (couponCode.trim() && !couponResult?.valid) {
+      showToast(couponError || 'Please apply a valid coupon before confirming your order.', 'error');
+      return;
+    }
+
     const mappedItems = cart.map(item => ({
       ...item,
       product: item.product,
       variation: item.variation
     }));
 
+    const orderPrefix = settings?.orders?.orderIdPrefix?.trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9_-]/g, '') || 'order';
     const newOrder = {
-      id: `order-${Date.now()}`,
+      id: `${orderPrefix}-${Date.now()}`,
       customerId: 'guest',
       customerName: formData.name,
       phone: formData.phone,
@@ -145,6 +192,11 @@ export const Checkout: React.FC = () => {
       date: new Date().toLocaleDateString('en-US'),
       paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase(),
       note: formData.note + (transactionId ? ` | TrxID: ${transactionId}` : ''),
+      couponCode: couponResult?.valid ? couponResult.coupon?.code : undefined,
+      couponId: couponResult?.valid ? couponResult.coupon?.id : undefined,
+      couponType: couponResult?.valid ? couponResult.coupon?.type : undefined,
+      couponDiscount,
+      couponNoteMessage: couponResult?.message || undefined,
       event_source_url: window.location.href,
       page_url: window.location.href
     };
@@ -337,11 +389,59 @@ export const Checkout: React.FC = () => {
               ))}
             </div>
 
+            <div className="space-y-3 pt-4 border-t border-white/10">
+              <label className="text-[10px] font-black uppercase tracking-widest opacity-70 flex items-center gap-2">
+                <Tag size={14} /> Coupon Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      applyCoupon();
+                    }
+                  }}
+                  placeholder="Enter coupon code"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 outline-none focus:border-white/50"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={isApplyingCoupon}
+                  className="px-4 rounded-xl bg-white text-primary font-black disabled:opacity-60"
+                >
+                  {isApplyingCoupon ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-xs text-red-300 font-bold">{couponError}</p>
+              )}
+              {couponResult?.valid && (
+                <div className="p-3 rounded-xl bg-white/10 border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="opacity-80 flex items-center gap-2"><Percent size={14} /> {couponResult.coupon?.name || couponCode}</span>
+                    <span className="text-green-300 font-black">-৳{formatMoney(couponDiscount)}</span>
+                  </div>
+                  {couponResult.message && (
+                    <p className="text-xs text-white/70 font-medium">{couponResult.message}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Subtotal</span>
                 <span>৳{formatMoney(subtotal)}</span>
               </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-sm text-green-300 font-bold">
+                  <span>Coupon Discount</span>
+                  <span>-৳{formatMoney(couponDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Delivery Charge</span>
                 <span>৳{formatMoney(shippingCost)}</span>

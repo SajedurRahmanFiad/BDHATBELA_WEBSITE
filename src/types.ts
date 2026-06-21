@@ -120,6 +120,11 @@ export interface Order {
   date: string;
   paymentMethod: string;
   note?: string;
+  couponId?: string | null;
+  couponCode?: string | null;
+  couponType?: CouponType | string | null;
+  couponDiscount?: number;
+  couponNoteMessage?: string | null;
   eventId?: string;
   event_source_url?: string;
   page_url?: string;
@@ -131,6 +136,53 @@ export interface Category {
   icon: string;
   image?: string;
   parentId?: string | null;
+}
+
+export type CouponType = 'fixed' | 'percentage' | 'note';
+
+export interface Coupon {
+  id: string;
+  code: string;
+  name: string;
+  type: CouponType;
+  amount: number;
+  percentage: number;
+  noteMessage?: string | null;
+  isActive: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  usageLimit?: number | null;
+  timesUsed?: number;
+  productIds: string[];
+  categoryIds: string[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface CouponApplicationResult {
+  valid: boolean;
+  error?: string;
+  coupon?: Coupon | null;
+  discount: number;
+  message?: string;
+  matchedProducts?: string[];
+  matchedCategories?: string[];
+}
+
+export interface CouponFormData {
+  id?: string;
+  code: string;
+  name: string;
+  type: CouponType;
+  amount?: string | number;
+  percentage?: string | number;
+  noteMessage?: string;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  usageLimit?: string | number;
+  productIds: string[];
+  categoryIds: string[];
 }
 
 export interface Banner {
@@ -182,6 +234,9 @@ export interface StoreSettings {
     nagad: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
     rocket: { enabled: boolean; number: string; type: 'Personal' | 'Agent' | 'Merchant'; instructions: string; };
     bank: { enabled: boolean; accountName: string; accountNumber: string; bankName: string; branchName: string; instructions: string; };
+  };
+  orders?: {
+    orderIdPrefix: string;
   };
   thankYouPage?: { title: string; subtitle: string; description: string; };
   metaPixel?: {

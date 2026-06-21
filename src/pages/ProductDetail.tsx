@@ -5,6 +5,7 @@ import { useCart } from '../CartContext';
 import { useAuth } from '../AuthContext';
 import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
+import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackViewContent } from '../utils/facebookPixel';
 
@@ -376,11 +377,10 @@ export const ProductDetail: React.FC = () => {
           {/* Details */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-bold mb-6 border-b pb-4">Product Details</h2>
-            <div className="prose prose-gray max-w-none">
-              <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {product.description}
-              </div>
-            </div>
+            <div
+              className="prose prose-gray max-w-none rich-description"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(product.description || '') }}
+            />
           </div>
 
           {/* Reviews */}

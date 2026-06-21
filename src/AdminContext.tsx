@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Product, Category, Banner, StoreSettings, Order, OrderStatus, Staff, Review, PaginatedProducts } from './types';
+import { Product, Category, Banner, StoreSettings, Order, OrderStatus, Staff, Review, PaginatedProducts, Coupon, CouponFormData, CouponApplicationResult, CartItem } from './types';
 import { API_BASE_URL } from './constants';
 
 interface AdminContextType {
@@ -8,6 +8,7 @@ interface AdminContextType {
   banners: Banner[];
   settings: StoreSettings | null;
   orders: Order[];
+  coupons: Coupon[];
   staff: Staff[];
   categoriesLoading: boolean;
   bannersLoading: boolean;
@@ -23,6 +24,10 @@ interface AdminContextType {
   loadOrders: () => Promise<Order[]>;
   deleteOrder: (id: string) => Promise<void>;
   addOrder: (order: Order) => Promise<{ success: boolean; error?: string; order?: Order }>;
+  loadCoupons: () => Promise<Coupon[]>;
+  saveCoupon: (coupon: CouponFormData) => Promise<Coupon | null>;
+  deleteCoupon: (id: string) => Promise<void>;
+  validateCoupon: (code: string, items: CartItem[]) => Promise<CouponApplicationResult>;
   updateBanners: (banners: Banner[]) => Promise<void>;
   addBanner: (banner: Banner) => Promise<void>;
   updateBanner: (banner: Banner) => Promise<void>;
@@ -85,6 +90,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [banners, setBanners] = useState<Banner[]>(cachedBanners);
   const [settings, setSettings] = useState<StoreSettings | null>(() => getCachedAdminData<StoreSettings | null>('admin_settings', null));
   const [orders, setOrders] = useState<Order[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(cachedCategories.length === 0);
   const [bannersLoading, setBannersLoading] = useState(cachedBanners.length === 0);
@@ -289,6 +295,61 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const loadCoupons = useCallback(async (): Promise<Coupon[]> => {
+    const loaded = await readJsonResponse(await fetch(`${API_BASE_URL}/coupons.php`), `${API_BASE_URL}/coupons.php`);
+    const freshCoupons = Array.isArray(loaded) ? loaded : [];
+    setCoupons(freshCoupons);
+    return freshCoupons;
+  }, []);
+
+  const saveCoupon = useCallback(async (coupon: CouponFormData): Promise<Coupon | null> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/coupons.php`, {
+        method: coupon.id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(coupon)
+      });
+      const text = await res.text();
+      if (res.ok) {
+        const saved = JSON.parse(text) as Coupon;
+        setCoupons(prev => {
+          const exists = prev.some(item => item.id === saved.id);
+          if (exists) return prev.map(item => item.id === saved.id ? saved : item);
+          return [saved, ...prev];
+        });
+        return saved;
+      }
+      let err = {} as any;
+      try { err = JSON.parse(text); } catch { console.error('Failed to parse coupon save error response:', text); }
+      alert(err.error || `Failed to save coupon (HTTP ${res.status}). Please try again.`);
+      return null;
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save coupon. Please try again.');
+      return null;
+    }
+  }, []);
+
+  const deleteCoupon = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/coupons.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (res.ok) setCoupons(prev => prev.filter(item => item.id !== id));
+    } catch (e) { console.error(e); }
+  }, []);
+
+  const validateCoupon = useCallback(async (code: string, items: CartItem[]): Promise<CouponApplicationResult> => {
+    const res = await fetch(`${API_BASE_URL}/coupons.php?action=validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, items })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { valid: false, error: err.error || 'Failed to validate coupon.', discount: 0 };
+    }
+    return await res.json();
+  }, []);
+
   const updateBanners = useCallback(async (b: Banner[]) => {
     setBanners(b);
   }, []);
@@ -395,6 +456,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     banners,
     settings,
     orders,
+    coupons,
     staff,
     addProduct,
     updateProduct,
@@ -407,6 +469,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateOrderStatus,
     loadOrders,
     addOrder,
+    loadCoupons,
+    saveCoupon,
+    deleteCoupon,
+    validateCoupon,
     updateBanners,
     addBanner,
     updateBanner,
@@ -426,6 +492,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     banners,
     settings,
     orders,
+    coupons,
     staff,
     categoriesLoading,
     bannersLoading,
@@ -440,6 +507,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateOrderStatus,
     loadOrders,
     addOrder,
+    loadCoupons,
+    saveCoupon,
+    deleteCoupon,
+    validateCoupon,
     updateBanners,
     addBanner,
     updateBanner,

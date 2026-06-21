@@ -7,7 +7,7 @@ import {
     Package, Clock, CheckCircle, CheckCircle2, Search, Filter,
     Trash2, Edit3, Eye, ArrowUpDown, ChevronDown, ChevronUp,
     Phone, Mail, MapPin, CreditCard, Upload, X, Menu, MonitorPlay, MessageSquare,
-    User, LineChart, Zap
+    User, LineChart, Zap, Tag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
@@ -16,12 +16,15 @@ import { API_BASE_URL, DISTRICTS } from '../constants';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { AdminAnalytics } from './AdminAnalytics';
 import { DashboardStats } from './DashboardStats';
+import { RichTextEditor } from '../components/product/RichTextEditor';
 import { BasicInfoSettings } from './settings/BasicInfoSettings';
 import { BrandingSettings } from './settings/BrandingSettings';
 import { ShippingSettings } from './settings/ShippingSettings';
 import { GatewaySettings } from './settings/GatewaySettings';
 import { ThankYouSettings } from './settings/ThankYouSettings';
+import { OrdersSettings } from './settings/OrdersSettings';
 import { MetaPixelSettings } from './settings/MetaPixelSettings';
+import { Coupons } from './Coupons';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 
 const normalizeSrc = (src?: string | null) => {
@@ -138,6 +141,7 @@ const AdminSidebarContent = ({
                 <NavItem to="/admin" icon={LayoutDashboard} label="Dashboard" />
                 <NavItem to="/admin/analytics" icon={LineChart} label="Analytics" />
                 <NavItem to="/admin/orders" icon={ListOrdered} label="Orders" badge={pendingOrders} />
+                <NavItem to="/admin/coupons" icon={Tag} label="Coupons" />
                 <NavItem to="/admin/categories" icon={Filter} label="Categories" />
                 <NavItem to="/admin/products" icon={ShoppingBag} label="Products" />
 
@@ -168,6 +172,7 @@ const AdminSidebarContent = ({
                                 <NavItem to="/admin/settings/gateways" icon={CreditCard} label="Gateways" />
                                 <NavItem to="/admin/settings/banners" icon={MonitorPlay} label="Banners" />
                                 <NavItem to="/admin/settings/thankyou" icon={CheckCircle2} label="Thank You Page" />
+                                <NavItem to="/admin/settings/orders" icon={ListOrdered} label="Orders" />
                                 <NavItem to="/admin/settings/meta-pixel" icon={Zap} label="Meta Pixel" />
                             </motion.div>
                         )}
@@ -330,6 +335,7 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="/" element={<DashboardStats />} />
                         <Route path="/analytics" element={<AdminAnalytics />} />
                         <Route path="/orders" element={<AdminOrders />} />
+                        <Route path="/coupons" element={<Coupons />} />
                         <Route path="/categories" element={<AdminCategories />} />
                         <Route path="/products" element={<AdminProducts />} />
                         <Route path="/settings/basic" element={<BasicInfoSettings />} />
@@ -338,6 +344,7 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="/settings/gateways" element={<GatewaySettings />} />
                         <Route path="/settings/banners" element={<AdminBanners />} />
                         <Route path="/settings/thankyou" element={<ThankYouSettings />} />
+                        <Route path="/settings/orders" element={<OrdersSettings />} />
                         <Route path="/settings/meta-pixel" element={<MetaPixelSettings />} />
                         <Route path="/contacts" element={<AdminContacts />} />
                         <Route path="/staff" element={<AdminStaff />} />
@@ -855,6 +862,23 @@ const AdminOrders = () => {
                                     </h3>
                                     <div className="bg-gray-50 p-6 rounded-3xl space-y-3 border">
                                         <p className="text-sm font-bold">Payment Method: <span className="text-primary uppercase font-black">{selectedOrder.paymentMethod}</span></p>
+                                        {selectedOrder.couponCode && (
+                                            <div className="pt-2 space-y-2">
+                                                <p className="text-[10px] text-gray-400 font-bold uppercase">Coupon:</p>
+                                                <div className="p-3 bg-white rounded-xl border shadow-inner space-y-2">
+                                                    <p className="text-sm font-bold">Code: <span className="text-primary uppercase">{selectedOrder.couponCode}</span></p>
+                                                    {selectedOrder.couponType && (
+                                                        <p className="text-sm font-bold">Type: <span className="text-primary capitalize">{selectedOrder.couponType}</span></p>
+                                                    )}
+                                                    {selectedOrder.couponDiscount !== undefined && selectedOrder.couponDiscount > 0 && (
+                                                        <p className="text-sm font-bold">Discount: <span className="text-green-600">-৳{formatMoney(selectedOrder.couponDiscount)}</span></p>
+                                                    )}
+                                                    {selectedOrder.couponNoteMessage && (
+                                                        <p className="text-sm text-gray-600 font-medium">{selectedOrder.couponNoteMessage}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                         {selectedOrder.note && (
                                             <div className="pt-2">
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Note & Payment Info:</p>
@@ -1465,11 +1489,10 @@ const AdminProducts = () => {
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Long Details *</label>
-                                    <textarea
+                                    <RichTextEditor
                                         value={newProduct.description ?? ''}
-                                        onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all h-32 resize-none text-sm leading-relaxed"
-                                        placeholder="Describe full benefits, materials, sizing parameters..."
+                                        onChange={description => setNewProduct({ ...newProduct, description })}
+                                        label="Describe full benefits, materials, sizing parameters..."
                                     />
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
@@ -1625,46 +1648,6 @@ const AdminProducts = () => {
                                             ))}
                                         </div>
                                         <p className="text-[10px] text-gray-500 italic">YouTube videos will appear at the end of the product gallery, after all uploaded images.</p>
-                                    </div>
-
-                                    <div className="space-y-2 sm:col-span-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Category *</label>
-                                        <select
-                                            value={newProduct.category ?? ''}
-                                            onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                                            className="w-full bg-white border border-gray-200 px-4 py-3 rounded-2xl outline-none transition-all text-sm font-black text-gray-600"
-                                        >
-                                            {categories.map((cat: Category) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product Status Badge</label>
-                                        <div className="flex gap-2 flex-wrap pb-2">
-                                            {['New', 'Hot', 'Top', 'Sale'].map(b => (
-                                                <button
-                                                    key={b}
-                                                    type="button"
-                                                    onClick={() => setNewProduct({ ...newProduct, badge: b })}
-                                                    className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${newProduct.badge === b ? 'border-primary bg-primary text-white' : 'border-gray-100 hover:border-gray-200'}`}
-                                                >{b}</button>
-                                            ))}
-                                            <input
-                                                value={['New', 'Hot', 'Top', 'Sale'].includes(newProduct.badge || '') ? '' : newProduct.badge}
-                                                onChange={e => setNewProduct({ ...newProduct, badge: e.target.value })}
-                                                className="flex-1 min-w-[120px] bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl outline-none transition-all text-xs font-bold"
-                                                placeholder="Custom Badge text..."
-                                            />
-                                            {newProduct.badge && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setNewProduct({ ...newProduct, badge: '' })}
-                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
-                                        </div>
                                     </div>
                                         </div>
                                     ) : null}

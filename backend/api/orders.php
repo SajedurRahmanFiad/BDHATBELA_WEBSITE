@@ -1,6 +1,7 @@
 <?php
 // backend/api/orders.php
 require_once '../config.php';
+require_once __DIR__ . '/coupon_logic.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -12,6 +13,11 @@ function getOrderDetails($pdo, $order_id) {
     if (!$order) return null;
 
     $order['total'] = (float)$order['total'];
+    $order['couponId'] = $order['coupon_id'] ?? null;
+    $order['couponCode'] = $order['coupon_code'] ?? null;
+    $order['couponType'] = $order['coupon_type'] ?? null;
+    $order['couponDiscount'] = isset($order['coupon_discount']) ? (float)$order['coupon_discount'] : 0.00;
+    $order['couponNoteMessage'] = $order['coupon_note_message'] ?? null;
 
     $stmt = $pdo->prepare("
         SELECT
@@ -167,12 +173,30 @@ if ($method === 'GET') {
     $paymentMethod = $data['paymentMethod'];
     $note = $data['note'] ?? null;
     $items = $data['items'] ?? [];
+    $couponCode = couponNormalizeCode($data['couponCode'] ?? '');
+    $couponId = $data['couponId'] ?? null;
+    $couponType = $data['couponType'] ?? null;
+    $couponNoteMessage = $data['couponNoteMessage'] ?? null;
+    $couponDiscount = 0.00;
+    $couponResult = null;
+
+    if ($couponCode) {
+        $couponResult = couponGetApplicationResult($pdo, $couponCode, $items);
+        if (!$couponResult['valid']) {
+            throw new Exception($couponResult['error']);
+        }
+        $couponId = $couponResult['coupon']['id'] ?? $couponId;
+        $couponType = $couponResult['coupon']['type'] ?? $couponType;
+        $couponNoteMessage = $couponResult['message'] ?: $couponNoteMessage;
+        $couponDiscount = (float)$couponResult['discount'];
+        $total = max(0, (float)$total - $couponDiscount);
+    }
 
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO orders (id, customerId, customerName, phone, address, area, total, status, date, paymentMethod, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$id, $customerId, $customerName, $phone, $address, $area, $total, $status, $date, $paymentMethod, $note]);
+        $stmt = $pdo->prepare("INSERT INTO orders (id, customerId, customerName, phone, address, area, total, status, date, paymentMethod, note, coupon_id, coupon_code, coupon_type, coupon_discount, coupon_note_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$id, $customerId, $customerName, $phone, $address, $area, $total, $status, $date, $paymentMethod, $note, $couponId, $couponCode ?: null, $couponType, $couponDiscount, $couponNoteMessage]);
 
         foreach ($items as $item) {
             $prod = $item['product'];

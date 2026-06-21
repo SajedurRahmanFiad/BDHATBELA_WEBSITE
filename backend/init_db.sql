@@ -301,3 +301,61 @@ WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
 -- - Supports mixed galleries: YouTube videos + images + video files
 --
 -- No direct schema changes needed; YouTube URLs coexist with image URLs in JSON arrays
+
+-- Migration: Coupon System (2026-06-21)
+-- Feature: Admin-managed coupon codes for fixed discounts, percentage discounts, and note/free-gift coupons.
+--
+-- Schema Compatibility:
+-- - Creates new coupon tables without modifying existing production rows.
+-- - Adds nullable coupon columns to orders for backward-compatible order storage.
+-- - Existing orders continue to work with NULL coupon fields.
+--
+-- Coupon Rules:
+-- - Coupons can be fixed amount, percentage, or note-only.
+-- - Coupons can be restricted to multiple products and/or categories.
+-- - Coupon validation caps discounts so the order total never becomes negative.
+-- - Note-only coupons apply a visible message/discount of 0 so staff can fulfil the gift manually.
+
+CREATE TABLE IF NOT EXISTS `coupons` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `code` VARCHAR(64) NOT NULL,
+  `name` VARCHAR(200) NOT NULL,
+  `type` ENUM('fixed', 'percentage', 'note') NOT NULL DEFAULT 'note',
+  `amount` DECIMAL(12, 2) DEFAULT 0.00,
+  `percentage` DECIMAL(5, 2) DEFAULT 0.00,
+  `note_message` TEXT,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `start_date` DATETIME DEFAULT NULL,
+  `end_date` DATETIME DEFAULT NULL,
+  `usage_limit` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `idx_coupons_code` (`code`),
+  INDEX `idx_coupons_active_dates` (`is_active`, `start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `coupon_products` (
+  `coupon_id` VARCHAR(50) NOT NULL,
+  `product_id` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`coupon_id`, `product_id`),
+  INDEX `idx_coupon_products_product_id` (`product_id`),
+  CONSTRAINT `fk_coupon_products_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_coupon_products_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `coupon_categories` (
+  `coupon_id` VARCHAR(50) NOT NULL,
+  `category_id` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`coupon_id`, `category_id`),
+  INDEX `idx_coupon_categories_category_id` (`category_id`),
+  CONSTRAINT `fk_coupon_categories_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_coupon_categories_category` FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `coupon_id` VARCHAR(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `coupon_code` VARCHAR(64) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `coupon_type` ENUM('fixed', 'percentage', 'note') DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `coupon_discount` DECIMAL(12, 2) DEFAULT 0.00,
+  ADD COLUMN IF NOT EXISTS `coupon_note_message` TEXT,
+  ADD INDEX IF NOT EXISTS `idx_orders_coupon_id` (`coupon_id`);

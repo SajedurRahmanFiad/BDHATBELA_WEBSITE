@@ -121,6 +121,42 @@ try {
             CONSTRAINT `fk_order_items_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE RESTRICT
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
 
+        "CREATE TABLE IF NOT EXISTS `coupons` (
+            `id` VARCHAR(50) PRIMARY KEY,
+            `code` VARCHAR(64) NOT NULL,
+            `name` VARCHAR(200) NOT NULL,
+            `type` ENUM('fixed', 'percentage', 'note') NOT NULL DEFAULT 'note',
+            `amount` DECIMAL(12, 2) DEFAULT 0.00,
+            `percentage` DECIMAL(5, 2) DEFAULT 0.00,
+            `note_message` TEXT,
+            `is_active` TINYINT(1) DEFAULT 1,
+            `start_date` DATETIME DEFAULT NULL,
+            `end_date` DATETIME DEFAULT NULL,
+            `usage_limit` INT DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY `idx_coupons_code` (`code`),
+            INDEX `idx_coupons_active_dates` (`is_active`, `start_date`, `end_date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
+        "CREATE TABLE IF NOT EXISTS `coupon_products` (
+            `coupon_id` VARCHAR(50) NOT NULL,
+            `product_id` VARCHAR(50) NOT NULL,
+            PRIMARY KEY (`coupon_id`, `product_id`),
+            INDEX `idx_coupon_products_product_id` (`product_id`),
+            CONSTRAINT `fk_coupon_products_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_coupon_products_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
+        "CREATE TABLE IF NOT EXISTS `coupon_categories` (
+            `coupon_id` VARCHAR(50) NOT NULL,
+            `category_id` VARCHAR(50) NOT NULL,
+            PRIMARY KEY (`coupon_id`, `category_id`),
+            INDEX `idx_coupon_categories_category_id` (`category_id`),
+            CONSTRAINT `fk_coupon_categories_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_coupon_categories_category` FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+
         "CREATE TABLE IF NOT EXISTS `banners` (
             `id` VARCHAR(50) PRIMARY KEY,
             `image` LONGTEXT NOT NULL,
@@ -223,6 +259,49 @@ try {
     try { $pdo->exec("ALTER TABLE `orders` ADD INDEX `idx_orders_date` (`date`)"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `orders` ADD INDEX `idx_orders_status` (`status`)"); } catch(Exception $e) {}
     try { $pdo->exec("ALTER TABLE `order_items` ADD INDEX `idx_order_items_variation_id` (`variation_id`)"); } catch(Exception $e) {}
+
+    try { $pdo->exec("CREATE TABLE IF NOT EXISTS `coupons` (
+        `id` VARCHAR(50) PRIMARY KEY,
+        `code` VARCHAR(64) NOT NULL,
+        `name` VARCHAR(200) NOT NULL,
+        `type` ENUM('fixed', 'percentage', 'note') NOT NULL DEFAULT 'note',
+        `amount` DECIMAL(12, 2) DEFAULT 0.00,
+        `percentage` DECIMAL(5, 2) DEFAULT 0.00,
+        `note_message` TEXT,
+        `is_active` TINYINT(1) DEFAULT 1,
+        `start_date` DATETIME DEFAULT NULL,
+        `end_date` DATETIME DEFAULT NULL,
+        `usage_limit` INT DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY `idx_coupons_code` (`code`),
+        INDEX `idx_coupons_active_dates` (`is_active`, `start_date`, `end_date`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"); } catch(Exception $e) {}
+
+    try { $pdo->exec("CREATE TABLE IF NOT EXISTS `coupon_products` (
+        `coupon_id` VARCHAR(50) NOT NULL,
+        `product_id` VARCHAR(50) NOT NULL,
+        PRIMARY KEY (`coupon_id`, `product_id`),
+        INDEX `idx_coupon_products_product_id` (`product_id`),
+        CONSTRAINT `fk_coupon_products_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+        CONSTRAINT `fk_coupon_products_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"); } catch(Exception $e) {}
+
+    try { $pdo->exec("CREATE TABLE IF NOT EXISTS `coupon_categories` (
+        `coupon_id` VARCHAR(50) NOT NULL,
+        `category_id` VARCHAR(50) NOT NULL,
+        PRIMARY KEY (`coupon_id`, `category_id`),
+        INDEX `idx_coupon_categories_category_id` (`category_id`),
+        CONSTRAINT `fk_coupon_categories_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON DELETE CASCADE,
+        CONSTRAINT `fk_coupon_categories_category` FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"); } catch(Exception $e) {}
+
+    try { $pdo->exec("ALTER TABLE `orders` ADD COLUMN `coupon_id` VARCHAR(50) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD COLUMN `coupon_code` VARCHAR(64) DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD COLUMN `coupon_type` ENUM('fixed', 'percentage', 'note') DEFAULT NULL"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD COLUMN `coupon_discount` DECIMAL(12, 2) DEFAULT 0.00"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD COLUMN `coupon_note_message` TEXT"); } catch(Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `orders` ADD INDEX `idx_orders_coupon_id` (`coupon_id`)"); } catch(Exception $e) {}
 
     // Normalize old settings into the current StoreSettings shape used by the frontend.
     $pdo->exec("UPDATE `settings`

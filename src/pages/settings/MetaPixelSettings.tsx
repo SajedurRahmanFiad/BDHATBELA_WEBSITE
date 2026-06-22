@@ -69,11 +69,20 @@ export const MetaPixelSettings = () => {
             return;
         }
 
-        updateSettings({
+        const updatedSettings = {
             ...settings,
             metaPixel: sanitized,
             gtm: { containerId: sanitized.gtmContainerId }
-        } as any);
+        } as any;
+
+        updateSettings(updatedSettings);
+
+        if (sanitized.gtmContainerId) {
+            localStorage.setItem('bdhatbela_gtm_container_id', sanitized.gtmContainerId);
+        } else {
+            localStorage.removeItem('bdhatbela_gtm_container_id');
+        }
+
         showToast('Meta Pixel Settings saved successfully!');
     };
 

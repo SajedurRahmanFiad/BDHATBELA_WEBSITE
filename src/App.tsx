@@ -69,6 +69,7 @@ const PixelPageTracker = () => {
 
     const w = window as any;
     w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
 
     const script = document.createElement('script');
     script.async = true;

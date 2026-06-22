@@ -54,9 +54,55 @@ const PixelPageTracker = () => {
     }
   }, [settings]);
 
+  const initializeGtm = (containerId: string) => {
+    const normalizedId = containerId.trim();
+    if (!normalizedId) return;
+
+    const existingScripts = Array.from(document.querySelectorAll('script[data-gtm-container-id]'));
+    const existingNoscripts = Array.from(document.querySelectorAll('noscript[data-gtm-container-id]'));
+
+    const hasSameGtm = existingScripts.some((script) => script.getAttribute('data-gtm-container-id') === normalizedId);
+    if (hasSameGtm) return;
+
+    existingScripts.forEach((script) => script.remove());
+    existingNoscripts.forEach((noscript) => noscript.remove());
+
+    const w = window as any;
+    w.dataLayer = w.dataLayer || [];
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${normalizedId}`;
+    script.setAttribute('data-gtm-container-id', normalizedId);
+    document.head.appendChild(script);
+
+    const noscript = document.createElement('noscript');
+    noscript.setAttribute('data-gtm-container-id', normalizedId);
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.googletagmanager.com/ns.html?id=${normalizedId}`;
+    iframe.height = '0';
+    iframe.width = '0';
+    iframe.style.display = 'none';
+    iframe.style.visibility = 'hidden';
+    noscript.appendChild(iframe);
+    document.body.insertBefore(noscript, document.body.firstChild);
+  };
+
+  React.useEffect(() => {
+    if (settings?.gtm?.containerId) {
+      initializeGtm(settings.gtm.containerId);
+    }
+  }, [settings?.gtm?.containerId]);
+
+  const pushGtmPageView = (pathname: string) => {
+    const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);
+    dataLayer.push({ event: 'pageview', page_path: pathname });
+  };
+
   React.useEffect(() => {
     // Track page view on route changes
     trackPageView();
+    pushGtmPageView(location.pathname);
   }, [location.pathname]);
 
   return null;

@@ -239,6 +239,9 @@ export interface StoreSettings {
     orderIdPrefix: string;
   };
   thankYouPage?: { title: string; subtitle: string; description: string; };
+  gtm?: {
+    containerId?: string;
+  };
   metaPixel?: {
     enabled: boolean;
     pixelId: string;

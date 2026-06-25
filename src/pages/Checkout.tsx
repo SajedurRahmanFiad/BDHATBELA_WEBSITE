@@ -45,12 +45,18 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     if (cart.length > 0) {
       const checkoutItems = cart.map(item => ({
-        id: item.product.id,
-        name: item.product.name,
+        id: item.variation?.sku ?? item.product.sku ?? item.variation?.id ?? item.product.id,
+        name: item.variation ? `${item.product.name} (${item.variation.name})` : item.product.name,
         price: item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price,
         quantity: item.quantity,
         category: item.product.category,
-        sku: item.product.sku
+        sku: item.variation?.sku ?? item.product.sku,
+        stock: item.variation?.stock ?? item.product.stock,
+        productType: item.variation ? 'variation' : item.product.productType || 'simple',
+        itemBrand: item.product.badge || undefined,
+        index: 1,
+        affiliation: window.location.hostname,
+        googleBusinessVertical: 'retail',
       }));
       trackInitiateCheckout(checkoutItems, subtotal);
       trackBeginCheckout(checkoutItems, subtotal);

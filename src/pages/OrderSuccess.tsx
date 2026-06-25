@@ -39,25 +39,34 @@ export const OrderSuccess: React.FC = () => {
         if (!order) return;
 
         const purchaseItems = order.items.map(item => ({
-            id: item.variation?.id ?? item.product.id,
+            id: item.variation?.sku ?? item.product.sku ?? item.variation?.id ?? item.product.id,
             name: item.variation ? `${item.product.name} (${item.variation.name})` : item.product.name,
             price: item.variation?.price ?? item.product.price,
             quantity: item.quantity,
             category: item.product.category,
             sku: item.variation?.sku ?? item.product.sku,
+            stock: item.variation?.stock ?? item.product.stock,
+            productType: item.variation ? 'variation' : item.product.productType || 'simple',
+            itemBrand: item.product.badge || undefined,
+            index: 1,
+            affiliation: window.location.hostname,
+            googleBusinessVertical: 'retail',
         }));
 
         trackPurchase({
             id: order.id,
             items: purchaseItems,
             totalPrice: order.total,
-            shippingCost: 0,
+            shippingCost: undefined,
         });
 
         trackGA4Purchase({
             id: order.id,
             items: purchaseItems,
             total: order.total,
+            coupon: order.couponCode ?? undefined,
+            shipping: undefined,
+            tax: undefined,
         });
     }, [order]);
 

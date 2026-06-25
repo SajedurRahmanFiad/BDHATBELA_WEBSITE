@@ -20,7 +20,23 @@ interface CartContextType {
   showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const defaultCartContext: CartContextType = {
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
+  totalItems: 0,
+  subtotal: 0,
+  isSidebarOpen: false,
+  openSidebar: () => {},
+  closeSidebar: () => {},
+  toast: null,
+  clearToast: () => {},
+  showToast: () => {},
+};
+
+const CartContext = createContext<CartContextType>(defaultCartContext);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -74,12 +90,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const name = variation ? `${product.name} (${variation.name})` : product.name;
     setToast({ message: `${name} has been added to cart!`, show: true, type: 'success' });
     const ga4Items = [{
-      id: variation?.id ?? product.id,
+      id: variation?.sku ?? product.sku ?? variation?.id ?? product.id,
       name,
       price: toFiniteNumber(variation?.discountPrice ?? variation?.price ?? product.discountPrice ?? product.price),
       quantity: normalizedQuantity,
       category: product.category,
       sku: variation?.sku ?? product.sku,
+      stock: variation?.stock ?? product.stock,
+      productType: variation ? 'variation' : product.productType || 'simple',
+      itemBrand: product.badge || undefined,
+      index: 1,
+      affiliation: window.location.hostname,
+      googleBusinessVertical: 'retail',
     }];
 
     trackAddToCart(ga4Items);
@@ -145,7 +167,5 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) throw new Error('useCart must be used within a CartProvider');
-  return context;
+  return useContext(CartContext);
 };

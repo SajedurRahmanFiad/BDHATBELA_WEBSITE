@@ -106,7 +106,13 @@ export const ProductDetail: React.FC = () => {
       name: product.name,
       price: product.discountPrice || product.price,
       category: product.category,
-      sku: product.sku || product.id
+      sku: product.sku || undefined,
+      stock: product.stock,
+      productType: product.productType || 'simple',
+      itemBrand: product.badge || undefined,
+      index: 1,
+      affiliation: window.location.hostname,
+      googleBusinessVertical: 'retail',
     });
   }, [product?.id]);
 

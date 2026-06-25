@@ -9,6 +9,7 @@ import { DISTRICTS } from '../constants';
 import { OrderStatus, CouponApplicationResult } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 import { trackInitiateCheckout, trackAddPaymentInfo } from '../utils/facebookPixel';
+import { trackBeginCheckout } from '../utils/ga4';
 
 export const Checkout: React.FC = () => {
   const { cart, subtotal, clearCart, showToast } = useCart();
@@ -48,11 +49,13 @@ export const Checkout: React.FC = () => {
         name: item.product.name,
         price: item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price,
         quantity: item.quantity,
+        category: item.product.category,
         sku: item.product.sku
       }));
       trackInitiateCheckout(checkoutItems, subtotal);
+      trackBeginCheckout(checkoutItems, subtotal);
     }
-  }, []); // Run once on checkout page load
+  }, [cart, subtotal]);
 
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');

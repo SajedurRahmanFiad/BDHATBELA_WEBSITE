@@ -8,6 +8,7 @@ import { ProductCard } from '../components/product/ProductCard';
 import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackViewContent } from '../utils/facebookPixel';
+import { trackViewItem } from '../utils/ga4';
 
 const extractYouTubeId = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
@@ -89,16 +90,24 @@ export const ProductDetail: React.FC = () => {
   }, [product?.id, product?.category, fetchProductListings]);
 
   React.useEffect(() => {
-    // Track product view with Facebook Pixel
-    if (product) {
-      trackViewContent({
-        id: product.id,
-        name: product.name,
-        price: product.discountPrice || product.price,
-        category: product.category,
-        sku: product.sku || product.id
-      });
-    }
+    if (!product) return;
+
+    // Track product view with Facebook Pixel and GA4
+    trackViewContent({
+      id: product.id,
+      name: product.name,
+      price: product.discountPrice || product.price,
+      category: product.category,
+      sku: product.sku || product.id
+    });
+
+    trackViewItem({
+      id: product.id,
+      name: product.name,
+      price: product.discountPrice || product.price,
+      category: product.category,
+      sku: product.sku || product.id
+    });
   }, [product?.id]);
 
   React.useEffect(() => {

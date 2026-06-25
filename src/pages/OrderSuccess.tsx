@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight, Phone } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { trackPurchase } from '../utils/facebookPixel';
+import { trackPurchase as trackGA4Purchase } from '../utils/ga4';
 import { Order } from '../types';
 import { API_BASE_URL } from '../constants';
 
@@ -42,6 +43,7 @@ export const OrderSuccess: React.FC = () => {
             name: item.variation ? `${item.product.name} (${item.variation.name})` : item.product.name,
             price: item.variation?.price ?? item.product.price,
             quantity: item.quantity,
+            category: item.product.category,
             sku: item.variation?.sku ?? item.product.sku,
         }));
 
@@ -51,6 +53,12 @@ export const OrderSuccess: React.FC = () => {
             totalPrice: order.total,
             shippingCost: 0,
         });
+
+        trackGA4Purchase({
+            id: order.id,
+            items: purchaseItems,
+            total: order.total,
+        });
     }, [order]);
 
     return (
@@ -59,7 +67,7 @@ export const OrderSuccess: React.FC = () => {
                 <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-bounce">
                     <CheckCircle size={48} />
                 </div>
-                
+
                 <div className="space-y-4">
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">{settings?.thankYouPage?.title || 'Order Placed Successfully!'}</h1>
                     <p className="text-gray-500 italic max-w-sm mx-auto font-medium">{settings?.thankYouPage?.subtitle || 'Thank you for shopping with us! Our customer representative will contact you shortly to confirm your order details.'}</p>

@@ -242,6 +242,10 @@ export interface StoreSettings {
   gtm?: {
     containerId?: string;
   };
+  ga4?: {
+    enabled?: boolean;
+    measurementId?: string;
+  };
   metaPixel?: {
     enabled: boolean;
     pixelId: string;

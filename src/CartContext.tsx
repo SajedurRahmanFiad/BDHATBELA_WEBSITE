@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Product } from './types';
 import { toFiniteNumber } from './utils/money';
 import { trackAddToCart } from './utils/facebookPixel';
+import { trackAddToCart as trackGA4AddToCart } from './utils/ga4';
 
 interface CartContextType {
   cart: CartItem[];
@@ -72,13 +73,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     const name = variation ? `${product.name} (${variation.name})` : product.name;
     setToast({ message: `${name} has been added to cart!`, show: true, type: 'success' });
-    trackAddToCart([{
+    const ga4Items = [{
       id: variation?.id ?? product.id,
       name,
       price: toFiniteNumber(variation?.discountPrice ?? variation?.price ?? product.discountPrice ?? product.price),
       quantity: normalizedQuantity,
+      category: product.category,
       sku: variation?.sku ?? product.sku,
-    }]);
+    }];
+
+    trackAddToCart(ga4Items);
+    trackGA4AddToCart(ga4Items);
 
     if (openSidebar) {
       setIsSidebarOpen(true);

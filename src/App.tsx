@@ -4,6 +4,7 @@ import { Layout } from './components/layout/Layout';
 import ScrollToTop from './components/layout/ScrollToTop';
 import { CartProvider } from './CartContext';
 import { initializeFacebookPixel, trackPageView } from './utils/facebookPixel';
+import { initializeGA4 } from './utils/ga4';
 import { AuthProvider, useAuth } from './AuthContext';
 import { AdminProvider, useAdmin } from './AdminContext';
 
@@ -94,6 +95,12 @@ const PixelPageTracker = () => {
       initializeGtm(settings.gtm.containerId);
     }
   }, [settings?.gtm?.containerId]);
+
+  React.useEffect(() => {
+    if (settings?.ga4?.enabled && settings?.ga4?.measurementId) {
+      initializeGA4(settings.ga4.measurementId);
+    }
+  }, [settings?.ga4?.enabled, settings?.ga4?.measurementId]);
 
   const pushGtmPageView = (pathname: string) => {
     const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);

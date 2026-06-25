@@ -18,10 +18,12 @@ export const MetaPixelSettings = () => {
         currency: settings?.metaPixel?.currency ?? 'BDT',
         timezone: settings?.metaPixel?.timezone ?? 'Asia/Dhaka',
         gtmContainerId: settings?.gtm?.containerId ?? '',
+        ga4Enabled: settings?.ga4?.enabled ?? false,
+        ga4MeasurementId: settings?.ga4?.measurementId ?? '',
     });
 
     React.useEffect(() => {
-        if (!settings?.metaPixel && !settings?.gtm) return;
+        if (!settings?.metaPixel && !settings?.gtm && !settings?.ga4) return;
         setLocalSettings({
             enabled: settings?.metaPixel?.enabled ?? false,
             pixelId: settings?.metaPixel?.pixelId ?? '',
@@ -32,6 +34,8 @@ export const MetaPixelSettings = () => {
             currency: settings?.metaPixel?.currency ?? 'BDT',
             timezone: settings?.metaPixel?.timezone ?? 'Asia/Dhaka',
             gtmContainerId: settings?.gtm?.containerId ?? '',
+            ga4Enabled: settings?.ga4?.enabled ?? false,
+            ga4MeasurementId: settings?.ga4?.measurementId ?? '',
         });
     }, [
         settings?.metaPixel?.enabled,
@@ -62,6 +66,7 @@ export const MetaPixelSettings = () => {
             domainVerificationTag: localSettings.domainVerificationTag.trim(),
             currency: localSettings.currency.trim().toUpperCase(),
             gtmContainerId: localSettings.gtmContainerId.trim().replace(/^['"]+|['"]+$/g, ''),
+            ga4MeasurementId: localSettings.ga4MeasurementId.trim().replace(/^['"]+|['"]+$/g, ''),
         };
 
         if (sanitized.enabled && !sanitized.pixelId) {
@@ -69,16 +74,22 @@ export const MetaPixelSettings = () => {
             return;
         }
 
+        const sanitizedGtmContainerId = localSettings.gtmContainerId.trim().replace(/^['"]+|['"]+$/g, '');
+
         const updatedSettings = {
             ...settings,
             metaPixel: sanitized,
-            gtm: { containerId: sanitized.gtmContainerId }
+            gtm: { containerId: sanitizedGtmContainerId },
+            ga4: {
+                enabled: Boolean(sanitized.ga4Enabled),
+                measurementId: sanitized.ga4MeasurementId,
+            },
         } as any;
 
         updateSettings(updatedSettings);
 
-        if (sanitized.gtmContainerId) {
-            localStorage.setItem('bdhatbela_gtm_container_id', sanitized.gtmContainerId);
+        if (sanitizedGtmContainerId) {
+            localStorage.setItem('bdhatbela_gtm_container_id', sanitizedGtmContainerId);
         } else {
             localStorage.removeItem('bdhatbela_gtm_container_id');
         }
@@ -270,6 +281,33 @@ trackPixelEvent('Purchase', {
                                     <option value="America/New_York">America/New_York</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                    Enable GA4 Tracking
+                                </label>
+                                <p className="text-xs text-gray-500 mb-2">Turn on Google Analytics 4 ecommerce events.</p>
+                                <input
+                                    type="checkbox"
+                                    checked={localSettings.ga4Enabled}
+                                    onChange={(e) => handleChange('ga4Enabled', e.target.checked)}
+                                    className="w-5 h-5 rounded cursor-pointer"
+                                />
+                            </div>
+                            {localSettings.ga4Enabled && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        GA4 Measurement ID
+                                    </label>
+                                    <p className="text-xs text-gray-500 mb-2">Enter your GA4 Measurement ID like G-XXXXXXXXXX</p>
+                                    <input
+                                        type="text"
+                                        placeholder="G-XXXXXXXXXX"
+                                        value={localSettings.ga4MeasurementId}
+                                        onChange={(e) => handleChange('ga4MeasurementId', e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 

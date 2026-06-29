@@ -57,32 +57,32 @@ export const MetaPixelSettings = () => {
     };
 
     const handleSave = () => {
-        const sanitized = {
-            ...localSettings,
+        const sanitizedMetaPixel = {
+            enabled: localSettings.enabled,
             pixelId: localSettings.pixelId.trim().replace(/^['"]+|['"]+$/g, ''),
             businessAccountId: localSettings.businessAccountId.trim(),
             accessToken: localSettings.accessToken.trim(),
             domain: localSettings.domain.trim(),
             domainVerificationTag: localSettings.domainVerificationTag.trim(),
             currency: localSettings.currency.trim().toUpperCase(),
-            gtmContainerId: localSettings.gtmContainerId.trim().replace(/^['"]+|['"]+$/g, ''),
-            ga4MeasurementId: localSettings.ga4MeasurementId.trim().replace(/^['"]+|['"]+$/g, ''),
+            timezone: localSettings.timezone,
         };
 
-        if (sanitized.enabled && !sanitized.pixelId) {
+        if (sanitizedMetaPixel.enabled && !sanitizedMetaPixel.pixelId) {
             showToast('Pixel ID is required when Meta Pixel is enabled.', 'error');
             return;
         }
 
         const sanitizedGtmContainerId = localSettings.gtmContainerId.trim().replace(/^['"]+|['"]+$/g, '');
+        const sanitizedGa4MeasurementId = localSettings.ga4MeasurementId.trim().replace(/^['"]+|['"]+$/g, '');
 
         const updatedSettings = {
             ...settings,
-            metaPixel: sanitized,
+            metaPixel: sanitizedMetaPixel,
             gtm: { containerId: sanitizedGtmContainerId },
             ga4: {
-                enabled: Boolean(sanitized.ga4Enabled),
-                measurementId: sanitized.ga4MeasurementId,
+                enabled: Boolean(localSettings.ga4Enabled),
+                measurementId: sanitizedGa4MeasurementId,
             },
         } as any;
 

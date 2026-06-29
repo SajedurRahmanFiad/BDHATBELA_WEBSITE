@@ -48,9 +48,12 @@ let ga4Initialized = false;
 const ensureGtag = () => {
   if (!window.gtag) {
     ensureDataLayer();
-    window.gtag = function (...args: unknown[]) {
-      window.dataLayer?.push(args);
-    };
+    // Use a real function so `arguments` is available and pushed as-is to dataLayer
+    window.gtag = function () {
+      // push the arguments object (like the official gtag stub) so GTM/other listeners see the same shape
+      // @ts-ignore
+      window.dataLayer?.push(arguments);
+    } as unknown as (...args: unknown[]) => void;
   }
 };
 
@@ -60,6 +63,12 @@ const pushDataLayerEvent = (eventName: string, params: Record<string, unknown>) 
     event: eventName,
     ecommerce: params,
   };
+  // For wide compatibility, push both the GA4-friendly ecommerce object and
+  // the legacy GTM ecommerce.purchase structure which some tags expect.
+  if (eventName === 'purchase') {
+    // Some setups expect ecommerce.purchase = { ... }
+    window.dataLayer?.push({ ecommerce: { purchase: params } });
+  }
   window.dataLayer?.push(eventPayload);
 };
 

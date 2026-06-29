@@ -27,13 +27,35 @@ export const Home: React.FC = () => {
     const load = async () => {
       setIsLoadingProducts(true);
       try {
-        const [featured, arrivals] = await Promise.all([
-          fetchProductListings({ limit: 8, page: 1, sort: 'rating' }),
-          fetchProductListings({ limit: 8, page: 1, sort: 'newest' })
-        ]);
+        // Load featured products first (shown immediately)
+        const featured = await fetchProductListings({ limit: 8, page: 1, sort: 'rating' });
         if (!cancelled) {
           setFeaturedProducts(featured.items);
-          setNewArrivals(arrivals.items);
+        }
+        
+        // Load new arrivals in background after featured products are shown
+        // Defer to requestIdleCallback to not block interaction with featured section
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(async () => {
+            if (cancelled) return;
+            try {
+              const arrivals = await fetchProductListings({ limit: 8, page: 1, sort: 'newest' });
+              if (!cancelled) setNewArrivals(arrivals.items);
+            } catch (e) {
+              console.error('Failed to load new arrivals', e);
+            }
+          });
+        } else {
+          // Fallback: load after 500ms delay
+          setTimeout(async () => {
+            if (cancelled) return;
+            try {
+              const arrivals = await fetchProductListings({ limit: 8, page: 1, sort: 'newest' });
+              if (!cancelled) setNewArrivals(arrivals.items);
+            } catch (e) {
+              console.error('Failed to load new arrivals', e);
+            }
+          }, 500);
         }
       } catch (e) {
         console.error(e);

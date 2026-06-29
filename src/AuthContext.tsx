@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User } from './types';
 import { API_BASE_URL } from './constants';
 
@@ -25,10 +25,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
+  
+  // Track if we're already fetching to prevent double-fetch during React StrictMode
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
-    refreshUser();
+    if (!user || isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    refreshUser().finally(() => {
+      isFetchingRef.current = false;
+    });
   }, []);
 
   useEffect(() => {
@@ -77,6 +83,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth.php?id=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+      }
+    } catch (e) {
+      console.error('Failed to refresh user', e);
+    }
+  };
+
   const logout = () => {
     setUser(null);
   };
@@ -98,26 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshUser = async () => {
-    if (!user) return;
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth.php?id=${user.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        data.orders = [];
-        setUser(data);
-      }
-    } catch (e) {
-      console.error('Refresh user failed', e);
-    }
-  };
 
-  // Refresh user on mount to sync with database
-  useEffect(() => {
-    if (user) {
-      refreshUser();
-    }
-  }, []);
 
   const isAdmin = user?.role === 'Admin';
 

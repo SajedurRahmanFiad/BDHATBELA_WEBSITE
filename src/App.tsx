@@ -49,9 +49,17 @@ const PixelPageTracker = () => {
   }, [settings?.metaPixel?.domainVerificationTag]);
 
   React.useEffect(() => {
-    // Initialize pixel when settings are available
+    // Initialize pixel when settings are available (deferred to requestIdleCallback)
     if (settings?.metaPixel?.enabled && settings?.metaPixel?.pixelId) {
-      initializeFacebookPixel(settings);
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          initializeFacebookPixel(settings);
+        });
+      } else {
+        globalThis.setTimeout(() => {
+          initializeFacebookPixel(settings);
+        }, 100);
+      }
     }
   }, [settings]);
 
@@ -92,13 +100,31 @@ const PixelPageTracker = () => {
 
   React.useEffect(() => {
     if (settings?.gtm?.containerId) {
-      initializeGtm(settings.gtm.containerId);
+      // Defer GTM initialization to requestIdleCallback
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          initializeGtm(settings.gtm.containerId);
+        });
+      } else {
+        globalThis.setTimeout(() => {
+          initializeGtm(settings.gtm.containerId);
+        }, 100);
+      }
     }
   }, [settings?.gtm?.containerId]);
 
   React.useEffect(() => {
     if (settings?.ga4?.enabled && settings?.ga4?.measurementId) {
-      initializeGA4(settings.ga4.measurementId);
+      // Defer GA4 initialization to requestIdleCallback
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          initializeGA4(settings.ga4.measurementId);
+        });
+      } else {
+        globalThis.setTimeout(() => {
+          initializeGA4(settings.ga4.measurementId);
+        }, 100);
+      }
     }
   }, [settings?.ga4?.enabled, settings?.ga4?.measurementId]);
 

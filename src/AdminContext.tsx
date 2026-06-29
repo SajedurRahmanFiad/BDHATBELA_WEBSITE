@@ -131,12 +131,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
 
-    fetchSettings();
-
+    // Defer settings fetch to requestIdleCallback to avoid blocking render
+    // Cached settings already loaded in useState, this just refreshes in background
     if (typeof window !== 'undefined') {
       if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(fetchSettings, { timeout: 3000 });
         (window as any).requestIdleCallback(fetchOptionalData, { timeout: 2000 });
       } else {
+        globalThis.setTimeout(fetchSettings, 100);
         globalThis.setTimeout(fetchOptionalData, 100);
       }
     }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect } from 'react';
 import { CartItem, Product } from './types';
 import { toFiniteNumber } from './utils/money';
 import { trackAddToCart } from './utils/facebookPixel';
@@ -42,21 +42,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const saved = localStorage.getItem('cart');
-      if (!saved) return;
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setCart(parsed);
-        }
-      } catch {
-        localStorage.removeItem('cart');
+  // Load cart from localStorage synchronously before render using useLayoutEffect
+  // This ensures cart is available immediately without delayed re-render
+  useLayoutEffect(() => {
+    const saved = localStorage.getItem('cart');
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setCart(parsed);
       }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
+    } catch {
+      localStorage.removeItem('cart');
+    }
   }, []);
   const [toast, setToast] = useState<{ message: string; show: boolean; type?: 'success' | 'error' } | null>(null);
 

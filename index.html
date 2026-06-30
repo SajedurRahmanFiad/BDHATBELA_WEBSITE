@@ -1,67 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>
-      (function() {
-        try {
-          window.dataLayer = window.dataLayer || [];
-          var storageKey = 'bdhatbela_gtm_container_id';
-          var gtmId = localStorage.getItem(storageKey);
 
-          function insertScript(id) {
-            if (!id || document.querySelector('script[data-gtm-container-id]')) return;
-            window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-            var f = document.getElementsByTagName('script')[0];
-            var j = document.createElement('script');
-            j.async = true;
-            j.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
-            j.setAttribute('data-gtm-container-id', id);
-            f.parentNode.insertBefore(j, f);
-          }
-
-          function insertNoScript(id) {
-            if (!id || !document.body || document.querySelector('noscript[data-gtm-container-id]')) return;
-            var noscript = document.createElement('noscript');
-            noscript.setAttribute('data-gtm-container-id', id);
-            var iframe = document.createElement('iframe');
-            iframe.src = 'https://www.googletagmanager.com/ns.html?id=' + id;
-            iframe.height = '0';
-            iframe.width = '0';
-            iframe.style.display = 'none';
-            iframe.style.visibility = 'hidden';
-            noscript.appendChild(iframe);
-            document.body.insertBefore(noscript, document.body.firstChild);
-          }
-
-          if (gtmId) {
-            insertScript(gtmId);
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', function() { insertNoScript(gtmId); });
-            } else {
-              insertNoScript(gtmId);
-            }
-          } else if (window.fetch) {
-            fetch('/api/settings.php')
-              .then(function(res) { return res.ok ? res.json() : null; })
-              .then(function(settings) {
-                var id = settings?.gtm?.containerId;
-                if (id) {
-                  localStorage.setItem(storageKey, id);
-                  insertScript(id);
-                  if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', function() { insertNoScript(id); });
-                  } else {
-                    insertNoScript(id);
-                  }
-                }
-              })
-              .catch(function() {});
-          }
-        } catch (e) {
-          console.warn('GTM bootstrap failed', e);
-        }
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="http://localhost:8000" />

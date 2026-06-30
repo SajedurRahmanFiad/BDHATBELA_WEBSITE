@@ -4,7 +4,7 @@ import { Layout } from './components/layout/Layout';
 import ScrollToTop from './components/layout/ScrollToTop';
 import { CartProvider } from './CartContext';
 import { initializeFacebookPixel, trackPageView } from './utils/facebookPixel';
-import { initializeGA4 } from './utils/ga4';
+
 import { AuthProvider, useAuth } from './AuthContext';
 import { AdminProvider, useAdmin } from './AdminContext';
 
@@ -86,16 +86,7 @@ const PixelPageTracker = () => {
     script.setAttribute('data-gtm-container-id', normalizedId);
     document.head.appendChild(script);
 
-    const noscript = document.createElement('noscript');
-    noscript.setAttribute('data-gtm-container-id', normalizedId);
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.googletagmanager.com/ns.html?id=${normalizedId}`;
-    iframe.height = '0';
-    iframe.width = '0';
-    iframe.style.display = 'none';
-    iframe.style.visibility = 'hidden';
-    noscript.appendChild(iframe);
-    document.body.insertBefore(noscript, document.body.firstChild);
+
   };
 
   React.useEffect(() => {
@@ -113,24 +104,15 @@ const PixelPageTracker = () => {
     }
   }, [settings?.gtm?.containerId]);
 
-  React.useEffect(() => {
-    if (settings?.ga4?.enabled && settings?.ga4?.measurementId) {
-      // Defer GA4 initialization to requestIdleCallback
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(() => {
-          initializeGA4(settings.ga4.measurementId);
-        });
-      } else {
-        globalThis.setTimeout(() => {
-          initializeGA4(settings.ga4.measurementId);
-        }, 100);
-      }
-    }
-  }, [settings?.ga4?.enabled, settings?.ga4?.measurementId]);
+
 
   const pushGtmPageView = (pathname: string) => {
     const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);
-    dataLayer.push({ event: 'pageview', page_path: pathname });
+    dataLayer.push({ 
+      event: 'page_view', 
+      page_path: pathname,
+      page_title: document.title
+    });
   };
 
   React.useEffect(() => {

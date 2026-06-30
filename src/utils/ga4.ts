@@ -33,7 +33,6 @@ type GA4ItemInput = {
 declare global {
   interface Window {
     dataLayer?: unknown[];
-    gtag?: (...args: unknown[]) => void;
   }
 }
 
@@ -43,68 +42,25 @@ const ensureDataLayer = () => {
   }
 };
 
-let ga4Initialized = false;
 
-const ensureGtag = () => {
-  if (!window.gtag) {
-    ensureDataLayer();
-    // Use a real function so `arguments` is available and pushed as-is to dataLayer
-    window.gtag = function () {
-      // push the arguments object (like the official gtag stub) so GTM/other listeners see the same shape
-      // @ts-ignore
-      window.dataLayer?.push(arguments);
-    } as unknown as (...args: unknown[]) => void;
-  }
-};
 
 const pushDataLayerEvent = (eventName: string, params: Record<string, unknown>) => {
   ensureDataLayer();
+  
+  // Clear the previous ecommerce object to prevent data leakage in SPA
+  window.dataLayer?.push({ ecommerce: null });
+  
   const eventPayload = {
     event: eventName,
     ecommerce: params,
   };
-  // For wide compatibility, push both the GA4-friendly ecommerce object and
-  // the legacy GTM ecommerce.purchase structure which some tags expect.
-  if (eventName === 'purchase') {
-    // Some setups expect ecommerce.purchase = { ... }
-    window.dataLayer?.push({ ecommerce: { purchase: params } });
-  }
+  
   window.dataLayer?.push(eventPayload);
 };
 
-const loadGtagScript = (measurementId: string) => {
-  const normalizedId = measurementId.trim();
-  if (!normalizedId) return;
-  if (document.querySelector(`script[data-ga4-measurement-id="${normalizedId}"]`)) return;
-
-  ensureGtag();
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${normalizedId}`;
-  script.setAttribute('data-ga4-measurement-id', normalizedId);
-  document.head.appendChild(script);
-};
-
-const gtag = (...args: unknown[]) => {
-  ensureGtag();
-  window.gtag?.(...args);
-};
-
-export const initializeGA4 = (measurementId: string) => {
-  const normalizedId = String(measurementId || '').trim();
-  if (!normalizedId) return;
-
-  loadGtagScript(normalizedId);
-  ga4Initialized = true;
-  gtag('js', new Date());
-  gtag('config', normalizedId, { currency: 'BDT' });
-};
-
 export const trackGA4Event = (eventName: string, params: Record<string, unknown>) => {
-  console.log('[GA4 Event]', eventName, params);
+  console.log('[GTM eCommerce Event]', eventName, params);
   pushDataLayerEvent(eventName, params);
-  gtag('event', eventName, params);
 };
 
 const normalizeItem = (item: GA4ItemInput): GA4Item => {

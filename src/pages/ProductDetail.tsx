@@ -44,6 +44,15 @@ export const ProductDetail: React.FC = () => {
   });
   const [product, setProduct] = useState<typeof products[number] | null>(() => products.find(p => p.id === key || p.sku === key) ?? null);
   const [isLoadingProduct, setIsLoadingProduct] = useState(!product);
+  const [prevKey, setPrevKey] = useState(key);
+
+  // Instantly reset state if route key changes
+  if (key !== prevKey) {
+    setPrevKey(key);
+    const cached = products.find(p => p.id === key || p.sku === key);
+    setProduct(cached ?? null);
+    setIsLoadingProduct(!cached);
+  }
   const [relatedProducts, setRelatedProducts] = useState<typeof products>([]);
 
   React.useEffect(() => {
@@ -127,8 +136,42 @@ export const ProductDetail: React.FC = () => {
     setActiveImage(0);
   }, [activeVariationIndex]);
 
-  if (!product) {
-    return <div className="py-20 text-center font-bold text-xl">{isLoadingProduct ? 'Loading product...' : 'Product not found.'}</div>;
+  const isTransitioning = product && key && product.id !== key && product.sku !== key;
+
+  if (isLoadingProduct || !product || isTransitioning) {
+    if (!isLoadingProduct && !product) {
+      return <div className="py-20 text-center font-bold text-xl">Product not found.</div>;
+    }
+    return (
+      <div className="container mx-auto px-4 py-8 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          <div className="space-y-4">
+            <div className="w-full aspect-square bg-gray-100 rounded-[40px]"></div>
+            <div className="flex gap-4">
+              {[1, 2, 3, 4].map(i => <div key={i} className="w-20 h-20 bg-gray-100 rounded-2xl"></div>)}
+            </div>
+          </div>
+          <div className="space-y-6 pt-4">
+            <div className="h-4 bg-gray-100 w-24 rounded-full"></div>
+            <div className="h-10 bg-gray-100 w-3/4 rounded-full"></div>
+            <div className="flex gap-4">
+              <div className="h-8 bg-gray-100 w-32 rounded-full"></div>
+              <div className="h-8 bg-gray-100 w-32 rounded-full"></div>
+            </div>
+            <div className="h-12 bg-gray-100 w-1/3 rounded-full mt-8"></div>
+            <div className="space-y-2 mt-8">
+              <div className="h-4 bg-gray-100 w-full rounded"></div>
+              <div className="h-4 bg-gray-100 w-full rounded"></div>
+              <div className="h-4 bg-gray-100 w-2/3 rounded"></div>
+            </div>
+            <div className="flex gap-4 mt-8">
+              <div className="h-16 bg-gray-100 w-32 rounded-2xl"></div>
+              <div className="h-16 bg-gray-100 flex-1 rounded-2xl"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const images = product.images || [];
@@ -678,7 +721,13 @@ export const ProductDetail: React.FC = () => {
              <h3 className="font-bold mb-4">Related Products</h3>
               <div className="flex flex-col gap-3">
                  {relatedProductsToRender.map(p => {
-                   const img = normalizeSrc(p.images?.[0]);
+                   const displayVar = p.productType === 'variation' ? (p.variations?.find(v => v.isDefault) ?? p.variations?.[0]) : undefined;
+                   const displayPrice = displayVar?.discountPrice ?? displayVar?.price ?? p.discountPrice ?? p.price;
+                   const displayBasePrice = displayVar?.discountPrice ? displayVar.price : (p.discountPrice ? p.price : undefined);
+                   const rawImg = p.productType === 'variation'
+                     ? (Array.isArray(displayVar?.media) ? displayVar?.media[0] : displayVar?.media)
+                     : (p.images?.[0] ?? (p.variations?.[0]?.media ? (Array.isArray(p.variations[0].media) ? p.variations[0].media[0] : p.variations[0].media) : null));
+                   const img = normalizeSrc(String(rawImg || ''));
                    const ytId = extractYouTubeId(img);
 
                    return (
@@ -707,18 +756,18 @@ export const ProductDetail: React.FC = () => {
                         ) : (
                           <div className="text-[10px] text-gray-400">No image</div>
                         )}
-                        {p.discountPrice && p.price > p.discountPrice && (
+                        {displayBasePrice && displayPrice < displayBasePrice && (
                           <div className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
-                            -{Math.round(((p.price - p.discountPrice) / p.price) * 100)}%
+                            -{Math.round(((displayBasePrice - displayPrice) / displayBasePrice) * 100)}%
                           </div>
                         )}
                      </div>
                      <div className="flex-1 min-w-0 flex flex-col justify-center">
                        <h4 className="font-bold text-sm text-gray-800 line-clamp-2 group-hover:text-primary transition-colors leading-tight mb-1">{p.name}</h4>
                        <div className="flex items-center gap-2">
-                         <span className="font-black text-primary text-sm">৳{p.discountPrice || p.price}</span>
-                         {p.discountPrice && p.price > p.discountPrice && (
-                           <span className="text-xs text-gray-400 line-through">৳{p.price}</span>
+                         <span className="font-black text-primary text-sm">৳{displayPrice}</span>
+                         {displayBasePrice && displayPrice < displayBasePrice && (
+                           <span className="text-xs text-gray-400 line-through">৳{displayBasePrice}</span>
                          )}
                        </div>
                      </div>

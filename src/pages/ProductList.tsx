@@ -22,7 +22,6 @@ const getSortValue = (value: string) => {
   return 'newest';
 };
 
-/** Clamp a value to [lo, hi]. */
 const clamp = (value: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, value));
 
 export const ProductList: React.FC = () => {
@@ -31,29 +30,15 @@ export const ProductList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
 
-  // ── Filter state ──────────────────────────────────────────────────────────
-  const searchParam = searchParams.get('search') || '';
-  const initialCat = searchParams.get('categories') || searchParams.get('category') || categoryName || 'all';
-  const initialCategories = initialCat === 'all' ? [] : initialCat.split(',');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
-  const [sortOrder, setSortOrder] = useState<string>(getSortValue(searchParams.get('sort') || 'newest'));
-  const [searchTerm, setSearchTerm] = useState(searchParam);
-  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // ── Derived State from URL (Single Source of Truth) ───────────────────────
+  const selectedCategories = useMemo(() => {
+    const cat = searchParams.get('categories') || searchParams.get('category') || categoryName || 'all';
+    return cat === 'all' ? [] : cat.split(',');
+  }, [searchParams, categoryName]);
 
-  // ── Price range state ─────────────────────────────────────────────────────
-  // `priceRange`  – committed values that drive the API query.
-  // `sliderRange` – in-progress values while the user drags (no API call yet).
-  // `minInput` / `maxInput` – raw text shown in the number inputs.
-  const [priceRange, setPriceRange]   = useState<[number, number]>([0, 0]);
-  const [sliderRange, setSliderRange] = useState<[number, number]>([0, 0]);
-  const [minInput, setMinInput] = useState('');
-  const [maxInput, setMaxInput] = useState('');
-
-  // Set to true once we have initialised price from the first API response.
-  const priceInitialisedRef = useRef(false);
-  // Set to true while the user is actively dragging a thumb.
-  const isDraggingRef = useRef(false);
+  const sortOrder = useMemo(() => {
+    return getSortValue(searchParams.get('sort') || 'newest');
+  }, [searchParams]);
 
   // ── Product / pagination state ────────────────────────────────────────────
   const [page, setPage] = useState(1);
@@ -65,70 +50,78 @@ export const ProductList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Sync search term from URL ─────────────────────────────────────────────
-  useEffect(() => {
-    setSearchTerm(searchParam);
-  }, [searchParam]);
+  const boundsMin = listings.minPrice || 0;
+  const boundsMax = listings.maxPrice || 0;
 
-  // Sync selected categories from URL — only fires when the URL param actually changes,
-  // so clicking "All Products" (/products, no ?categories param) correctly clears the state.
-  useEffect(() => {
-    const cat = searchParams.get('categories') || searchParams.get('category') || categoryName || 'all';
-    const next = cat === 'all' ? [] : cat.split(',');
-    setSelectedCategories(prev => {
-      // Avoid re-render if the value is already the same.
-      if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
-      return next;
-    });
-  }, [searchParams.get('categories'), searchParams.get('category'), categoryName]);
-
-  // ── Initialise price bounds once, after the first successful fetch ────────
-  // We read URL price params (if any) and clamp them to the actual product
-  // min/max returned by the API.  The ref ensures this only runs once per
-  // page-load so subsequent re-fetches never reset a user's slider position.
-  useEffect(() => {
-    if (isLoading || priceInitialisedRef.current) return;
-    if (listings.maxPrice === 0) return; // bounds not ready
-
-    priceInitialisedRef.current = true;
-
-    const boundsMin = listings.minPrice;
-    const boundsMax = listings.maxPrice;
-
+  const priceRange = useMemo<[number, number]>(() => {
     const urlMin = searchParams.get('minPrice');
     const urlMax = searchParams.get('maxPrice');
-    const desiredMin = urlMin !== null ? Number(urlMin) : boundsMin;
-    const desiredMax = urlMax !== null ? Number(urlMax) : boundsMax;
+    const min = urlMin !== null ? Number(urlMin) : boundsMin;
+    const max = urlMax !== null ? Number(urlMax) : boundsMax;
+    const finalMin = clamp(Number.isFinite(min) ? min : boundsMin, boundsMin, boundsMax);
+    const finalMax = clamp(Number.isFinite(max) ? max : boundsMax, boundsMin, boundsMax);
+    return [Math.min(finalMin, finalMax), Math.max(finalMin, finalMax)];
+  }, [searchParams, boundsMin, boundsMax]);
 
-    const finalMin = clamp(Number.isFinite(desiredMin) ? desiredMin : boundsMin, boundsMin, boundsMax);
-    const finalMax = clamp(Number.isFinite(desiredMax) ? desiredMax : boundsMax, boundsMin, boundsMax);
-    const safeMin  = Math.min(finalMin, finalMax);
-    const safeMax  = Math.max(finalMin, finalMax);
+  // ── Local Input States ────────────────────────────────────────────────────
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchParams.get('search') || '');
+  const [sliderRange, setSliderRange] = useState<[number, number]>([0, 0]);
+  const [minInput, setMinInput] = useState('');
+  const [maxInput, setMaxInput] = useState('');
+  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    setPriceRange([safeMin, safeMax]);
-    setSliderRange([safeMin, safeMax]);
-    setMinInput(String(safeMin));
-    setMaxInput(String(safeMax));
-  }, [isLoading, listings.minPrice, listings.maxPrice]);
+  const isDraggingRef = useRef(false);
 
-  // ── Single commit function – all price-change paths go through this ───────
+  // Sync local search input with URL when URL changes externally
+  useEffect(() => {
+    setLocalSearchTerm(searchParams.get('search') || '');
+  }, [searchParamsString]);
+
+  // Sync slider state with URL priceRange (when not dragging)
+  useEffect(() => {
+    if (isDraggingRef.current) return;
+    setSliderRange(priceRange);
+    setMinInput(String(priceRange[0]));
+    setMaxInput(String(priceRange[1]));
+  }, [priceRange]);
+
+  // ── Helper to modify URL parameters ───────────────────────────────────────
+  const updateURLParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, val]) => {
+      if (val === null || val === '') {
+        params.delete(key);
+      } else {
+        params.set(key, val);
+      }
+    });
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // ── User Actions ──────────────────────────────────────────────────────────
+  const toggleCategory = (catName: string) => {
+    const next = selectedCategories.includes(catName)
+      ? selectedCategories.filter(c => c !== catName)
+      : [...selectedCategories, catName];
+    updateURLParams({
+      categories: next.length > 0 ? next.join(',') : null,
+      category: null, // Clear deprecated singular param if present
+    });
+  };
+
   const commitPrice = useCallback((rawMin: number, rawMax: number) => {
-    const boundsMin = listings.minPrice || 0;
-    const boundsMax = listings.maxPrice || 100000;
-    const safeMin  = Number.isFinite(rawMin) ? rawMin : boundsMin;
-    const safeMax  = Number.isFinite(rawMax) ? rawMax : boundsMax;
-    const ordered: [number, number] = [Math.min(safeMin, safeMax), Math.max(safeMin, safeMax)];
-    const final: [number, number]   = [
-      clamp(ordered[0], boundsMin, boundsMax),
-      clamp(ordered[1], boundsMin, boundsMax),
-    ];
-    setPriceRange(final);
-    setSliderRange(final);
-    setMinInput(String(final[0]));
-    setMaxInput(String(final[1]));
-  }, [listings.minPrice, listings.maxPrice]);
+    const finalMin = clamp(rawMin, boundsMin, boundsMax);
+    const finalMax = clamp(rawMax, boundsMin, boundsMax);
+    const safeMin = Math.min(finalMin, finalMax);
+    const safeMax = Math.max(finalMin, finalMax);
 
-  // ── Text input handlers ───────────────────────────────────────────────────
+    updateURLParams({
+      minPrice: safeMin > boundsMin ? String(safeMin) : null,
+      maxPrice: safeMax < boundsMax ? String(safeMax) : null,
+    });
+  }, [boundsMin, boundsMax, updateURLParams]);
+
   const handleInputCommit = () => {
     const min = parseFloat(minInput);
     const max = parseFloat(maxInput);
@@ -142,8 +135,6 @@ export const ProductList: React.FC = () => {
     if (e.key === 'Enter') handleInputCommit();
   };
 
-  // ── Slider handlers ───────────────────────────────────────────────────────
-  // While dragging: update only sliderRange + text inputs (no API call yet).
   const handleMinSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Math.min(Number(e.target.value), sliderRange[1]);
     setSliderRange([val, sliderRange[1]]);
@@ -156,57 +147,40 @@ export const ProductList: React.FC = () => {
     setMaxInput(String(val));
   };
 
-  // On pointer-up / touch-end: commit slider position → triggers API query.
   const handleSliderRelease = () => {
     isDraggingRef.current = false;
     commitPrice(sliderRange[0], sliderRange[1]);
   };
 
-  // ── Reset all filters ─────────────────────────────────────────────────────
   const resetFilters = () => {
-    setSelectedCategories([]);
-    setSearchTerm('');
-    commitPrice(listings.minPrice || 0, listings.maxPrice || 100000);
+    setLocalSearchTerm('');
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
+  const handleSortChange = (newSort: string) => {
+    updateURLParams({ sort: newSort === 'newest' ? null : newSort });
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateURLParams({ search: localSearchTerm.trim() || null });
+    setPage(1);
   };
 
   // ── Build API query params ────────────────────────────────────────────────
-  const boundsMin = listings.minPrice || 0;
-  const boundsMax = listings.maxPrice || 0;
-  const isPriceFiltered = priceRange[0] > boundsMin || priceRange[1] < boundsMax;
-
   const query = useMemo(() => {
     const params: Record<string, string> = {
-      search: searchTerm.trim(),
+      search: (searchParams.get('search') || '').trim(),
       categories: expandCategoryTree(categories, selectedCategories).join(','),
       sort: sortOrder,
     };
-    // Only include price params when the user has narrowed the range.
+    const isPriceFiltered = priceRange[0] > boundsMin || priceRange[1] < boundsMax;
     if (isPriceFiltered && priceRange[1] > 0) {
       params.minPrice = String(priceRange[0]);
       params.maxPrice = String(priceRange[1]);
     }
     return params;
-  }, [categories, selectedCategories, priceRange, sortOrder, searchTerm, isPriceFiltered]);
-
-  // ── Sync URL search params ────────────────────────────────────────────────
-  // Guard: don't push a URL update that merely re-adds a category that was
-  // explicitly cleared by the user navigating to /products.
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
-    if (isPriceFiltered && priceRange[1] > 0) {
-      params.set('minPrice', String(priceRange[0]));
-      params.set('maxPrice', String(priceRange[1]));
-    }
-    if (sortOrder !== 'newest') params.set('sort', sortOrder);
-    if (searchTerm.trim()) params.set('search', searchTerm.trim());
-    const next = params.toString();
-    // Only update the URL if it would actually change — prevents the
-    // infinite loop where each navigation re-triggers this effect.
-    if (next !== searchParamsString) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [selectedCategories, priceRange, sortOrder, searchTerm, isPriceFiltered, searchParamsString]);
+  }, [categories, selectedCategories, priceRange, sortOrder, searchParamsString, boundsMin, boundsMax]);
 
   // ── Fetch products ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -251,17 +225,11 @@ export const ProductList: React.FC = () => {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  // ── Category helpers ──────────────────────────────────────────────────────
-  const toggleCategory = (catName: string) => {
-    setSelectedCategories(prev => prev.includes(catName) ? prev.filter(c => c !== catName) : [...prev, catName]);
-  };
-
   // ── Slider track visual percentages ──────────────────────────────────────
   const rangeDiff  = boundsMax - boundsMin;
   const hasPriceRange = rangeDiff > 0;
   const leftPct    = hasPriceRange ? ((sliderRange[0] - boundsMin) / rangeDiff) * 100 : 0;
   const rightPct   = hasPriceRange ? 100 - ((sliderRange[1] - boundsMin) / rangeDiff) * 100 : 0;
-  // Elevate min thumb z-index when near the max so it stays draggable.
   const minThumbZ  = hasPriceRange && sliderRange[0] >= boundsMax - rangeDiff * 0.05 ? 5 : 3;
 
   return (
@@ -277,13 +245,14 @@ export const ProductList: React.FC = () => {
                 <h4 className="font-bold text-sm text-gray-800 mb-3">Search</h4>
                 <div className="relative">
                   <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && setPage(1)}
-                    placeholder="Search products..."
-                    className="w-full bg-gray-50 border border-gray-100 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-primary"
-                  />
+                  <form onSubmit={handleSearchSubmit}>
+                    <input
+                      value={localSearchTerm}
+                      onChange={e => setLocalSearchTerm(e.target.value)}
+                      placeholder="Search products..."
+                      className="w-full bg-gray-50 border border-gray-100 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-primary"
+                    />
+                  </form>
                 </div>
               </div>
 
@@ -377,7 +346,7 @@ export const ProductList: React.FC = () => {
                 <h4 className="font-bold text-sm text-gray-800 mb-3 mt-4">Categories</h4>
                 <div className="flex flex-col gap-2">
                   <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
-                    <input type="checkbox" checked={selectedCategories.length === 0} onChange={() => setSelectedCategories([])} className="w-4 h-4 accent-primary rounded cursor-pointer" />
+                    <input type="checkbox" checked={selectedCategories.length === 0} onChange={() => resetFilters()} className="w-4 h-4 accent-primary rounded cursor-pointer" />
                     <span className={selectedCategories.length === 0 ? 'font-bold text-primary' : 'text-gray-700'}>All Categories</span>
                   </label>
                   {categories.filter(c => !c.parentId).map(cat => {
@@ -411,7 +380,7 @@ export const ProductList: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500 hidden sm:block">Sort By:</span>
-              <select value={sortOrder} onChange={e => setSortOrder(getSortValue(e.target.value))} className="bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 text-sm font-bold focus:border-primary outline-none cursor-pointer">
+              <select value={sortOrder} onChange={e => handleSortChange(e.target.value)} className="bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 text-sm font-bold focus:border-primary outline-none cursor-pointer">
                 <option value="newest">Newest</option>
                 <option value="low-to-high">Price: Low to High</option>
                 <option value="high-to-low">Price: High to Low</option>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 import { useCart } from '../CartContext';
 import { useAuth } from '../AuthContext';
-import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X } from 'lucide-react';
+import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X, Play } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
@@ -676,9 +676,56 @@ export const ProductDetail: React.FC = () => {
            
            <div>
              <h3 className="font-bold mb-4">Related Products</h3>
-             <div className="grid grid-cols-1 gap-4">
-                {relatedProductsToRender.map(p => <ProductCard key={p.id} product={p} />)}
-             </div>
+              <div className="flex flex-col gap-3">
+                 {relatedProductsToRender.map(p => {
+                   const img = normalizeSrc(p.images?.[0]);
+                   const ytId = extractYouTubeId(img);
+
+                   return (
+                   <Link 
+                     key={p.id} 
+                     to={`/product/${encodeURIComponent(p.sku || p.id)}`}
+                     className="flex items-center gap-4 p-3 rounded-2xl border border-gray-100 hover:border-primary hover:shadow-md transition-all group bg-white"
+                   >
+                     <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                        {ytId ? (
+                          <div className="relative w-full h-full">
+                            <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                              <Play className="text-white fill-white" size={24} />
+                            </div>
+                          </div>
+                        ) : img && img.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                          <div className="relative w-full h-full">
+                            <video src={img} preload="metadata" muted playsInline loop className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                              <Play className="text-white fill-white" size={24} />
+                            </div>
+                          </div>
+                        ) : img ? (
+                          <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                        ) : (
+                          <div className="text-[10px] text-gray-400">No image</div>
+                        )}
+                        {p.discountPrice && p.price > p.discountPrice && (
+                          <div className="absolute top-1 left-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                            -{Math.round(((p.price - p.discountPrice) / p.price) * 100)}%
+                          </div>
+                        )}
+                     </div>
+                     <div className="flex-1 min-w-0 flex flex-col justify-center">
+                       <h4 className="font-bold text-sm text-gray-800 line-clamp-2 group-hover:text-primary transition-colors leading-tight mb-1">{p.name}</h4>
+                       <div className="flex items-center gap-2">
+                         <span className="font-black text-primary text-sm">৳{p.discountPrice || p.price}</span>
+                         {p.discountPrice && p.price > p.discountPrice && (
+                           <span className="text-xs text-gray-400 line-through">৳{p.price}</span>
+                         )}
+                       </div>
+                     </div>
+                   </Link>
+                 );
+                 })}
+              </div>
            </div>
         </div>
       </div>

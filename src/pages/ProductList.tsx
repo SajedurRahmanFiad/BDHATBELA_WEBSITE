@@ -247,6 +247,7 @@ export const ProductList: React.FC = () => {
                   <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <form onSubmit={handleSearchSubmit}>
                     <input
+                      aria-label="Search products"
                       value={localSearchTerm}
                       onChange={e => setLocalSearchTerm(e.target.value)}
                       placeholder="Search products..."
@@ -264,8 +265,9 @@ export const ProductList: React.FC = () => {
                   {/* Min / Max number inputs */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1 space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase">Min Price (৳)</label>
+                      <label htmlFor="minPrice" className="text-[10px] font-black text-gray-400 uppercase">Min Price (৳)</label>
                       <input
+                        id="minPrice"
                         type="number"
                         value={minInput}
                         placeholder={isLoading ? 'Loading…' : String(boundsMin)}
@@ -277,8 +279,9 @@ export const ProductList: React.FC = () => {
                       />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase">Max Price (৳)</label>
+                      <label htmlFor="maxPrice" className="text-[10px] font-black text-gray-400 uppercase">Max Price (৳)</label>
                       <input
+                        id="maxPrice"
                         type="number"
                         value={maxInput}
                         placeholder={isLoading ? 'Loading…' : String(boundsMax)}

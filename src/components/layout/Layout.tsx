@@ -163,7 +163,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0">
-              <img src={settings.logo} alt="Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+              <img src={settings.logo} alt={`${settings.companyName} Logo`} width="40" height="40" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
               <span className="text-xl md:text-2xl font-bold text-gray-900">{settings.companyName}</span>
             </Link>
 
@@ -172,6 +172,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <form onSubmit={handleSearchSubmit} className="w-full relative">
                 <input
                   type="text"
+                  aria-label="Search products"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => {
@@ -181,7 +182,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   onFocus={() => setShowResults(true)}
                   className="w-full pl-4 pr-12 py-2 border-2 border-gray-100 rounded-full focus:border-primary outline-none transition-all"
                 />
-                <button type="submit" className="absolute right-0 top-0 bottom-0 bg-primary text-white px-5 rounded-r-full hover-primary-dark transition-colors">
+                <button type="submit" aria-label="Search" className="absolute right-0 top-0 bottom-0 bg-primary text-white px-5 rounded-r-full hover-primary-dark transition-colors">
                   <Search size={20} />
                 </button>
               </form>
@@ -252,6 +253,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </Link>
               <button
                 onClick={openSidebar}
+                aria-label="Shopping Cart"
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors relative group"
               >
                 <ShoppingCart size={24} />
@@ -263,6 +265,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </button>
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Menu"
                 className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <Menu size={24} />

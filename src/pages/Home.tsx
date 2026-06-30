@@ -98,13 +98,14 @@ export const Home: React.FC = () => {
           <form onSubmit={handleMobileSearchSubmit}>
             <input
               type="text"
+              aria-label="Search products"
               placeholder="Search products..."
               value={mobileSearch}
               onChange={e => { setMobileSearch(e.target.value); setShowMobileResults(true); }}
               onFocus={() => setShowMobileResults(true)}
               className="w-full pl-4 pr-12 py-3 border-2 border-gray-100 rounded-full focus:border-primary outline-none transition-all text-sm"
             />
-            <button type="submit" className="absolute right-0 top-0 bottom-0 bg-primary text-white px-5 rounded-r-full">
+            <button type="submit" aria-label="Search" className="absolute right-0 top-0 bottom-0 bg-primary text-white px-5 rounded-r-full">
               <SearchIcon size={18} />
             </button>
           </form>

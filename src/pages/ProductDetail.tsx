@@ -739,7 +739,7 @@ export const ProductDetail: React.FC = () => {
                      <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
                         {ytId ? (
                           <div className="relative w-full h-full">
-                            <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                            <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
                               <Play className="text-white fill-white" size={24} />
                             </div>
@@ -752,7 +752,7 @@ export const ProductDetail: React.FC = () => {
                             </div>
                           </div>
                         ) : img ? (
-                          <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                          <img src={img} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
                         ) : (
                           <div className="text-[10px] text-gray-400">No image</div>
                         )}

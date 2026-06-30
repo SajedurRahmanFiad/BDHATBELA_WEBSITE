@@ -112,12 +112,13 @@ export const Home: React.FC = () => {
           <AnimatePresence>
             {showMobileResults && (mobileResults.length > 0 || isMobileSearching) && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMobileResults(false)} />
+                <div className="fixed inset-0 z-40" onClick={() => setShowMobileResults(false)} aria-hidden="true" />
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
                   className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+                  role="listbox"
                 >
                   <div className="p-2">
                     {isMobileSearching ? (
@@ -125,6 +126,8 @@ export const Home: React.FC = () => {
                     ) : mobileResults.map(product => (
                       <button
                         key={product.id}
+                        role="option"
+                        aria-selected="false"
                         onClick={() => { navigate(`/product/${encodeURIComponent(product.sku ?? product.id)}`); setShowMobileResults(false); setMobileSearch(''); }}
                         className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-all text-left"
                       >
@@ -165,7 +168,7 @@ export const Home: React.FC = () => {
                   <div className="w-full h-full bg-gray-200 animate-pulse" />
                 ) : (
                   <>
-                    <img src={banners[currentBanner].image} alt={banners[currentBanner].title} className="w-full h-full object-cover" />
+                    <img src={banners[currentBanner].image} alt={banners[currentBanner].title} fetchPriority="high" className="w-full h-full object-cover" />
                     {(banners[currentBanner].title?.trim() || Boolean(banners[currentBanner].showButton)) && (
                       <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
                         <div className="max-w-xl text-white space-y-4">

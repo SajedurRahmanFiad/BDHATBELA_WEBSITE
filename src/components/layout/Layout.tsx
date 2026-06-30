@@ -191,12 +191,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <AnimatePresence>
                 {showResults && (searchResults.length > 0 || isSearching) && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowResults(false)} />
+                    <div className="fixed inset-0 z-40" onClick={() => setShowResults(false)} aria-hidden="true" />
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
                       className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+                      role="listbox"
                     >
                       <div className="p-2">
                         {isSearching ? (
@@ -204,6 +205,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         ) : searchResults.map(product => (
                           <button
                             key={product.id}
+                            role="option"
+                            aria-selected="false"
                             onClick={() => {
                               navigate(`/product/${encodeURIComponent(product.sku ?? product.id)}`);
                               setShowResults(false);

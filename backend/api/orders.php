@@ -23,17 +23,21 @@ function getOrderDetails($pdo, $order_id) {
         SELECT
             oi.product_id,
             oi.product_name,
-            oi.price,
+            oi.price AS historical_price,
             oi.quantity,
             oi.image,
             oi.variation_id,
             p.cost_of_goods AS product_cost_of_goods,
             p.weight AS product_weight,
             p.sku AS product_sku,
+            p.price AS current_product_price,
+            p.discountPrice AS current_product_discount,
             v.name AS variation_name,
             v.cost_of_goods AS variation_cost_of_goods,
             v.weight AS variation_weight,
-            v.sku AS variation_sku
+            v.sku AS variation_sku,
+            v.price AS current_variation_price,
+            v.discount_price AS current_variation_discount
         FROM order_items oi
         LEFT JOIN products p ON p.id = oi.product_id
         LEFT JOIN product_variations v ON v.id = oi.variation_id
@@ -53,6 +57,8 @@ function getOrderDetails($pdo, $order_id) {
                 'costOfGoods' => (float)($item['variation_cost_of_goods'] ?? 0),
                 'weight' => (float)($item['variation_weight'] ?? 0),
                 'sku' => $item['variation_sku'] ?: null,
+                'price' => isset($item['current_variation_price']) ? (float)$item['current_variation_price'] : null,
+                'discountPrice' => isset($item['current_variation_discount']) ? (float)$item['current_variation_discount'] : null,
             ];
         }
 
@@ -60,7 +66,9 @@ function getOrderDetails($pdo, $order_id) {
             'product' => [
                 'id' => (string)$item['product_id'],
                 'name' => $item['product_name'],
-                'price' => (float)$item['price'],
+                'price' => (float)($item['current_product_price'] ?? $item['historical_price']),
+                'discountPrice' => isset($item['current_product_discount']) ? (float)$item['current_product_discount'] : null,
+                'historicalPrice' => (float)$item['historical_price'],
                 'costOfGoods' => (float)($item['product_cost_of_goods'] ?? 0),
                 'weight' => (float)($item['product_weight'] ?? 0),
                 'sku' => $item['product_sku'] ?: null,
@@ -203,7 +211,18 @@ if ($method === 'GET') {
             $variation = $item['variation'] ?? null;
             $variationId = $variation['id'] ?? null;
             $quantity = $item['quantity'];
-            $itemPrice = $variation['price'] ?? $prod['price'];
+            
+            $vDiscount = (isset($variation['discountPrice']) && is_numeric($variation['discountPrice']) && $variation['discountPrice'] > 0) ? $variation['discountPrice'] : null;
+            $vPrice = (isset($variation['price']) && is_numeric($variation['price'])) ? $variation['price'] : null;
+            $pDiscount = (isset($prod['discountPrice']) && is_numeric($prod['discountPrice']) && $prod['discountPrice'] > 0) ? $prod['discountPrice'] : null;
+            $pPrice = (isset($prod['price']) && is_numeric($prod['price'])) ? $prod['price'] : 0;
+            
+            if ($variationId) {
+                $itemPrice = $vDiscount ?? $vPrice ?? $pDiscount ?? $pPrice;
+            } else {
+                $itemPrice = $pDiscount ?? $pPrice;
+            }
+            
             $image = null;
 
             if (!empty($variation['media'])) {

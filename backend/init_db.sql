@@ -217,21 +217,21 @@ ALTER TABLE `product_variations`
   ADD COLUMN IF NOT EXISTS `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 UPDATE `settings`
-SET `setting_value` = JSON_SET(
+SET `setting_value` = JSON_INSERT(
   `setting_value`,
-  '$.shippingCharges.base', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.base'), JSON_EXTRACT(`setting_value`, '$.shippingCharges.insideDhaka'), 0),
-  '$.shippingCharges.exceptions', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.exceptions'), JSON_ARRAY()),
-  '$.shippingCharges.dynamicShipping', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping'), JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0)),
-  '$.shippingCharges.dynamicShipping.startKg', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.startKg'), 0),
-  '$.shippingCharges.dynamicShipping.perKgCharge', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.perKgCharge'), 0),
-  '$.metaPixel', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel'), JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka')),
-  '$.metaPixel.enabled', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.enabled'), false),
-  '$.metaPixel.pixelId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.pixelId'), ''),
-  '$.metaPixel.businessAccountId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.businessAccountId'), ''),
-  '$.metaPixel.accessToken', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.accessToken'), ''),
-  '$.metaPixel.domain', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.domain'), ''),
-  '$.metaPixel.currency', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.currency'), 'BDT'),
-  '$.metaPixel.timezone', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.timezone'), 'Asia/Dhaka')
+  '$.shippingCharges.base', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.insideDhaka'), 0),
+  '$.shippingCharges.exceptions', JSON_ARRAY(),
+  '$.shippingCharges.dynamicShipping', JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0),
+  '$.shippingCharges.dynamicShipping.startKg', 0,
+  '$.shippingCharges.dynamicShipping.perKgCharge', 0,
+  '$.metaPixel', JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka'),
+  '$.metaPixel.enabled', false,
+  '$.metaPixel.pixelId', '',
+  '$.metaPixel.businessAccountId', '',
+  '$.metaPixel.accessToken', '',
+  '$.metaPixel.domain', '',
+  '$.metaPixel.currency', 'BDT',
+  '$.metaPixel.timezone', 'Asia/Dhaka'
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
 
@@ -243,29 +243,29 @@ ALTER TABLE `products`
 UPDATE `settings`
 SET `setting_value` = JSON_SET(
   `setting_value`,
-  '$.socialLinks.facebook', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook')))
+  '$.socialLinks.facebook', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.facebook')), ''))
   ),
-  '$.socialLinks.instagram', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram')))
+  '$.socialLinks.instagram', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.instagram')), ''))
   ),
-  '$.socialLinks.youtube', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube')))
+  '$.socialLinks.youtube', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.youtube')), ''))
   ),
-  '$.socialLinks.twitter', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter')))
+  '$.socialLinks.twitter', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.twitter')), ''))
   ),
-  '$.socialLinks.linkedin', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin')))
+  '$.socialLinks.linkedin', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.linkedin')), ''))
   ),
-  '$.socialLinks.whatsapp', JSON_OBJECT(
-    'enabled', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp.enabled'), IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp') IS NULL, false, true)),
-    'url', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp')) = 'OBJECT', JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp.url'), JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp')))
+  '$.socialLinks.whatsapp', IF(JSON_TYPE(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp')) = 'OBJECT',
+    JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp'),
+    JSON_OBJECT('enabled', IF(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp') IS NOT NULL, true, false), 'url', COALESCE(JSON_UNQUOTE(JSON_EXTRACT(`setting_value`, '$.socialLinks.whatsapp')), ''))
   )
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);

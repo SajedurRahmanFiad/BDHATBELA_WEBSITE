@@ -26,7 +26,7 @@ if ($method === 'GET') {
         $title = $data['title'] ?? null;
         $link = $data['link'] ?? null;
         $image = $data['image'];
-        $showButton = isset($data['showButton']) ? (bool)$data['showButton'] : false;
+        $showButton = isset($data['showButton']) ? (int)filter_var($data['showButton'], FILTER_VALIDATE_BOOLEAN) : 0;
         $buttonText = $data['buttonText'] ?? 'Shop Now';
         $buttonLink = $data['buttonLink'] ?? null;
         $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';
@@ -73,7 +73,7 @@ if ($method === 'GET') {
     }
 
     try {
-        $showButton = isset($data['showButton']) ? (bool)$data['showButton'] : false;
+        $showButton = isset($data['showButton']) ? (int)filter_var($data['showButton'], FILTER_VALIDATE_BOOLEAN) : 0;
         $buttonText = $data['buttonText'] ?? 'Shop Now';
         $buttonLink = $data['buttonLink'] ?? null;
         $buttonTextColor = $data['buttonTextColor'] ?? '#FFFFFF';

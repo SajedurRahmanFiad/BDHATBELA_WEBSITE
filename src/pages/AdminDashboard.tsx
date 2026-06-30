@@ -907,8 +907,9 @@ const AdminOrders = () => {
                                             <thead className="bg-gray-50 text-[10px] font-bold uppercase text-gray-400 border-b">
                                                 <tr>
                                                     <th className="px-6 py-3">Product</th>
-                                                    <th className="px-6 py-3">Qty</th>
-                                                    <th className="px-6 py-3 text-right">Price</th>
+                                                    <th className="px-6 py-3 text-center">Price</th>
+                                                    <th className="px-6 py-3 text-center">Qty</th>
+                                                    <th className="px-6 py-3 text-right">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y text-sm">
@@ -925,17 +926,45 @@ const AdminOrders = () => {
                                                                 )}
                                                                 <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
                                                             </td>
-                                                            <td className="px-6 py-4 text-gray-600">{item.quantity}</td>
-                                                            <td className="px-6 py-4 font-black text-right text-gray-900">৳{formatMoney(itemPrice)}</td>
+                                                            <td className="px-6 py-4 text-gray-600 text-center">৳{formatMoney(itemPrice)}</td>
+                                                            <td className="px-6 py-4 text-gray-600 text-center">{item.quantity}</td>
+                                                            <td className="px-6 py-4 font-black text-right text-gray-900">৳{formatMoney(itemPrice * item.quantity)}</td>
                                                         </tr>
                                                     );
                                                 })}
                                             </tbody>
                                             <tfoot className="bg-gray-50 font-black">
-                                                <tr>
-                                                    <td colSpan={2} className="px-6 py-4 text-right">Grand Total:</td>
-                                                    <td className="px-6 py-4 text-right text-primary text-xl">৳{formatMoney(selectedOrder.total)}</td>
-                                                </tr>
+                                                {(() => {
+                                                    const subtotal = selectedOrder.items.reduce((acc: number, item: any) => {
+                                                        const price = toFiniteNumber(item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price);
+                                                        return acc + (price * item.quantity);
+                                                    }, 0);
+                                                    const discount = toFiniteNumber(selectedOrder.couponDiscount || 0);
+                                                    const shipping = Math.max(0, selectedOrder.total + discount - subtotal);
+                                                    
+                                                    return (
+                                                        <>
+                                                            <tr>
+                                                                <td colSpan={3} className="px-6 py-3 text-right text-sm text-gray-500 font-medium border-b">Subtotal:</td>
+                                                                <td className="px-6 py-3 text-right text-sm border-b">৳{formatMoney(subtotal)}</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td colSpan={3} className="px-6 py-3 text-right text-sm text-gray-500 font-medium border-b">Shipping:</td>
+                                                                <td className="px-6 py-3 text-right text-sm border-b">৳{formatMoney(shipping)}</td>
+                                                            </tr>
+                                                            {discount > 0 && (
+                                                                <tr>
+                                                                    <td colSpan={3} className="px-6 py-3 text-right text-sm text-green-600 font-medium border-b">Discount:</td>
+                                                                    <td className="px-6 py-3 text-right text-sm text-green-600 border-b">-৳{formatMoney(discount)}</td>
+                                                                </tr>
+                                                            )}
+                                                            <tr>
+                                                                <td colSpan={3} className="px-6 py-4 text-right">Grand Total:</td>
+                                                                <td className="px-6 py-4 text-right text-primary text-xl">৳{formatMoney(selectedOrder.total)}</td>
+                                                            </tr>
+                                                        </>
+                                                    );
+                                                })()}
                                             </tfoot>
                                         </table>
                                     </div>

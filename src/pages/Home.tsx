@@ -2,12 +2,17 @@ import React from 'react';
 import { useAdmin } from '../AdminContext';
 import { ProductCard } from '../components/product/ProductCard';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronRight, ArrowRight, Search as SearchIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const Home: React.FC = () => {
-  const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings } = useAdmin();
+  const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings, searchProducts } = useAdmin();
+  const navigate = useNavigate();
   const [currentBanner, setCurrentBanner] = React.useState(0);
+  const [mobileSearch, setMobileSearch] = React.useState('');
+  const [mobileResults, setMobileResults] = React.useState<Awaited<ReturnType<typeof searchProducts>>>([]);
+  const [showMobileResults, setShowMobileResults] = React.useState(false);
+  const [isMobileSearching, setIsMobileSearching] = React.useState(false);
   const [featuredProducts, setFeaturedProducts] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
   const [newArrivals, setNewArrivals] = React.useState<Awaited<ReturnType<typeof fetchProductListings>>['items']>([]);
   const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
@@ -67,9 +72,82 @@ export const Home: React.FC = () => {
     return () => { cancelled = true; };
   }, [fetchProductListings]);
 
+  // Mobile search debounce effect
+  React.useEffect(() => {
+    const trimmed = mobileSearch.trim();
+    if (!trimmed) { setMobileResults([]); return; }
+    const t = window.setTimeout(async () => {
+      setIsMobileSearching(true);
+      try { setMobileResults(await searchProducts(trimmed)); } catch { setMobileResults([]); } finally { setIsMobileSearching(false); }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [mobileSearch, searchProducts]);
+
+  const handleMobileSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = mobileSearch.trim();
+    if (trimmed) { navigate(`/products?search=${encodeURIComponent(trimmed)}`); setShowMobileResults(false); }
+  };
+
   return (
     <div className="space-y-12 pb-12">
-      {/* Hero Slider */}
+
+      {/* Mobile-only Search Bar — above the banner */}
+      <div className="md:hidden container mx-auto px-4 pt-4">
+        <div className="relative">
+          <form onSubmit={handleMobileSearchSubmit}>
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={mobileSearch}
+              onChange={e => { setMobileSearch(e.target.value); setShowMobileResults(true); }}
+              onFocus={() => setShowMobileResults(true)}
+              className="w-full pl-4 pr-12 py-3 border-2 border-gray-100 rounded-full focus:border-primary outline-none transition-all text-sm"
+            />
+            <button type="submit" className="absolute right-0 top-0 bottom-0 bg-primary text-white px-5 rounded-r-full">
+              <SearchIcon size={18} />
+            </button>
+          </form>
+          <AnimatePresence>
+            {showMobileResults && (mobileResults.length > 0 || isMobileSearching) && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMobileResults(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+                >
+                  <div className="p-2">
+                    {isMobileSearching ? (
+                      <div className="py-4 text-center text-sm text-gray-500">Searching...</div>
+                    ) : mobileResults.map(product => (
+                      <button
+                        key={product.id}
+                        onClick={() => { navigate(`/product/${encodeURIComponent(product.sku ?? product.id)}`); setShowMobileResults(false); setMobileSearch(''); }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-all text-left"
+                      >
+                        <img src={product.images?.[0]} className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" alt="" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-primary font-black">৳{product.discountPrice || product.price}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <Link
+                    to={`/products?search=${mobileSearch}`}
+                    onClick={() => setShowMobileResults(false)}
+                    className="block py-3 bg-gray-50 text-center text-xs font-bold text-gray-400 hover:text-primary border-t"
+                  >
+                    View All Results
+                  </Link>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
       {(bannersLoading || banners.length > 0) && (
         <section className="container mx-auto px-4 mt-4">
           <div className="rounded-2xl overflow-hidden aspect-[21/9] md:aspect-[3/1] relative group shadow-lg bg-gray-900">

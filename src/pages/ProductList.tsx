@@ -70,10 +70,16 @@ export const ProductList: React.FC = () => {
     setSearchTerm(searchParam);
   }, [searchParam]);
 
-  // ── Sync selected categories from URL ────────────────────────────────────
+  // Sync selected categories from URL — only fires when the URL param actually changes,
+  // so clicking "All Products" (/products, no ?categories param) correctly clears the state.
   useEffect(() => {
     const cat = searchParams.get('categories') || searchParams.get('category') || categoryName || 'all';
-    setSelectedCategories(cat === 'all' ? [] : cat.split(','));
+    const next = cat === 'all' ? [] : cat.split(',');
+    setSelectedCategories(prev => {
+      // Avoid re-render if the value is already the same.
+      if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
+      return next;
+    });
   }, [searchParams.get('categories'), searchParams.get('category'), categoryName]);
 
   // ── Initialise price bounds once, after the first successful fetch ────────
@@ -183,6 +189,8 @@ export const ProductList: React.FC = () => {
   }, [categories, selectedCategories, priceRange, sortOrder, searchTerm, isPriceFiltered]);
 
   // ── Sync URL search params ────────────────────────────────────────────────
+  // Guard: don't push a URL update that merely re-adds a category that was
+  // explicitly cleared by the user navigating to /products.
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategories.length > 0) params.set('categories', selectedCategories.join(','));
@@ -192,7 +200,10 @@ export const ProductList: React.FC = () => {
     }
     if (sortOrder !== 'newest') params.set('sort', sortOrder);
     if (searchTerm.trim()) params.set('search', searchTerm.trim());
-    if (params.toString() !== searchParamsString) {
+    const next = params.toString();
+    // Only update the URL if it would actually change — prevents the
+    // infinite loop where each navigation re-triggers this effect.
+    if (next !== searchParamsString) {
       setSearchParams(params, { replace: true });
     }
   }, [selectedCategories, priceRange, sortOrder, searchTerm, isPriceFiltered, searchParamsString]);

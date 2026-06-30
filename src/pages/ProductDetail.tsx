@@ -547,20 +547,23 @@ export const ProductDetail: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white w-full max-w-2xl rounded-[40px] p-8 relative z-10 shadow-2xl overflow-hidden"
+                className="bg-white w-full max-w-2xl rounded-[40px] relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                >
-                 <button 
-                  onClick={() => setShowVariationModal(false)}
-                  className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"
-                 >
-                   <X size={24} />
-                 </button>
-
-                 <div className="space-y-6">
+                 <div className="flex items-center justify-between p-8 pb-0 shrink-0">
                    <div>
                      <h2 className="text-3xl font-black">Choose a Variation</h2>
-                     <p className="text-sm text-gray-500 mt-2">Select the variation you want to {pendingVariationAction === 'buy' ? 'buy now' : 'add to cart'}.</p>
+                     <p className="text-sm text-gray-500 mt-1">Select the variation you want to {pendingVariationAction === 'buy' ? 'buy now' : 'add to cart'}.</p>
                    </div>
+                   <button 
+                    onClick={() => setShowVariationModal(false)}
+                    className="text-gray-400 hover:text-gray-600 shrink-0 ml-4"
+                   >
+                     <X size={24} />
+                   </button>
+                 </div>
+
+                 <div className="p-8 pt-6 overflow-y-auto no-scrollbar flex-1">
+                 <div className="space-y-6">
 
                    <div className="grid grid-cols-1 gap-6">
                      <div className="bg-gray-50 rounded-3xl p-5 border">
@@ -626,6 +629,7 @@ export const ProductDetail: React.FC = () => {
                        </button>
                      </div>
                    </div>
+                 </div>
                  </div>
                </motion.div>
             </div>

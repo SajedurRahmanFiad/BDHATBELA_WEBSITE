@@ -7,8 +7,19 @@ header('Content-Type: application/json; charset=utf-8');
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    // Cache categories for 5 minutes; allows stale content for 1 hour
+    header('Cache-Control: public, max-age=300, stale-while-revalidate=3600');
     $stmt = $pdo->query("SELECT id, name, icon, image, parent_id as parentId FROM categories");
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Strip base64 image data — only URL paths are needed for rendering
+    foreach ($categories as &$cat) {
+        if (isset($cat['image']) && strpos($cat['image'], 'data:') === 0) {
+            $cat['image'] = null;
+        }
+        if (isset($cat['icon']) && strpos($cat['icon'], 'data:') === 0) {
+            $cat['icon'] = null;
+        }
+    }
     echo json_encode($categories);
 
 } elseif ($method === 'POST') {

@@ -477,22 +477,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <p className="text-sm text-gray-600">{settings.tagline || 'Just click & get!'}</p>
             <div className="flex items-center gap-4">
               {isSocialEnabled(settings.socialLinks?.facebook) && (
-                <a href={getSocialUrl(settings.socialLinks?.facebook)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
+                <a aria-label="Facebook" href={getSocialUrl(settings.socialLinks?.facebook)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
               )}
               {isSocialEnabled(settings.socialLinks?.youtube) && (
-                <a href={getSocialUrl(settings.socialLinks?.youtube)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
+                <a aria-label="YouTube" href={getSocialUrl(settings.socialLinks?.youtube)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
               )}
               {isSocialEnabled(settings.socialLinks?.instagram) && (
-                <a href={getSocialUrl(settings.socialLinks?.instagram)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+                <a aria-label="Instagram" href={getSocialUrl(settings.socialLinks?.instagram)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
               )}
               {isSocialEnabled(settings.socialLinks?.whatsapp) && (
-                <a href={getSocialUrl(settings.socialLinks?.whatsapp)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-emerald-600 hover:text-white transition-all"><Phone size={18} /></a>
+                <a aria-label="WhatsApp" href={getSocialUrl(settings.socialLinks?.whatsapp)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-emerald-600 hover:text-white transition-all"><Phone size={18} /></a>
               )}
               {isSocialEnabled(settings.socialLinks?.twitter) && (
-                <a href={getSocialUrl(settings.socialLinks?.twitter)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-600 hover:text-white transition-all"><Twitter size={18} /></a>
+                <a aria-label="Twitter" href={getSocialUrl(settings.socialLinks?.twitter)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-600 hover:text-white transition-all"><Twitter size={18} /></a>
               )}
               {isSocialEnabled(settings.socialLinks?.linkedin) && (
-                <a href={getSocialUrl(settings.socialLinks?.linkedin)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-700 hover:text-white transition-all"><Linkedin size={18} /></a>
+                <a aria-label="LinkedIn" href={getSocialUrl(settings.socialLinks?.linkedin)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-700 hover:text-white transition-all"><Linkedin size={18} /></a>
               )}
             </div>
           </div>

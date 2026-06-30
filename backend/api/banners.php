@@ -6,6 +6,8 @@ header('Content-Type: application/json; charset=utf-8');
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    // Cache banners response for 5 minutes (300s) on CDN/browser
+    header('Cache-Control: public, max-age=300, stale-while-revalidate=3600');
     $stmt = $pdo->query("SELECT * FROM banners");
     $banners = $stmt->fetchAll();
     foreach ($banners as &$banner) {

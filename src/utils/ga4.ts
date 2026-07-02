@@ -181,6 +181,13 @@ export const trackBeginCheckout = (items: Array<{
 
 export const trackPurchase = (order: {
   id: string;
+  customerId?: string;
+  customerName?: string;
+  phone?: string;
+  address?: string;
+  area?: string;
+  paymentMethod?: string;
+  note?: string;
   items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; sku?: string; stock?: number; productType?: string; itemBrand?: string; index?: number }>;
   total: number;
   coupon?: string | null;
@@ -194,6 +201,13 @@ export const trackPurchase = (order: {
     coupon: order.coupon || undefined,
     shipping: order.shipping !== undefined ? Number(order.shipping) : undefined,
     tax: order.tax !== undefined ? Number(order.tax) : undefined,
+    customer_id: order.customerId || undefined,
+    customer_name: order.customerName || undefined,
+    customer_phone: order.phone || undefined,
+    customer_address: order.address || undefined,
+    customer_area: order.area || undefined,
+    payment_method: order.paymentMethod || undefined,
+    customer_note: order.note || undefined,
     items: order.items.map(item => normalizeItem({
       id: item.id,
       name: item.name,

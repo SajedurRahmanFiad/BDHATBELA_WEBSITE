@@ -54,6 +54,13 @@ export const OrderSuccess: React.FC = () => {
 
         trackGA4Purchase({
             id: order.id,
+            customerId: order.customerId,
+            customerName: order.customerName,
+            phone: order.phone,
+            address: order.address,
+            area: order.area,
+            paymentMethod: order.paymentMethod,
+            note: order.note,
             items: purchaseItems,
             total: order.total,
             coupon: order.couponCode ?? undefined,

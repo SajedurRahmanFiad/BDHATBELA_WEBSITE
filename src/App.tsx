@@ -3,10 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Layout } from './components/layout/Layout';
 import ScrollToTop from './components/layout/ScrollToTop';
 import { CartProvider } from './CartContext';
-import { initializeFacebookPixel, trackPageView } from './utils/facebookPixel';
+import { trackPageView } from './utils/facebookPixel';
 
 import { AuthProvider, useAuth } from './AuthContext';
-import { AdminProvider, useAdmin } from './AdminContext';
+import { AdminProvider } from './AdminContext';
 
 const Home = React.lazy(() => import(/* webpackChunkName: "home-page" */ './pages/Home').then(module => ({ default: module.Home })));
 const ProductList = React.lazy(() => import(/* webpackChunkName: "product-list-page" */ './pages/ProductList').then(module => ({ default: module.ProductList })));
@@ -30,51 +30,20 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return isAdmin ? <>{children}</> : <Navigate to="/account" />;
 };
 
-// Component to track page views with Facebook Pixel
+// Component to track page views through the existing analytics flow
 const PixelPageTracker = () => {
   const location = useLocation();
-  const { settings } = useAdmin();
-
-  React.useEffect(() => {
-    const verificationTag = settings?.metaPixel?.domainVerificationTag?.trim();
-    document.querySelector('meta[name="facebook-domain-verification"]')?.remove();
-
-    if (verificationTag) {
-      const contentMatch = verificationTag.match(/content=["']([^"']+)["']/i);
-      const meta = document.createElement('meta');
-      meta.name = 'facebook-domain-verification';
-      meta.content = contentMatch?.[1] || verificationTag;
-      document.head.appendChild(meta);
-    }
-  }, [settings?.metaPixel?.domainVerificationTag]);
-
-  React.useEffect(() => {
-    // Initialize pixel when settings are available (deferred to requestIdleCallback)
-    if (settings?.metaPixel?.enabled && settings?.metaPixel?.pixelId) {
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(() => {
-          initializeFacebookPixel(settings);
-        });
-      } else {
-        globalThis.setTimeout(() => {
-          initializeFacebookPixel(settings);
-        }, 100);
-      }
-    }
-  }, [settings]);
-
 
   const pushGtmPageView = (pathname: string) => {
     const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);
-    dataLayer.push({ 
-      event: 'page_view', 
+    dataLayer.push({
+      event: 'page_view',
       page_path: pathname,
-      page_title: document.title
+      page_title: document.title,
     });
   };
 
   React.useEffect(() => {
-    // Track page view on route changes
     trackPageView();
     pushGtmPageView(location.pathname);
   }, [location.pathname]);

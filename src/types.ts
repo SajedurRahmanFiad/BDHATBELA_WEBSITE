@@ -246,14 +246,4 @@ export interface StoreSettings {
     enabled?: boolean;
     measurementId?: string;
   };
-  metaPixel?: {
-    enabled: boolean;
-    pixelId: string;
-    businessAccountId?: string;
-    accessToken?: string;
-    domain?: string;
-    domainVerificationTag?: string;
-    currency: string;
-    timezone?: string;
-  };
 }

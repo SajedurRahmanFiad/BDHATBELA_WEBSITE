@@ -7,7 +7,6 @@ import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X, 
 import { ProductCard } from '../components/product/ProductCard';
 import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
-import { trackViewContent } from '../utils/facebookPixel';
 import { trackViewItem } from '../utils/ga4';
 
 const extractYouTubeId = (src?: string | null) => {
@@ -100,15 +99,6 @@ export const ProductDetail: React.FC = () => {
 
   React.useEffect(() => {
     if (!product) return;
-
-    // Track product view with Facebook Pixel and GA4
-    trackViewContent({
-      id: product.id,
-      name: product.name,
-      price: product.discountPrice || product.price,
-      category: product.category,
-      sku: product.sku || product.id
-    });
 
     trackViewItem({
       id: product.id,

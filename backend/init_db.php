@@ -312,14 +312,7 @@ try {
             '$.shippingCharges.dynamicShipping', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping'), JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0)),
             '$.shippingCharges.dynamicShipping.startKg', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.startKg'), 0),
             '$.shippingCharges.dynamicShipping.perKgCharge', COALESCE(JSON_EXTRACT(`setting_value`, '$.shippingCharges.dynamicShipping.perKgCharge'), 0),
-            '$.metaPixel', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel'), JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka')),
-            '$.metaPixel.enabled', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.enabled'), false),
-            '$.metaPixel.pixelId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.pixelId'), ''),
-            '$.metaPixel.businessAccountId', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.businessAccountId'), ''),
-            '$.metaPixel.accessToken', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.accessToken'), ''),
-            '$.metaPixel.domain', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.domain'), ''),
-            '$.metaPixel.currency', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.currency'), 'BDT'),
-            '$.metaPixel.timezone', COALESCE(JSON_EXTRACT(`setting_value`, '$.metaPixel.timezone'), 'Asia/Dhaka')
+
         )
         WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`)");
 

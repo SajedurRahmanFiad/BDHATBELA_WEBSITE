@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, UserPlus, LogOut, Package, MapPin, Phone, Mail, User, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { handlePhoneChange, isValidPhone } from '../utils/phone';
-import { trackCompleteRegistration } from '../utils/facebookPixel';
 
 export const Account: React.FC = () => {
   const { user, login, signup, logout, isAdmin, updateUser } = useAuth();
@@ -58,7 +57,6 @@ export const Account: React.FC = () => {
         if (!success) {
           setError('This phone number is already registered');
         } else {
-          trackCompleteRegistration();
           setFormData({ name: '', phone: '', address: '', password: '', loginIdentifier: '' });
         }
       }

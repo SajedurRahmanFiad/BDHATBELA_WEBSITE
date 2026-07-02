@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { Layout } from './components/layout/Layout';
 import ScrollToTop from './components/layout/ScrollToTop';
 import { CartProvider } from './CartContext';
-import { trackPageView } from './utils/facebookPixel';
 
 import { AuthProvider, useAuth } from './AuthContext';
 import { AdminProvider } from './AdminContext';
@@ -44,7 +43,6 @@ const PixelPageTracker = () => {
   };
 
   React.useEffect(() => {
-    trackPageView();
     pushGtmPageView(location.pathname);
   }, [location.pathname]);
 

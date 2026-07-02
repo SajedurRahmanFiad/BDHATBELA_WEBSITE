@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight, Phone } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
-import { trackPurchase } from '../utils/facebookPixel';
 import { trackPurchase as trackGA4Purchase } from '../utils/ga4';
 import { Order } from '../types';
 import { API_BASE_URL } from '../constants';
@@ -52,13 +51,6 @@ export const OrderSuccess: React.FC = () => {
             affiliation: window.location.hostname,
             googleBusinessVertical: 'retail',
         }));
-
-        trackPurchase({
-            id: order.id,
-            items: purchaseItems,
-            totalPrice: order.total,
-            shippingCost: undefined,
-        });
 
         trackGA4Purchase({
             id: order.id,

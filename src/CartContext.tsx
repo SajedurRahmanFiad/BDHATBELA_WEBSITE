@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useLayoutEffect } from 'react';
 import { CartItem, Product } from './types';
 import { toFiniteNumber } from './utils/money';
-import { trackAddToCart } from './utils/facebookPixel';
 import { trackAddToCart as trackGA4AddToCart } from './utils/ga4';
 
 interface CartContextType {
@@ -102,7 +101,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       googleBusinessVertical: 'retail',
     }];
 
-    trackAddToCart(ga4Items);
     trackGA4AddToCart(ga4Items);
 
     if (openSidebar) {

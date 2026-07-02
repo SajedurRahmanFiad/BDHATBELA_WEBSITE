@@ -223,15 +223,7 @@ SET `setting_value` = JSON_INSERT(
   '$.shippingCharges.exceptions', JSON_ARRAY(),
   '$.shippingCharges.dynamicShipping', JSON_OBJECT('enabled', false, 'perKgCharge', 0, 'startKg', 0),
   '$.shippingCharges.dynamicShipping.startKg', 0,
-  '$.shippingCharges.dynamicShipping.perKgCharge', 0,
-  '$.metaPixel', JSON_OBJECT('enabled', false, 'pixelId', '', 'businessAccountId', '', 'accessToken', '', 'domain', '', 'currency', 'BDT', 'timezone', 'Asia/Dhaka'),
-  '$.metaPixel.enabled', false,
-  '$.metaPixel.pixelId', '',
-  '$.metaPixel.businessAccountId', '',
-  '$.metaPixel.accessToken', '',
-  '$.metaPixel.domain', '',
-  '$.metaPixel.currency', 'BDT',
-  '$.metaPixel.timezone', 'Asia/Dhaka'
+  '$.shippingCharges.dynamicShipping.perKgCharge', 0
 )
 WHERE `setting_key` = 'store_settings' AND JSON_VALID(`setting_value`);
 

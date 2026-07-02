@@ -8,7 +8,6 @@ import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone, Tag, Percent,
 import { DISTRICTS } from '../constants';
 import { OrderStatus, CouponApplicationResult } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
-import { trackInitiateCheckout, trackAddPaymentInfo } from '../utils/facebookPixel';
 import { trackBeginCheckout } from '../utils/ga4';
 
 export const Checkout: React.FC = () => {
@@ -41,7 +40,6 @@ export const Checkout: React.FC = () => {
     setCouponError('');
   }, [cart]);
 
-  // Track initiate checkout with Facebook Pixel
   useEffect(() => {
     if (cart.length > 0) {
       const checkoutItems = cart.map(item => ({
@@ -58,7 +56,6 @@ export const Checkout: React.FC = () => {
         affiliation: window.location.hostname,
         googleBusinessVertical: 'retail',
       }));
-      trackInitiateCheckout(checkoutItems, subtotal);
       trackBeginCheckout(checkoutItems, subtotal);
     }
   }, [cart, subtotal]);
@@ -148,14 +145,6 @@ export const Checkout: React.FC = () => {
   React.useEffect(() => {
     if (paymentMethod === 'cod' || cart.length === 0) return;
     if (hasTrackedPaymentInfo) return;
-
-    trackAddPaymentInfo({
-      totalPrice: totalAmount,
-      paymentMethod,
-      numItems: cart.reduce((sum, item) => sum + item.quantity, 0),
-      contentIds: cart.map(item => item.variation?.id ?? item.product.id),
-      contentNames: cart.map(item => item.product.name),
-    });
 
     setHasTrackedPaymentInfo(true);
   }, [paymentMethod, totalAmount, cart, hasTrackedPaymentInfo]);

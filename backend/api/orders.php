@@ -96,48 +96,6 @@ function hashUserData($value) {
     return hash('sha256', $normalized);
 }
 
-function sendFacebookConversionsEvent($pixelId, $accessToken, $eventName, $eventId, $customData, $userData = [], $eventSourceUrl = null, $pageUrl = null) {
-    if (!$eventSourceUrl) {
-        $eventSourceUrl = $_SERVER['HTTP_REFERER'] ?? null;
-    }
-    if (!$eventSourceUrl) {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $eventSourceUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    }
-    $pageUrl = $pageUrl ?: $eventSourceUrl;
-
-    $payload = [
-        'data' => [[
-            'event_name' => $eventName,
-            'event_time' => time(),
-            'event_source_url' => $eventSourceUrl,
-            'page_url' => $pageUrl,
-            'event_id' => $eventId,
-            'user_data' => array_filter($userData),
-            'custom_data' => $customData,
-            'action_source' => 'website'
-        ]]
-    ];
-
-    $url = "https://graph.facebook.com/v21.0/{$pixelId}/events?access_token=" . urlencode($accessToken);
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode >= 400) {
-        error_log('Facebook Conversions API error (' . $httpCode . '): ' . $response);
-        return false;
-    }
-    return true;
-}
-
 if ($method === 'GET') {
     $customerId = $_GET['customerId'] ?? null;
     $id = $_GET['id'] ?? null;
@@ -249,37 +207,6 @@ if ($method === 'GET') {
         }
         
         $pdo->commit();
-
-        $storeSettings = getStoreSettings($pdo);
-        if (!empty($storeSettings['metaPixel']['enabled']) && !empty($storeSettings['metaPixel']['pixelId']) && !empty($storeSettings['metaPixel']['accessToken'])) {
-            $customData = [
-                'currency' => $storeSettings['metaPixel']['currency'] ?? 'BDT',
-                'value' => (float)$total,
-                'content_ids' => array_map(function ($item) { return $item['product']['id']; }, $items),
-                'content_name' => implode(', ', array_map(function ($item) { return $item['product']['name']; }, $items)),
-                'content_type' => 'product',
-                'num_items' => array_sum(array_map(function ($item) { return (int)$item['quantity']; }, $items)),
-                'order_id' => $id,
-                'shipping' => 0,
-            ];
-
-            $userData = [
-                'phone' => hashUserData($phone),
-                'first_name' => hashUserData(explode(' ', trim($customerName))[0] ?? ''),
-                'last_name' => hashUserData(implode(' ', array_slice(explode(' ', trim($customerName)), 1)) ?: ''),
-            ];
-
-            sendFacebookConversionsEvent(
-                $storeSettings['metaPixel']['pixelId'],
-                $storeSettings['metaPixel']['accessToken'],
-                'Purchase',
-                $id,
-                $customData,
-                $userData,
-                $data['event_source_url'] ?? null,
-                $data['page_url'] ?? null
-            );
-        }
 
         echo json_encode(getOrderDetails($pdo, $id));
     } catch (Exception $e) {

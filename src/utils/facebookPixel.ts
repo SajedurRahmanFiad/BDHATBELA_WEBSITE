@@ -51,10 +51,40 @@ const hasFacebookPixelScript = (pixelId: string) => {
   }
 };
 
+const hasGtmContainer = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  const gtmScriptExists = !!document.querySelector(
+    'script[src*="googletagmanager.com/gtm.js"], script[src*="googletagmanager.com/gtag/js"], script[data-gtm-container-id]'
+  );
+
+  const hasGtmDataLayer = Array.isArray((window as any).dataLayer)
+    ? (window as any).dataLayer.some((item: any) => item && typeof item === 'object' && ('gtm.start' in item || item.event === 'gtm.js'))
+    : false;
+
+  return gtmScriptExists || hasGtmDataLayer || !!(window as any).google_tag_manager;
+};
+
+const pushPixelEventToDataLayer = (eventName: string, eventData?: Record<string, unknown>) => {
+  const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);
+  dataLayer.push({
+    event: 'facebook_pixel_event',
+    facebook_pixel_event_name: eventName,
+    facebook_pixel_data: eventData || {},
+  });
+};
+
 const ensureFbq = () => {
   if (window.fbq) return window.fbq;
 
   const fbq = ((...args: unknown[]) => {
+    const [method, eventName] = args;
+
+    if (hasGtmContainer() && method === 'track' && typeof eventName === 'string') {
+      pushPixelEventToDataLayer(eventName, (args[2] as Record<string, unknown>) || undefined);
+      return;
+    }
+
     (fbq as Fbq).queue?.push(args);
   }) as Fbq;
 

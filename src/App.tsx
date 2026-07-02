@@ -63,48 +63,6 @@ const PixelPageTracker = () => {
     }
   }, [settings]);
 
-  const initializeGtm = (containerId: string) => {
-    const normalizedId = containerId.trim();
-    if (!normalizedId) return;
-
-    const existingScripts = Array.from(document.querySelectorAll('script[data-gtm-container-id]'));
-    const existingNoscripts = Array.from(document.querySelectorAll('noscript[data-gtm-container-id]'));
-
-    const hasSameGtm = existingScripts.some((script) => script.getAttribute('data-gtm-container-id') === normalizedId);
-    if (hasSameGtm) return;
-
-    existingScripts.forEach((script) => script.remove());
-    existingNoscripts.forEach((noscript) => noscript.remove());
-
-    const w = window as any;
-    w.dataLayer = w.dataLayer || [];
-    w.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtm.js?id=${normalizedId}`;
-    script.setAttribute('data-gtm-container-id', normalizedId);
-    document.head.appendChild(script);
-
-
-  };
-
-  React.useEffect(() => {
-    if (settings?.gtm?.containerId) {
-      // Defer GTM initialization to requestIdleCallback
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(() => {
-          initializeGtm(settings.gtm.containerId);
-        });
-      } else {
-        globalThis.setTimeout(() => {
-          initializeGtm(settings.gtm.containerId);
-        }, 100);
-      }
-    }
-  }, [settings?.gtm?.containerId]);
-
-
 
   const pushGtmPageView = (pathname: string) => {
     const dataLayer = (window as any).dataLayer || ((window as any).dataLayer = []);

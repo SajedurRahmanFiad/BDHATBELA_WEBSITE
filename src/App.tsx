@@ -19,11 +19,7 @@ const AdminDashboard = React.lazy(() => import(/* webpackChunkName: "admin-dashb
 const Account = React.lazy(() => import(/* webpackChunkName: "account-page" */ './pages/Account').then(module => ({ default: module.Account })));
 const Contact = React.lazy(() => import(/* webpackChunkName: "contact-page" */ './pages/Contact').then(module => ({ default: module.Contact })));
 
-const RouteFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-  </div>
-);
+const RouteFallback = () => null;
 
 const RouteTransition = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();

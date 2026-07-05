@@ -1,6 +1,6 @@
 <?php
 // backend/api/test.php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 echo json_encode([
     'status' => 'connected',

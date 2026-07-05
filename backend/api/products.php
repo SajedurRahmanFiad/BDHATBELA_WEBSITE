@@ -1,10 +1,10 @@
 <?php
 // backend/api/products.php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
-$method = $_SERVER['REQUEST_METHOD'];
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function variationTableHasIsDefault($pdo) {
     $stmt = $pdo->prepare("SHOW COLUMNS FROM product_variations LIKE 'is_default'");
@@ -32,25 +32,32 @@ function sanitizeProductListParams($params) {
     return [$page, $limit, $search, $categories, $minPrice, $maxPrice, $sort];
 }
 
+function getProductPriceExpression($pdo, $tableAlias = 'p') {
+    $discountPriceColumn = productTableHasColumn($pdo, 'discountPrice');
+    return $discountPriceColumn ? "COALESCE(NULLIF({$tableAlias}.discountPrice, 0), {$tableAlias}.price)" : "{$tableAlias}.price";
+}
+
 function buildProductListWhere($pdo, $params, &$where, &$bind) {
     [$page, $limit, $search, $categories, $minPrice, $maxPrice, $sort] = sanitizeProductListParams($params);
     $hasSku = productTableHasColumn($pdo, 'sku');
     $hasTags = productTableHasColumn($pdo, 'tags');
+    $hasCategory = productTableHasColumn($pdo, 'category');
 
     if ($search !== '') {
-        $searchConditions = ['p.name LIKE ?', 'p.category LIKE ?'];
+        $searchConditions = ['p.name LIKE ?'];
+        if ($hasCategory) $searchConditions[] = 'p.category LIKE ?';
         if ($hasSku) $searchConditions[] = 'p.sku LIKE ?';
         if ($hasTags) $searchConditions[] = 'p.tags LIKE ?';
 
         $where[] = '(' . implode(' OR ', $searchConditions) . ')';
         $like = "%{$search}%";
         $bind[] = $like;
-        $bind[] = $like;
+        if ($hasCategory) $bind[] = $like;
         if ($hasSku) $bind[] = $like;
         if ($hasTags) $bind[] = $like;
     }
 
-    if (count($categories) > 0) {
+    if (count($categories) > 0 && $hasCategory) {
         $placeholders = implode(',', array_fill(0, count($categories), '?'));
         $where[] = "p.category IN ({$placeholders})";
         foreach ($categories as $category) {
@@ -58,24 +65,44 @@ function buildProductListWhere($pdo, $params, &$where, &$bind) {
         }
     }
 
+    $priceExpression = getProductPriceExpression($pdo);
     if ($minPrice !== null) {
-        $where[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) >= ?';
+        $where[] = $priceExpression . ' >= ?';
         $bind[] = $minPrice;
     }
 
     if ($maxPrice !== null) {
-        $where[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) <= ?';
+        $where[] = $priceExpression . ' <= ?';
         $bind[] = $maxPrice;
     }
 
     return [$page, $limit, $sort];
 }
 
-function getProductListingSort($sort) {
-    if ($sort === 'low-to-high') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) ASC, p.created_at DESC, p.id DESC';
-    if ($sort === 'high-to-low') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) DESC, p.created_at DESC, p.id DESC';
-    if ($sort === 'rating') return 'p.rating DESC, p.created_at DESC, p.id DESC';
-    return 'p.created_at DESC, p.id DESC';
+function getProductListingSort($pdo, $sort) {
+    $hasCreatedAt = productTableHasColumn($pdo, 'created_at');
+    $hasRating = productTableHasColumn($pdo, 'rating');
+    $orderParts = [];
+
+    if ($sort === 'low-to-high') {
+        $orderParts[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) ASC';
+    } elseif ($sort === 'high-to-low') {
+        $orderParts[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) DESC';
+    } elseif ($sort === 'rating' && $hasRating) {
+        $orderParts[] = 'p.rating DESC';
+    }
+
+    if ($hasCreatedAt) {
+        $orderParts[] = 'p.created_at DESC';
+    }
+
+    if (count($orderParts) === 0) {
+        $orderParts[] = 'p.id DESC';
+    } else {
+        $orderParts[] = 'p.id DESC';
+    }
+
+    return implode(', ', $orderParts);
 }
 
 function getProductListingDetails($pdo, $product, $variationsByProductId, $imagesByProductId, $hasIsDefault) {
@@ -137,7 +164,8 @@ function getProductPriceStats($pdo, $params) {
     buildProductListWhere($pdo, $statsParams, $where, $bind);
 
     $whereSql = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-    $stmt = $pdo->prepare("SELECT MIN(COALESCE(NULLIF(discountPrice, 0), price)) AS minPrice, MAX(COALESCE(NULLIF(discountPrice, 0), price)) AS maxPrice FROM products p {$whereSql}");
+    $priceExpression = getProductPriceExpression($pdo);
+    $stmt = $pdo->prepare("SELECT MIN({$priceExpression}) AS minPrice, MAX({$priceExpression}) AS maxPrice FROM products p {$whereSql}");
     $stmt->execute($bind);
     $row = $stmt->fetch();
 
@@ -235,6 +263,11 @@ function getProductListings($pdo, $params) {
     buildProductListWhere($pdo, $params, $where, $bind);
     $hasSku = productTableHasColumn($pdo, 'sku');
     $hasProductType = productTableHasColumn($pdo, 'product_type');
+    $hasCategory = productTableHasColumn($pdo, 'category');
+    $hasStock = productTableHasColumn($pdo, 'stock');
+    $hasRating = productTableHasColumn($pdo, 'rating');
+    $hasBadge = productTableHasColumn($pdo, 'badge');
+    $hasDiscountPrice = productTableHasColumn($pdo, 'discountPrice');
     $hasIsDefault = variationTableHasIsDefault($pdo);
 
     $whereSql = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -245,12 +278,17 @@ function getProductListings($pdo, $params) {
     $total = (int)$countStmt->fetchColumn();
 
     $hasTags = productTableHasColumn($pdo, 'tags');
-    $selectColumns = ['id', 'name', 'price', 'discountPrice', 'category', 'stock', 'rating', 'badge'];
+    $selectColumns = ['id', 'name', 'price'];
+    if ($hasDiscountPrice) $selectColumns[] = 'discountPrice';
+    if ($hasCategory) $selectColumns[] = 'category';
+    if ($hasStock) $selectColumns[] = 'stock';
+    if ($hasRating) $selectColumns[] = 'rating';
+    if ($hasBadge) $selectColumns[] = 'badge';
     if ($hasProductType) $selectColumns[] = 'product_type';
     if ($hasSku) $selectColumns[] = 'sku';
     if ($hasTags) $selectColumns[] = 'tags';
 
-    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectColumns) . " FROM products p {$whereSql} ORDER BY " . getProductListingSort($sort) . " LIMIT ? OFFSET ?");
+    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectColumns) . " FROM products p {$whereSql} ORDER BY " . getProductListingSort($pdo, $sort) . " LIMIT ? OFFSET ?");
     foreach ($bind as $index => $value) {
         $stmt->bindValue($index + 1, $value);
     }

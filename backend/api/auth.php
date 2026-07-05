@@ -1,6 +1,6 @@
 <?php
 // backend/api/auth.php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents("php://input"), true);

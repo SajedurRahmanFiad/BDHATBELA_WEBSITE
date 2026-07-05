@@ -1,6 +1,6 @@
 <?php
 // backend/api/banners.php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'];

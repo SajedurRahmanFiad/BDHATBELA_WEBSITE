@@ -13,25 +13,30 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { totalItems, isSidebarOpen, openSidebar, closeSidebar, toast, clearToast } = useCart();
   const { settings, categories, searchProducts } = useAdmin();
   const { user } = useAuth();
+  
+  // Provide a safe config object so we don't show the legacy full-screen loader
+  // when the app is using the centralized RouteTransition overlay.
+  const cfg = settings || {};
 
 
 
   React.useEffect(() => {
-    document.title = settings?.companyName
-      ? `${settings.companyName} - Best Online Shopping`
+    document.title = cfg.companyName
+      ? `${cfg.companyName} - Best Online Shopping`
       : 'Loading...';
 
-    if (!settings) return;
+    // If there are no settings loaded yet, skip favicon update
+    if (!cfg || Object.keys(cfg).length === 0) return;
 
     // Dynamic Favicon
-    if (settings.favicon) {
+    if (cfg.favicon) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
         document.getElementsByTagName('head')[0].appendChild(link);
       }
-      link.href = settings.favicon;
+      link.href = cfg.favicon;
     }
   }, [settings]);
 
@@ -92,20 +97,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return () => window.clearTimeout(timeout);
   }, [searchQuery, searchProducts]);
 
-  if (!settings) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
+  // NOTE: Do not render a full-screen loader here — route transitions are
+  // handled by the global `RouteTransition` in `src/App.tsx`.
 
   return (
     <div className="min-h-screen flex flex-col">
-      <style>{`
+        <style>{`
         :root {
-          --color-primary: ${settings.primaryColor || '#ef4444'};
-          --color-primary-hover: ${settings.primaryColor ? `color-mix(in srgb, ${settings.primaryColor}, black 15%)` : '#dc2626'};
+          --color-primary: ${cfg.primaryColor || '#ef4444'};
+          --color-primary-hover: ${cfg.primaryColor ? `color-mix(in srgb, ${cfg.primaryColor}, black 15%)` : '#dc2626'};
         }
         .bg-primary { background-color: var(--color-primary); }
         .text-primary { color: var(--color-primary); }
@@ -146,9 +146,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Top Bar */}
       <div className="bg-gray-900 text-white py-2 text-xs md:text-sm">
-        <div className="container mx-auto px-4 flex justify-between items-center">
+            <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1"><Phone size={14} /> Hotline: {settings.contactPhone}</span>
+            <span className="flex items-center gap-1"><Phone size={14} /> Hotline: {cfg.contactPhone}</span>
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <span className="hidden md:inline">🚚 Cash on Delivery All Over Bangladesh</span>
@@ -162,8 +162,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0">
-              <img src={normalizeMediaSrc(settings.logo) || settings.logo} alt={`${settings.companyName} Logo`} width="40" height="40" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
-              <span className="text-xl md:text-2xl font-bold text-gray-900">{settings.companyName}</span>
+              <img src={normalizeMediaSrc(cfg.logo) || cfg.logo} alt={`${cfg.companyName || ''} Logo`} width="40" height="40" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+              <span className="text-xl md:text-2xl font-bold text-gray-900">{cfg.companyName}</span>
             </Link>
 
             {/* Search Bar - Desktop */}
@@ -470,28 +470,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="container mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="flex flex-col gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src={normalizeMediaSrc(settings.logo) || settings.logo} alt="Logo" className="w-8 h-8 object-contain" />
-              <span className="text-2xl font-bold">{settings.companyName}</span>
+              <img src={normalizeMediaSrc(cfg.logo) || cfg.logo} alt="Logo" className="w-8 h-8 object-contain" />
+              <span className="text-2xl font-bold">{cfg.companyName}</span>
             </Link>
-            <p className="text-sm text-gray-600">{settings.tagline || 'Just click & get!'}</p>
+            <p className="text-sm text-gray-600">{cfg.tagline || 'Just click & get!'}</p>
             <div className="flex items-center gap-4">
-              {isSocialEnabled(settings.socialLinks?.facebook) && (
-                <a aria-label="Facebook" href={getSocialUrl(settings.socialLinks?.facebook)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.facebook) && (
+                <a aria-label="Facebook" href={getSocialUrl(cfg.socialLinks?.facebook)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-blue-600 hover:text-white transition-all"><Facebook size={18} /></a>
               )}
-              {isSocialEnabled(settings.socialLinks?.youtube) && (
-                <a aria-label="YouTube" href={getSocialUrl(settings.socialLinks?.youtube)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.youtube) && (
+                <a aria-label="YouTube" href={getSocialUrl(cfg.socialLinks?.youtube)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover-primary-dark hover:text-white transition-all"><Youtube size={18} /></a>
               )}
-              {isSocialEnabled(settings.socialLinks?.instagram) && (
-                <a aria-label="Instagram" href={getSocialUrl(settings.socialLinks?.instagram)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.instagram) && (
+                <a aria-label="Instagram" href={getSocialUrl(cfg.socialLinks?.instagram)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-pink-600 hover:text-white transition-all"><Instagram size={18} /></a>
               )}
-              {isSocialEnabled(settings.socialLinks?.whatsapp) && (
-                <a aria-label="WhatsApp" href={getSocialUrl(settings.socialLinks?.whatsapp)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-emerald-600 hover:text-white transition-all"><Phone size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.whatsapp) && (
+                <a aria-label="WhatsApp" href={getSocialUrl(cfg.socialLinks?.whatsapp)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-emerald-600 hover:text-white transition-all"><Phone size={18} /></a>
               )}
-              {isSocialEnabled(settings.socialLinks?.twitter) && (
-                <a aria-label="Twitter" href={getSocialUrl(settings.socialLinks?.twitter)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-600 hover:text-white transition-all"><Twitter size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.twitter) && (
+                <a aria-label="Twitter" href={getSocialUrl(cfg.socialLinks?.twitter)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-600 hover:text-white transition-all"><Twitter size={18} /></a>
               )}
-              {isSocialEnabled(settings.socialLinks?.linkedin) && (
-                <a aria-label="LinkedIn" href={getSocialUrl(settings.socialLinks?.linkedin)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-700 hover:text-white transition-all"><Linkedin size={18} /></a>
+              {isSocialEnabled(cfg.socialLinks?.linkedin) && (
+                <a aria-label="LinkedIn" href={getSocialUrl(cfg.socialLinks?.linkedin)} target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-100 rounded-full hover:bg-sky-700 hover:text-white transition-all"><Linkedin size={18} /></a>
               )}
             </div>
           </div>
@@ -508,10 +508,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div>
             <h3 className="font-bold text-lg mb-4">Contact</h3>
             <div className="flex flex-col gap-3 text-sm text-gray-600">
-              <p><b>Address:</b> {settings.address || 'Not Provided'}</p>
-              <p><b>Email:</b> {settings.email}</p>
+              <p><b>Address:</b> {cfg.address || 'Not Provided'}</p>
+              <p><b>Email:</b> {cfg.email}</p>
               <p className="flex items-center gap-2 bg-primary/5 text-primary p-3 rounded-xl border border-primary/10 font-bold">
-                <Phone size={16} /> Hotline: {settings.contactPhone}
+                <Phone size={16} /> Hotline: {cfg.contactPhone}
               </p>
             </div>
           </div>
@@ -520,7 +520,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {/* Copyright */}
         <div className="border-t py-6">
           <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
-            <p>&copy; {new Date().getFullYear()} {settings.companyName}. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} {cfg.companyName || ''}. All rights reserved.</p>
             <div className="flex items-center">
               <p>
                 Developed by{' '}

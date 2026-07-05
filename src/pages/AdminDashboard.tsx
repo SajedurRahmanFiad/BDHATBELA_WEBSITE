@@ -25,13 +25,9 @@ import { ThankYouSettings } from './settings/ThankYouSettings';
 import { OrdersSettings } from './settings/OrdersSettings';
 import { Coupons } from './Coupons';
 import { formatMoney, toFiniteNumber } from '../utils/money';
+import { normalizeMediaSrc } from '../utils/media';
 
-const normalizeSrc = (src?: string | null) => {
-    if (!src || typeof src !== 'string') return null;
-    const trimmed = src.trim();
-    if (!trimmed) return null;
-    return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
-};
+const normalizeSrc = (src?: string | null) => normalizeMediaSrc(src);
 
 const extractYouTubeId = (src?: string | null) => {
     if (!src || typeof src !== 'string') return null;
@@ -124,7 +120,7 @@ const AdminSidebarContent = ({
         <>
             <div className="flex items-center justify-between mb-8 pb-4 border-b">
                 <div className="flex items-center gap-2">
-                    <img src={settings.logo} className="w-8 h-8 object-contain" alt="" />
+                    <img src={normalizeMediaSrc(settings.logo) || settings.logo} className="w-8 h-8 object-contain" alt="" />
                     <span className="font-black text-lg">Admin <span className="text-primary italic">Panel</span></span>
                 </div>
                 <button
@@ -290,7 +286,7 @@ export const AdminDashboard: React.FC = () => {
                     >
                         <Menu size={20} />
                     </button>
-                    <img src={settings.logo} className="w-6 h-6 object-contain" alt="" />
+                    <img src={normalizeMediaSrc(settings.logo) || settings.logo} className="w-6 h-6 object-contain" alt="" />
                     <span className="font-black text-xs uppercase tracking-tight">Admin <span className="text-primary italic">Panel</span></span>
                 </div>
                 <Link to="/" className="text-xs font-bold text-gray-400 hover:text-primary transition-colors flex items-center gap-1">
@@ -921,7 +917,12 @@ const AdminOrders = () => {
                                                                 ) : (
                                                                     <div className="w-10 h-10 rounded-lg border bg-gray-100 flex items-center justify-center text-[10px] text-gray-400">No image</div>
                                                                 )}
-                                                                <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
+                                                                <div className="min-w-0">
+                                                                    <span className="font-bold text-gray-800 line-clamp-1">{item.product.name}</span>
+                                                                    {item.variation?.name ? (
+                                                                        <p className="text-xs text-gray-500 font-medium mt-1">Variation: {item.variation.name}</p>
+                                                                    ) : null}
+                                                                </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-gray-600 text-center">৳{formatMoney(itemPrice)}</td>
                                                             <td className="px-6 py-4 text-gray-600 text-center">{item.quantity}</td>
@@ -1085,7 +1086,7 @@ const AdminCategories = () => {
                     <div key={cat.id} className="bg-white p-4 sm:p-5 rounded-[32px] border border-gray-100 shadow-sm group hover:border-primary transition-all relative">
                         <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden mb-4 border relative group-hover:scale-[1.02] transition-transform">
                             {cat.image ? (
-                                <img src={cat.image} className="w-full h-full object-cover" alt={cat.name} />
+                                <img src={normalizeMediaSrc(cat.image) || cat.image} className="w-full h-full object-cover" alt={cat.name} />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                                     <ShoppingBag size={32} />
@@ -2779,7 +2780,7 @@ export const AdminBanners = () => {
                     <div key={b.id} className="bg-white p-4 rounded-[32px] border border-gray-100 shadow-sm group hover:border-primary transition-all relative">
                         <div className="aspect-[21/9] bg-gray-50 rounded-2xl overflow-hidden mb-4 border relative group-hover:scale-[1.02] transition-transform">
                             {b.image ? (
-                                <img src={b.image} className="w-full h-full object-cover" alt="Banner" />
+                                <img src={normalizeMediaSrc(b.image) || b.image} className="w-full h-full object-cover" alt="Banner" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-gray-300">
                                     <MonitorPlay size={32} />
@@ -2868,7 +2869,7 @@ export const AdminBanners = () => {
                                     <div className="relative group w-full h-32 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all">
                                         {newBanner.image ? (
                                             <>
-                                                <img src={newBanner.image} className="w-full h-full object-cover" alt="Preview" />
+                                                <img src={normalizeMediaSrc(newBanner.image) || newBanner.image} className="w-full h-full object-cover" alt="Preview" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                     <Edit3 className="text-white" size={20} />
                                                 </div>

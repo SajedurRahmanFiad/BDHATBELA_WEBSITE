@@ -5,12 +5,9 @@ import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { CartItem } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
+import { normalizeMediaSrc } from '../utils/media';
 
-const normalizeSrc = (src?: string | null) => {
-  if (!src || typeof src !== 'string') return null;
-  const trimmed = src.trim();
-  return trimmed ? trimmed : null;
-};
+const normalizeSrc = (src?: string | null) => normalizeMediaSrc(src);
 
 const getCartItemUnitPrice = (item: CartItem): number => {
   const priceSource = item.variation ?? item.product;

@@ -72,10 +72,10 @@ function buildProductListWhere($pdo, $params, &$where, &$bind) {
 }
 
 function getProductListingSort($sort) {
-    if ($sort === 'low-to-high') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) ASC, p.id DESC';
-    if ($sort === 'high-to-low') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) DESC, p.id DESC';
-    if ($sort === 'rating') return 'p.rating DESC, p.id DESC';
-    return 'p.id DESC';
+    if ($sort === 'low-to-high') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) ASC, p.created_at DESC, p.id DESC';
+    if ($sort === 'high-to-low') return 'COALESCE(NULLIF(p.discountPrice, 0), p.price) DESC, p.created_at DESC, p.id DESC';
+    if ($sort === 'rating') return 'p.rating DESC, p.created_at DESC, p.id DESC';
+    return 'p.created_at DESC, p.id DESC';
 }
 
 function getProductListingDetails($pdo, $product, $variationsByProductId, $imagesByProductId, $hasIsDefault) {

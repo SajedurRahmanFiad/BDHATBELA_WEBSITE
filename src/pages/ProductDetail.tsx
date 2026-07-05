@@ -8,6 +8,7 @@ import { ProductCard } from '../components/product/ProductCard';
 import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackViewItem } from '../utils/ga4';
+import { normalizeMediaSrc } from '../utils/media';
 
 const extractYouTubeId = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
@@ -166,12 +167,7 @@ export const ProductDetail: React.FC = () => {
 
   const images = product.images || [];
   const selectedVariation = product.productType === 'variation' && product.variations && product.variations.length > 0 && (activeVariationIndex !== null) ? product.variations[activeVariationIndex] : undefined;
-  const normalizeSrc = (src?: string | null) => {
-    if (!src || typeof src !== 'string') return null;
-    const trimmed = src.trim();
-    if (!trimmed) return null;
-    return trimmed.startsWith('data:') ? trimmed.replace(/\s+/g, '') : trimmed;
-  };
+  const normalizeSrc = (src?: string | null) => normalizeMediaSrc(src);
 
   const normalizeMedia = (media?: string | string[] | null) => {
     if (!media) return [] as string[];

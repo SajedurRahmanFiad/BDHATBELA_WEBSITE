@@ -391,7 +391,7 @@ export const Checkout: React.FC = () => {
               <label className="text-[10px] font-black uppercase tracking-widest opacity-70 flex items-center gap-2">
                 <Tag size={14} /> Coupon Code
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value.toUpperCase())}
@@ -402,13 +402,13 @@ export const Checkout: React.FC = () => {
                     }
                   }}
                   placeholder="Enter coupon code"
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 outline-none focus:border-white/50"
+                  className="min-w-0 flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/10 text-white placeholder:text-white/40 outline-none focus:border-white/50"
                 />
                 <button
                   type="button"
                   onClick={applyCoupon}
                   disabled={isApplyingCoupon}
-                  className="px-4 rounded-xl bg-white text-primary font-black disabled:opacity-60"
+                  className="shrink-0 min-w-[96px] px-4 py-3 rounded-xl bg-white text-primary font-black disabled:opacity-60"
                 >
                   {isApplyingCoupon ? <Loader2 className="animate-spin" size={18} /> : 'Apply'}
                 </button>

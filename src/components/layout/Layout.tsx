@@ -7,6 +7,7 @@ import { useAuth } from '../../AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartSidebar } from './CartSidebar';
 import { formatMoney } from '../../utils/money';
+import { normalizeMediaSrc } from '../../utils/media';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { totalItems, isSidebarOpen, openSidebar, closeSidebar, toast, clearToast } = useCart();
@@ -161,7 +162,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 shrink-0">
-              <img src={settings.logo} alt={`${settings.companyName} Logo`} width="40" height="40" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+              <img src={normalizeMediaSrc(settings.logo) || settings.logo} alt={`${settings.companyName} Logo`} width="40" height="40" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
               <span className="text-xl md:text-2xl font-bold text-gray-900">{settings.companyName}</span>
             </Link>
 
@@ -469,7 +470,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="container mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="flex flex-col gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <img src={settings.logo} alt="Logo" className="w-8 h-8 object-contain" />
+              <img src={normalizeMediaSrc(settings.logo) || settings.logo} alt="Logo" className="w-8 h-8 object-contain" />
               <span className="text-2xl font-bold">{settings.companyName}</span>
             </Link>
             <p className="text-sm text-gray-600">{settings.tagline || 'Just click & get!'}</p>

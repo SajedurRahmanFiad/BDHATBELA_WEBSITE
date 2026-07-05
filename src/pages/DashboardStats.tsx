@@ -4,6 +4,7 @@ import { useAdmin } from '../AdminContext';
 import { OrderStatus, Product } from '../types';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { toFiniteNumber } from '../utils/money';
+import { normalizeMediaSrc } from '../utils/media';
 import {
     TrendingUp, Clock, AlertCircle, ShoppingBag,
     BarChart3, Activity, Package, Layers
@@ -246,7 +247,7 @@ export const DashboardStats = () => {
                             <div key={item.product.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors border-b last:border-0">
                                 <div className="font-black text-gray-300 w-4">{idx + 1}</div>
                                 <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border bg-gray-100">
-                                    {item.product.images?.[0] ? <img src={item.product.images[0]} className="w-full h-full object-cover" alt="" /> : <Package className="m-auto mt-2 text-gray-400" size={20} />}
+                                    {item.product.images?.[0] ? <img src={normalizeMediaSrc(item.product.images[0]) || item.product.images[0]} className="w-full h-full object-cover" alt="" /> : <Package className="m-auto mt-2 text-gray-400" size={20} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{item.product.name}</p>
@@ -284,7 +285,7 @@ export const DashboardStats = () => {
                         {lowStockProducts.length > 0 ? lowStockProducts.map(p => (
                             <div key={p.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors border-b last:border-0">
                                 <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border bg-gray-100">
-                                    {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" alt="" /> : <Package className="m-auto mt-2 text-gray-400" size={20} />}
+                                    {p.images?.[0] ? <img src={normalizeMediaSrc(p.images[0]) || p.images[0]} className="w-full h-full object-cover" alt="" /> : <Package className="m-auto mt-2 text-gray-400" size={20} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold truncate">{p.name}</p>

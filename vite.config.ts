@@ -45,12 +45,6 @@ export default defineConfig(({mode}) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, '/backend/api'),
         },
-        '/uploads': {
-          target: 'http://localhost:8000',
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/uploads/, '/backend/uploads'),
-        },
       },
     },
   };

@@ -4,13 +4,10 @@ import { ShoppingCart, Zap, Star, Play } from 'lucide-react';
 import { Product, ProductListing } from '../../types';
 import { useCart } from '../../CartContext';
 import { formatMoney } from '../../utils/money';
+import { normalizeMediaSrc } from '../../utils/media';
 import { motion } from 'motion/react';
 
-const normalizeSrc = (src?: string | null) => {
-  if (!src || typeof src !== 'string') return null;
-  const trimmed = src.trim();
-  return trimmed ? trimmed : null;
-};
+const normalizeSrc = (src?: string | null) => normalizeMediaSrc(src);
 
 const extractYouTubeId = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;

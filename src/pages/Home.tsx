@@ -4,6 +4,7 @@ import { ProductCard } from '../components/product/ProductCard';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ArrowRight, Search as SearchIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { normalizeMediaSrc } from '../utils/media';
 
 export const Home: React.FC = () => {
   const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings, searchProducts } = useAdmin();
@@ -131,7 +132,7 @@ export const Home: React.FC = () => {
                         onClick={() => { navigate(`/product/${encodeURIComponent(product.sku ?? product.id)}`); setShowMobileResults(false); setMobileSearch(''); }}
                         className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-all text-left"
                       >
-                        <img src={product.images?.[0]} className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" alt="" />
+                        <img src={normalizeMediaSrc(product.images?.[0]) || product.images?.[0]} className="w-10 h-10 object-cover rounded-lg border flex-shrink-0" alt="" />
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate">{product.name}</p>
                           <p className="text-xs text-primary font-black">৳{product.discountPrice || product.price}</p>
@@ -168,7 +169,7 @@ export const Home: React.FC = () => {
                   <div className="w-full h-full bg-gray-200 animate-pulse" />
                 ) : (
                   <>
-                    <img src={banners[currentBanner].image} alt={banners[currentBanner].title} fetchPriority="high" className="w-full h-full object-cover" />
+                    <img src={normalizeMediaSrc(banners[currentBanner].image) || banners[currentBanner].image} alt={banners[currentBanner].title} fetchPriority="high" className="w-full h-full object-cover" />
                     {(banners[currentBanner].title?.trim() || Boolean(banners[currentBanner].showButton)) && (
                       <div className="absolute inset-0 bg-black/30 flex items-center p-8 md:p-16">
                         <div className="max-w-xl text-white space-y-4">

@@ -1,6 +1,6 @@
-# BD Hatbela
+# Online Shopping
 
-BD Hatbela is the best online shopping platform in Bangladesh, offering authentic and high-quality products. We guarantee 100% genuine items with no counterfeit products.
+It is the best online shopping platform in Bangladesh, offering authentic and high-quality products. We guarantee 100% genuine items with no counterfeit products.
 
 ## Main Navigation
 - [Home](https://bdhatbela.com/)

@@ -53,7 +53,7 @@ function createOptimizedWebp($sourcePath, $targetPath) {
 }
 
 $projectRoot = dirname(__DIR__, 2);
-$targetDir = $projectRoot . '/public/uploads/images/' . date('Y') . '/' . date('m') . '/';
+$targetDir = $projectRoot . '/uploads/images/' . date('Y') . '/' . date('m') . '/';
 ensureDirectory($targetDir);
 
 if (!isset($_FILES['file'])) {

@@ -43,7 +43,14 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # Serve existing files and directories as-is
     RewriteRule ^index\.html$ - [L]
+
+    # Route /api/* requests to the PHP backend
+    RewriteRule ^api/(.+?)/?$ backend/api/$1.php [L,QSA]
+
+    # SPA fallback: serve index.html for all non-file, non-directory requests
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule . /index.html [L]

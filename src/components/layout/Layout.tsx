@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, Twitter, Linkedin, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, Twitter, Linkedin, ChevronDown, CheckCircle2, MessageCircle } from 'lucide-react';
 import { useCart } from '../../CartContext';
 import { useAdmin } from '../../AdminContext';
 import { useAuth } from '../../AuthContext';
@@ -537,6 +537,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
         </div>
       </footer>
+
+      {/* Floating WhatsApp Button */}
+      {cfg.whatsappButton?.enabled && cfg.whatsappButton?.url && (
+        <a
+          href={cfg.whatsappButton.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:bg-[#1da851] hover:scale-110 transition-all duration-200"
+        >
+          <MessageCircle size={28} fill="white" />
+        </a>
+      )}
     </div>
   );
 };

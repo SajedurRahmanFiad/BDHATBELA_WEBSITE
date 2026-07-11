@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAdmin } from '../../AdminContext';
 import { useCart } from '../../CartContext';
-import { Phone } from 'lucide-react';
+import { Phone, MessageCircle } from 'lucide-react';
 
 export const BasicInfoSettings = () => {
     const { settings, updateSettings } = useAdmin();
@@ -26,6 +26,10 @@ export const BasicInfoSettings = () => {
             whatsapp: normalizeSocialLink(settings?.socialLinks?.whatsapp),
             twitter: normalizeSocialLink(settings?.socialLinks?.twitter),
             linkedin: normalizeSocialLink(settings?.socialLinks?.linkedin)
+        },
+        whatsappButton: {
+            enabled: settings?.whatsappButton?.enabled ?? false,
+            url: settings?.whatsappButton?.url || ''
         }
     });
 
@@ -152,6 +156,50 @@ export const BasicInfoSettings = () => {
                             />
                         </div>
                     ))}
+                </div>
+            </div>
+            <div className="border-t pt-6 space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center">
+                        <MessageCircle size={20} />
+                    </div>
+                    <div>
+                        <h2 className="font-black text-gray-900 uppercase text-sm tracking-widest">Floating WhatsApp Button</h2>
+                        <p className="text-xs text-gray-400 font-bold">Show a floating WhatsApp chat button on every page</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                    <label className="inline-flex items-center gap-2 text-sm font-bold text-gray-600">
+                        <input
+                            type="checkbox"
+                            checked={localSettings.whatsappButton?.enabled ?? false}
+                            onChange={e => setLocalSettings({
+                                ...localSettings,
+                                whatsappButton: {
+                                    ...localSettings.whatsappButton!,
+                                    enabled: e.target.checked
+                                }
+                            })}
+                            className="h-4 w-4 accent-primary"
+                        />
+                        Enable floating WhatsApp button
+                    </label>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 font-bold">WhatsApp Link</label>
+                        <input
+                            value={localSettings.whatsappButton?.url || ''}
+                            onChange={e => setLocalSettings({
+                                ...localSettings,
+                                whatsappButton: {
+                                    ...localSettings.whatsappButton!,
+                                    url: e.target.value
+                                }
+                            })}
+                            type="url"
+                            placeholder="https://wa.me/1234567890"
+                            className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
+                        />
+                    </div>
                 </div>
             </div>
             <button onClick={handleSave} className="w-full bg-gray-900 text-white py-4 rounded-2xl font-bold mt-4 hover:bg-black transition-all shadow-md">Save General Settings</button>

@@ -351,3 +351,17 @@ ALTER TABLE `orders`
   ADD COLUMN IF NOT EXISTS `coupon_discount` DECIMAL(12, 2) DEFAULT 0.00,
   ADD COLUMN IF NOT EXISTS `coupon_note_message` TEXT,
   ADD INDEX IF NOT EXISTS `idx_orders_coupon_id` (`coupon_id`);
+
+-- Migration: Floating WhatsApp Button (2026-07-11)
+-- Feature: Adds a floating WhatsApp chat button (bottom-right corner) on every page.
+-- Controlled via admin settings with an enable toggle and a configurable wa.me link.
+-- Uses JSON_INSERT so existing whatsappButton config is never overwritten.
+
+UPDATE `settings`
+SET `setting_value` = JSON_INSERT(
+  `setting_value`,
+  '$.whatsappButton', JSON_OBJECT('enabled', false, 'url', '')
+)
+WHERE `setting_key` = 'store_settings'
+  AND JSON_VALID(`setting_value`)
+  AND JSON_EXTRACT(`setting_value`, '$.whatsappButton') IS NULL;

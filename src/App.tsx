@@ -80,7 +80,7 @@ const PixelPageTracker = () => {
 
 export default function App() {
   return (
-    <Router basename={import.meta.env.BASE_URL || '/'}>
+    <Router basename={'/'}>
       <ScrollToTop />
       <AuthProvider>
         <AdminProvider>

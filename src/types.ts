@@ -246,4 +246,8 @@ export interface StoreSettings {
     enabled?: boolean;
     measurementId?: string;
   };
+  whatsappButton?: {
+    enabled: boolean;
+    url: string;
+  };
 }

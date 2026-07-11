@@ -52,8 +52,11 @@ function createOptimizedWebp($sourcePath, $targetPath) {
     return $result;
 }
 
-$projectRoot = dirname(__DIR__, 2);
-$targetDir = $projectRoot . '/uploads/images/' . date('Y') . '/' . date('m') . '/';
+// Save uploads under the web server's document root so they are web-accessible.
+// In Apache/PHP-FPM, DOCUMENT_ROOT typically points to public/ or dist/.
+// Fallback to project root for CLI or unusual server configs.
+$documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\');
+$targetDir = $documentRoot . '/uploads/images/' . date('Y') . '/' . date('m') . '/';
 ensureDirectory($targetDir);
 
 if (!isset($_FILES['file'])) {

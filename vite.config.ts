@@ -45,6 +45,12 @@ export default defineConfig(({mode}) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, '/backend/api'),
         },
+        // Proxy uploaded file requests to the PHP dev server
+        '/uploads': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   };

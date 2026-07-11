@@ -40,18 +40,24 @@
     </FilesMatch>
 </IfModule>
 
+# Ensure correct MIME types for JS/CSS modules (safety net)
+<IfModule mod_mime.c>
+    AddType application/javascript .js .mjs
+    AddType text/css .css
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
 
-    # Serve existing files and directories as-is
-    RewriteRule ^index\.html$ - [L]
+    # 1. Serve any existing file or directory as-is (assets, uploads, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
-    # Route /api/* requests to the PHP backend
+    # 2. Route /api/* requests to the PHP backend
     RewriteRule ^api/(.+?)/?$ backend/api/$1.php [L,QSA]
 
-    # SPA fallback: serve index.html for all non-file, non-directory requests
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # 3. SPA fallback: serve index.html for all other requests
     RewriteRule . /index.html [L]
 </IfModule>

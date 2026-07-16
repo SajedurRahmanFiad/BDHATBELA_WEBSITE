@@ -311,7 +311,7 @@ export const ProductDetail: React.FC = () => {
                 title="Share"
               ><Share2 size={16} /></button>
             </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">{product.name}{selectedVariation ? ` (${selectedVariation.name})` : ''}</h1>
             {product.shortDescription && <p className="text-sm text-gray-500 mb-4 leading-relaxed max-w-lg">{product.shortDescription}</p>}
             <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-6">
               <div className="flex items-center gap-2">

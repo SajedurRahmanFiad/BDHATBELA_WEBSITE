@@ -229,11 +229,11 @@ export const ProductDetail: React.FC = () => {
   const relatedProductsToRender = relatedProducts.filter(p => p.id !== product.id).slice(0, 4);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-12">
-      <div className="grid grid-cols-1 lg:grid-cols-[45%_55%] gap-6 md:gap-0 bg-white px-4 py-5 md:px-8 md:py-8 rounded-3xl shadow-sm border border-gray-100">
+    <div className="container mx-auto px-2 py-4 space-y-8 md:px-3 md:py-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[45%_55%] gap-4 md:gap-0 bg-white px-0 py-0 rounded-3xl shadow-sm border border-gray-100">
         {/* Images */}
-        <div className="space-y-4 flex flex-col items-center">
-            <div onClick={() => setShowLightbox(true)} role="button" aria-label="Open image" className="w-[90%] aspect-square bg-gray-50 rounded-2xl overflow-hidden border flex items-center justify-center cursor-zoom-in">
+        <div className="space-y-0 flex flex-col items-stretch w-full">
+            <div onClick={() => setShowLightbox(true)} role="button" aria-label="Open image" className="w-full aspect-square bg-gray-50 rounded-none overflow-hidden border-0 flex items-center justify-center cursor-zoom-in m-0 mt-0 ml-0 mr-0">
               {displayImage ? (
                 extractYouTubeId(displayImage) ? (
                   <iframe
@@ -252,7 +252,7 @@ export const ProductDetail: React.FC = () => {
                 <div className="text-gray-400">No image available</div>
               )}
             </div>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 w-[90%]">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 w-full px-2 pt-2">
             {(gallery || []).map((img, idx) => {
               const safeImg = normalizeSrc(String(img));
               return (
@@ -291,7 +291,7 @@ export const ProductDetail: React.FC = () => {
         </div>
 
         {/* Info */}
-        <div className="flex flex-col px-4 md:px-6">
+        <div className="flex flex-col px-3 md:px-4">
           <div className="mb-0">
             <div className="flex items-center justify-between gap-4 mb-2">
               <div className="flex items-center gap-2">

@@ -7,7 +7,7 @@ import {
     Package, Clock, CheckCircle, CheckCircle2, Search, Filter,
     Trash2, Edit3, Eye, ArrowUpDown, ChevronDown, ChevronUp,
     Phone, Mail, MapPin, CreditCard, Upload, X, Menu, MonitorPlay, MessageSquare,
-    User, LineChart, Tag
+    User, LineChart, Tag, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Routes, Route, useLocation } from 'react-router-dom';
@@ -23,6 +23,7 @@ import { ShippingSettings } from './settings/ShippingSettings';
 import { GatewaySettings } from './settings/GatewaySettings';
 import { ThankYouSettings } from './settings/ThankYouSettings';
 import { OrdersSettings } from './settings/OrdersSettings';
+import { HomepageFeaturesSettings } from './settings/HomepageFeaturesSettings';
 import { Coupons } from './Coupons';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 import { normalizeMediaSrc } from '../utils/media';
@@ -168,6 +169,7 @@ const AdminSidebarContent = ({
                                 <NavItem to="/admin/settings/banners" icon={MonitorPlay} label="Banners" />
                                 <NavItem to="/admin/settings/thankyou" icon={CheckCircle2} label="Thank You Page" />
                                 <NavItem to="/admin/settings/orders" icon={ListOrdered} label="Orders" />
+                                <NavItem to="/admin/settings/homepage" icon={Sparkles} label="Homepage Features" />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -339,6 +341,7 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="/settings/banners" element={<AdminBanners />} />
                         <Route path="/settings/thankyou" element={<ThankYouSettings />} />
                         <Route path="/settings/orders" element={<OrdersSettings />} />
+                        <Route path="/settings/homepage" element={<HomepageFeaturesSettings />} />
                         <Route path="/contacts" element={<AdminContacts />} />
                         <Route path="/staff" element={<AdminStaff />} />
                     </Routes>

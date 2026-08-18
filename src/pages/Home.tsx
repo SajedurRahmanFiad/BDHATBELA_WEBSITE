@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { normalizeMediaSrc } from '../utils/media';
 
 export const Home: React.FC = () => {
-  const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings, searchProducts } = useAdmin();
+  const { banners, categories, categoriesLoading, bannersLoading, fetchProductListings, searchProducts, settings } = useAdmin();
   const navigate = useNavigate();
   const [currentBanner, setCurrentBanner] = React.useState(0);
   const [mobileSearch, setMobileSearch] = React.useState('');
@@ -352,24 +352,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Campaign Banner */}
-      <section className="container mx-auto px-4">
-        <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-3xl p-8 md:p-12 text-white relative overflow-hidden flex items-center justify-between">
-          <div className="relative z-10 space-y-4 max-w-lg">
-            <h2 className="text-3xl md:text-5xl font-extrabold uppercase italic tracking-tighter">Flash Sale</h2>
-            <p className="text-lg opacity-90">Enjoy special discounts on our collection for a limited time!</p>
-            <button className="bg-white text-primary px-8 py-3 rounded-full font-bold hover:scale-105 transition-all">
-              Grab the Offer
-            </button>
-          </div>
-          <div className="hidden md:block relative z-10">
-            <div className="text-[120px] font-black opacity-20 select-none pointer-events-none -rotate-12 translate-x-10">
-              OFFER
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* New Arrivals */}
       <section className="container mx-auto px-4">
         <div className="flex justify-between items-end mb-6">
@@ -395,46 +377,44 @@ export const Home: React.FC = () => {
       {/* Electronics section removed */}
 
       {/* Store Advantage Section */}
-      <section className="bg-blue-900 text-white py-16">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 text-left">
-          <div className="space-y-4">
-            <h2 className="text-3xl font-bold">Why Shop With Us?</h2>
-            <p className="opacity-80">We prioritize customer satisfaction and guarantee high-quality product reliability.</p>
-          </div>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white/10 rounded-xl">🚚</div>
-              <div>
-                <h3 className="font-bold text-lg">Super Fast Delivery</h3>
-                <p className="text-sm opacity-70">Get fast and reliable delivery straight to your doorstep right after order confirmation.</p>
-              </div>
+      {settings?.homepageFeatures?.enabled !== false && (() => {
+        const features = settings?.homepageFeatures?.features?.filter(f => f.title.trim() || f.description.trim()) || [];
+        if (features.length === 0 && !settings?.homepageFeatures) return null;
+        const mid = Math.ceil(features.length / 2);
+        return (
+          <section
+            className="py-16"
+            style={{
+              backgroundColor: settings?.homepageFeatures?.backgroundColor || '#1E3A8A',
+              color: settings?.homepageFeatures?.textColor || '#FFFFFF'
+            }}
+          >
+            <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12 text-left">
+              {(settings?.homepageFeatures?.heading?.trim() || settings?.homepageFeatures?.description?.trim()) && (
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-bold">{settings?.homepageFeatures?.heading || 'Why Shop With Us?'}</h2>
+                  {settings?.homepageFeatures?.description && (
+                    <p className="opacity-80">{settings.homepageFeatures.description}</p>
+                  )}
+                </div>
+              )}
+              {features.length > 0 && [features.slice(0, mid), features.slice(mid)].filter(col => col.length > 0).map((column, colIdx) => (
+                <div key={colIdx} className="space-y-6">
+                  {column.map((feature, i) => (
+                    <div key={i} className="flex items-start gap-4">
+                      <div className="p-3 bg-white/10 rounded-xl">{feature.icon}</div>
+                      <div>
+                        <h3 className="font-bold text-lg">{feature.title}</h3>
+                        <p className="text-sm opacity-70">{feature.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white/10 rounded-xl">🛡️</div>
-              <div>
-                <h3 className="font-bold text-lg">Secure Payments</h3>
-                <p className="text-sm opacity-70">Check out securely using bKash, Nagad, bank transfers, or Cash on Delivery.</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white/10 rounded-xl">✨</div>
-              <div>
-                <h3 className="font-bold text-lg">Premium Quality</h3>
-                <p className="text-sm opacity-70">Every item undergoes rigorous quality inspections before being dispatched.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white/10 rounded-xl">💬</div>
-              <div>
-                <h3 className="font-bold text-lg">24/7 Support</h3>
-                <p className="text-sm opacity-70">Our dedicated customer service team is always here to assist with any questions.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
     </div>
   );
 };

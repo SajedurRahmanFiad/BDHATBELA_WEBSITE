@@ -250,4 +250,16 @@ export interface StoreSettings {
     enabled: boolean;
     url: string;
   };
+  homepageFeatures?: {
+    enabled: boolean;
+    backgroundColor: string;
+    textColor: string;
+    heading: string;
+    description: string;
+    features: Array<{
+      icon: string;
+      title: string;
+      description: string;
+    }>;
+  };
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, Phone, Truck, RotateCcw, ShieldCheck, Facebook, Youtube, Instagram, Twitter, Linkedin, ChevronDown, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, Phone, Facebook, Youtube, Instagram, Twitter, Linkedin, ChevronDown, CheckCircle2, MessageCircle } from 'lucide-react';
 import { useCart } from '../../CartContext';
 import { useAdmin } from '../../AdminContext';
 import { useAuth } from '../../AuthContext';
@@ -432,40 +432,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Footer */}
       <footer className="bg-white border-t mt-12">
-        {/* Why Choose Us */}
-        <div className="bg-gray-50 py-10">
-          <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm animate-pulse">
-                <Truck size={24} />
-              </div>
-              <h3 className="font-bold text-sm">Fast Delivery</h3>
-              <p className="text-xs text-gray-500">24-72 hours delivery all over Bangladesh</p>
-            </div>
-            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
-                <ShieldCheck size={24} />
-              </div>
-              <h3 className="font-bold text-sm">Original Products</h3>
-              <p className="text-xs text-gray-500">100% authentic product guarantee</p>
-            </div>
-            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
-                <RotateCcw size={24} />
-              </div>
-              <h3 className="font-bold text-sm">Easy Return</h3>
-              <p className="text-xs text-gray-500">Easy return within 7 days</p>
-            </div>
-            <div className="flex flex-col items-start text-left md:items-center md:text-center gap-2">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary shadow-sm">
-                <ShoppingCart size={24} />
-              </div>
-              <h3 className="font-bold text-sm">Cash On Delivery</h3>
-              <p className="text-xs text-gray-500">Pay after receiving the products</p>
-            </div>
-          </div>
-        </div>
-
         {/* Main Footer Links */}
         <div className="container mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="flex flex-col gap-4">

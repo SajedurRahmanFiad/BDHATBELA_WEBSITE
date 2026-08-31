@@ -668,28 +668,28 @@ export const ProductDetail: React.FC = () => {
         {/* Lightbox Modal */}
         <AnimatePresence>
           {showLightbox && (
-            <div onClick={() => setShowLightbox(false)} className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div onClick={() => setShowLightbox(false)} className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowLightbox(false)}
-                className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+                className="fixed inset-0 bg-black/75 backdrop-blur-sm"
               />
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 onClick={(e: any) => e.stopPropagation()}
-                className="relative z-10 w-screen h-screen flex items-center justify-center"
+                className="relative z-10 w-full min-h-screen flex items-center justify-center p-4"
               >
-                <button onClick={() => setShowLightbox(false)} className="absolute top-4 right-4 z-20 text-white bg-black/40 p-2 rounded-full hover:bg-black/60">
+                <button onClick={() => setShowLightbox(false)} className="fixed top-4 right-4 z-20 text-white bg-black/40 p-2 rounded-full hover:bg-black/60">
                   <X size={20} />
                 </button>
                 {displayImage && displayImage.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                  <video src={displayImage} controls autoPlay className="w-full h-full object-contain" />
+                  <video src={displayImage} controls autoPlay className="max-w-full max-h-[90vh] object-contain" />
                 ) : (
-                  <img src={displayImage ?? ''} alt={product.name} className="w-full h-full object-contain" />
+                  <img src={displayImage ?? ''} alt={product.name} className="max-w-full max-h-[90vh] object-contain" />
                 )}
               </motion.div>
             </div>

@@ -312,7 +312,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => setIsMobileSidebarOpen(false)}
                         className="fixed inset-0 bg-black/40 z-40 lg:hidden"
                     />
-                    <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r p-6 flex flex-col h-screen">
+                    <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r p-6 flex flex-col h-screen overflow-y-auto">
                         <AdminSidebarContent
                             isSettingsOpen={isSettingsOpen}
                             setIsSettingsOpen={setIsSettingsOpen}

@@ -37,8 +37,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
     const variation = product.productType === 'variation' && product.variations && product.variations.length > 0 ? (product.variations.find(v => v.isDefault) ?? product.variations[0]) : undefined;
-    addToCart(product as Product, 1, false, variation);
-    navigate('/checkout');
+    navigate('/checkout', { state: { buyNowItem: { product: product as Product, variation, quantity: 1 } } });
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {

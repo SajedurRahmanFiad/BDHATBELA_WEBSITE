@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../CartContext';
 import { useAdmin } from '../AdminContext';
 import { useAuth } from '../AuthContext';
 import { handlePhoneChange, isValidPhone } from '../utils/phone';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone, Tag, Percent, Loader2 } from 'lucide-react';
 import { DISTRICTS } from '../constants';
-import { OrderStatus, CouponApplicationResult } from '../types';
+import { CartItem, OrderStatus, CouponApplicationResult } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
 import { trackBeginCheckout } from '../utils/ga4';
 
 export const Checkout: React.FC = () => {
-  const { cart, subtotal, clearCart, showToast } = useCart();
+  const { cart, clearCart, showToast } = useCart();
+  const location = useLocation();
+  const buyNowItem = (location.state as { buyNowItem?: CartItem } | null)?.buyNowItem;
+  const isBuyNowCheckout = Boolean(buyNowItem);
+  const checkoutCart = useMemo(() => buyNowItem ? [buyNowItem] : cart, [buyNowItem, cart]);
+  const checkoutSubtotal = useMemo(() => checkoutCart.reduce((sum, item) => {
+    const priceSource = item.variation ?? item.product;
+    return sum + toFiniteNumber(priceSource.discountPrice ?? priceSource.price) * toFiniteNumber(item.quantity);
+  }, 0), [checkoutCart]);
   const { settings, addOrder, products: liveProducts, validateCoupon } = useAdmin();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -38,11 +46,11 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     setCouponResult(null);
     setCouponError('');
-  }, [cart]);
+  }, [checkoutCart]);
 
   useEffect(() => {
-    if (cart.length > 0) {
-      const checkoutItems = cart.map(item => ({
+    if (checkoutCart.length > 0) {
+      const checkoutItems = checkoutCart.map(item => ({
         id: item.variation?.sku ?? item.product.sku ?? item.variation?.id ?? item.product.id,
         name: item.variation ? `${item.product.name} (${item.variation.name})` : item.product.name,
         price: item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price,
@@ -56,9 +64,9 @@ export const Checkout: React.FC = () => {
         affiliation: window.location.hostname,
         googleBusinessVertical: 'retail',
       }));
-      trackBeginCheckout(checkoutItems, subtotal);
+      trackBeginCheckout(checkoutItems, checkoutSubtotal);
     }
-  }, [cart, subtotal]);
+  }, [checkoutCart, checkoutSubtotal]);
 
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [transactionId, setTransactionId] = useState('');
@@ -69,7 +77,7 @@ export const Checkout: React.FC = () => {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   const couponDiscount = couponResult?.valid ? toFiniteNumber(couponResult.discount) : 0;
-  const discountedSubtotal = Math.max(0, toFiniteNumber(subtotal) - couponDiscount);
+  const discountedSubtotal = Math.max(0, toFiniteNumber(checkoutSubtotal) - couponDiscount);
 
   const applyCoupon = async () => {
     const normalizedCode = couponCode.trim();
@@ -83,7 +91,7 @@ export const Checkout: React.FC = () => {
     setCouponError('');
 
     try {
-      const result = await validateCoupon(normalizedCode, cart);
+      const result = await validateCoupon(normalizedCode, checkoutCart);
       setCouponResult(result);
 
       if (result.valid) {
@@ -118,7 +126,7 @@ export const Checkout: React.FC = () => {
   // Exception overrides base; base overrides legacy inside/outside charges.
   const districtShippingCost = toFiniteNumber(exceptionCharge !== undefined ? exceptionCharge : defaultCharge);
 
-  const totalWeight = cart.reduce((sum, item) => {
+  const totalWeight = checkoutCart.reduce((sum, item) => {
     // Use live product data to avoid stale localStorage weight
     const liveProduct = liveProducts.find(p => p.id === item.product.id);
     if (item.variation) {
@@ -143,11 +151,11 @@ export const Checkout: React.FC = () => {
   const totalAmount = discountedSubtotal + shippingCost;
 
   React.useEffect(() => {
-    if (paymentMethod === 'cod' || cart.length === 0) return;
+    if (paymentMethod === 'cod' || checkoutCart.length === 0) return;
     if (hasTrackedPaymentInfo) return;
 
     setHasTrackedPaymentInfo(true);
-  }, [paymentMethod, totalAmount, cart, hasTrackedPaymentInfo]);
+  }, [paymentMethod, totalAmount, checkoutCart, hasTrackedPaymentInfo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,7 +178,7 @@ export const Checkout: React.FC = () => {
       return;
     }
 
-    const mappedItems = cart.map(item => ({
+    const mappedItems = checkoutCart.map(item => ({
       ...item,
       product: item.product,
       variation: item.variation
@@ -204,12 +212,12 @@ export const Checkout: React.FC = () => {
       showToast(result.error || 'Failed to confirm order.', 'error');
       return;
     }
-    clearCart();
+    if (!isBuyNowCheckout) clearCart();
     navigate(`/order-success/${result.order?.id || newOrder.id}`);
 
   };
 
-  if (cart.length === 0) {
+  if (checkoutCart.length === 0) {
     return (
        <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-2xl font-bold mb-4">Your shopping cart is empty!</h1>
@@ -376,7 +384,7 @@ export const Checkout: React.FC = () => {
           <div className="bg-gray-900 text-white p-8 rounded-3xl shadow-xl space-y-6 sticky top-24">
             <h2 className="text-xl font-bold border-b border-white/10 pb-4 mb-4">Order Review</h2>
             <div className="space-y-3 max-h-48 overflow-y-auto no-scrollbar pr-2 mb-6">
-              {cart.map(item => (
+              {checkoutCart.map(item => (
                 <div key={(item.product.id + (item.variation?.id ? `-${item.variation.id}` : ''))} className="flex justify-between items-center gap-3">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 bg-white/20 rounded flex items-center justify-center text-[10px] font-bold shrink-0">{item.quantity}x</span>
@@ -432,7 +440,7 @@ export const Checkout: React.FC = () => {
             <div className="space-y-4 pt-4 border-t border-white/10">
               <div className="flex justify-between opacity-80 text-sm">
                 <span>Subtotal</span>
-                <span>৳{formatMoney(subtotal)}</span>
+                <span>৳{formatMoney(checkoutSubtotal)}</span>
               </div>
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm text-green-300 font-bold">

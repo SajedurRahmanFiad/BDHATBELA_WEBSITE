@@ -738,6 +738,10 @@ const AdminOrders = () => {
         }));
     };
 
+    const getOrderItemPrice = (item: any) => toFiniteNumber(
+        item.product.historicalPrice ?? item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -911,7 +915,7 @@ const AdminOrders = () => {
                                             <tbody className="divide-y text-sm">
                                                 {selectedOrder.items.map((item: any, idx: number) => {
                                                     const itemImage = normalizeSrc(item.product.images?.[0] ?? item.product.variations?.[0]?.media);
-                                                    const itemPrice = toFiniteNumber(item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price);
+                                                    const itemPrice = getOrderItemPrice(item);
                                                     return (
                                                         <tr key={idx}>
                                                             <td className="px-6 py-4 flex items-center gap-3">
@@ -937,7 +941,7 @@ const AdminOrders = () => {
                                             <tfoot className="bg-gray-50 font-black">
                                                 {(() => {
                                                     const subtotal = selectedOrder.items.reduce((acc: number, item: any) => {
-                                                        const price = toFiniteNumber(item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price);
+                                                        const price = getOrderItemPrice(item);
                                                         return acc + (price * item.quantity);
                                                     }, 0);
                                                     const discount = toFiniteNumber(selectedOrder.couponDiscount || 0);

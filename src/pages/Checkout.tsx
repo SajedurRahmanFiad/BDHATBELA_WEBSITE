@@ -149,6 +149,7 @@ export const Checkout: React.FC = () => {
     : 0;
   const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
   const totalAmount = discountedSubtotal + shippingCost;
+  const orderTotalBeforeCoupon = checkoutSubtotal + shippingCost;
 
   React.useEffect(() => {
     if (paymentMethod === 'cod' || checkoutCart.length === 0) return;
@@ -193,7 +194,7 @@ export const Checkout: React.FC = () => {
       address: formData.address,
       area: formData.district,
       items: mappedItems,
-      total: totalAmount,
+      total: orderTotalBeforeCoupon,
       status: OrderStatus.PENDING,
       date: new Date().toLocaleDateString('en-US'),
       paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase(),

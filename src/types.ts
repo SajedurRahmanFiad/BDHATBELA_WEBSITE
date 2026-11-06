@@ -224,6 +224,7 @@ export interface StoreSettings {
       enabled: boolean;
       perKgCharge: number;
       startKg: number;
+      discrete: boolean;
     };
     insideDhaka?: number;
     outsideDhaka?: number;

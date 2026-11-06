@@ -693,6 +693,54 @@ const MultiImageUpload = ({ values, onChange, label }: { values: string[], onCha
     );
 };
 
+const parseOrderCreatedAt = (value: string | null | undefined): Date | null => {
+    const normalized = value?.trim();
+    if (!normalized) return null;
+
+    const usDate = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usDate) return new Date(Number(usDate[3]), Number(usDate[1]) - 1, Number(usDate[2]));
+
+    const isoDate = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDate) return new Date(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
+
+    const mysqlDateTime = normalized.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?)$/);
+    const parsedDate = mysqlDateTime
+        ? new Date(`${mysqlDateTime[1]}T${mysqlDateTime[2]}+06:00`)
+        : new Date(normalized);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const getOrderSortTimestamp = (order: { date?: string | null; id: string }) => {
+    const dateTimestamp = parseOrderCreatedAt(order.date)?.getTime();
+    if (dateTimestamp !== undefined) return dateTimestamp;
+
+    const idTimestamp = order.id.match(/(\d{13})$/)?.[1];
+    return idTimestamp ? Number(idTimestamp) : 0;
+};
+
+const formatOrderCreatedAt = (value: string | null | undefined) => {
+    const parsedDate = parseOrderCreatedAt(value);
+    if (!parsedDate) return { date: 'Date unavailable', time: 'Time unavailable' };
+
+    const normalized = value?.trim() || '';
+    const hasTime = /(?:T|\s)\d{2}:\d{2}/.test(normalized);
+    const isDateOnly = /^(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})$/.test(normalized);
+    const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    if (!isDateOnly) dateOptions.timeZone = 'Asia/Dhaka';
+
+    return {
+        date: new Intl.DateTimeFormat('en-GB', dateOptions).format(parsedDate),
+        time: hasTime
+            ? new Intl.DateTimeFormat('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Dhaka'
+            }).format(parsedDate)
+            : 'Time unavailable'
+    };
+};
+
 const AdminOrders = () => {
     const { orders, updateOrderStatus, deleteOrder } = useAdmin();
     const location = useLocation();
@@ -718,14 +766,21 @@ const AdminOrders = () => {
             
             let matchesDate = true;
             if (dateFilter && dateFilter.type !== 'All') {
-                const d = new Date(o.date);
-                if (dateFilter.startDate && d < dateFilter.startDate) matchesDate = false;
-                if (dateFilter.endDate && d > dateFilter.endDate) matchesDate = false;
+                const d = parseOrderCreatedAt(o.date);
+                if (d && dateFilter.startDate && d < dateFilter.startDate) matchesDate = false;
+                if (d && dateFilter.endDate && d > dateFilter.endDate) matchesDate = false;
             }
             
             return matchesSearch && matchesStatus && matchesDate;
         })
         .sort((a: any, b: any) => {
+            if (sortConfig.key === 'date') {
+                const firstDate = getOrderSortTimestamp(a);
+                const secondDate = getOrderSortTimestamp(b);
+                if (firstDate < secondDate) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (firstDate > secondDate) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            }
             if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
             if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
@@ -741,6 +796,7 @@ const AdminOrders = () => {
     const getOrderItemPrice = (item: any) => toFiniteNumber(
         item.product.historicalPrice ?? item.variation?.discountPrice ?? item.variation?.price ?? item.product.discountPrice ?? item.product.price
     );
+    const selectedOrderCreatedAt = selectedOrder ? formatOrderCreatedAt(selectedOrder.date) : null;
 
     return (
         <div className="space-y-6">
@@ -771,10 +827,11 @@ const AdminOrders = () => {
             {/* Responsive Table Wrap */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[700px]">
+                    <table className="w-full text-left min-w-225">
                         <thead>
                             <tr className="bg-gray-50 border-b">
                                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest cursor-pointer text-gray-400" onClick={() => toggleSort('id')}>Order ID <ArrowUpDown size={10} className="inline ml-1" /></th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest cursor-pointer text-gray-400" onClick={() => toggleSort('date')}>Created <ArrowUpDown size={10} className="inline ml-1" /></th>
                                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest cursor-pointer text-gray-400" onClick={() => toggleSort('customerName')}>Customer <ArrowUpDown size={10} className="inline ml-1" /></th>
                                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest cursor-pointer text-gray-400" onClick={() => toggleSort('total')}>Total <ArrowUpDown size={10} className="inline ml-1" /></th>
                                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest cursor-pointer text-gray-400" onClick={() => toggleSort('status')}>Status <ArrowUpDown size={10} className="inline ml-1" /></th>
@@ -785,6 +842,10 @@ const AdminOrders = () => {
                             {filteredOrders.map(order => (
                                 <tr key={order.id} className="hover:bg-gray-50 transition-colors group">
                                     <td className="px-6 py-4 text-sm font-bold">#{order.id.split('-')[1] || order.id.slice(-6)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <p className="text-sm font-bold">{formatOrderCreatedAt(order.date).date}</p>
+                                        <p className="text-xs text-gray-500">{formatOrderCreatedAt(order.date).time}</p>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <p className="text-sm font-bold">{order.customerName}</p>
                                         <p className="text-[10px] text-gray-400 font-bold">{order.phone}</p>
@@ -839,6 +900,7 @@ const AdminOrders = () => {
                             <div>
                                 <h2 className="text-xl font-bold tracking-tighter">Order Details</h2>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Order ID: #{selectedOrder.id}</p>
+                                <p className="text-xs text-gray-600 mt-2">Created: {selectedOrderCreatedAt?.date} at {selectedOrderCreatedAt?.time}</p>
                             </div>
                             <button onClick={() => setSelectedOrder(null)} className="text-2xl text-gray-400 hover:text-black">&times;</button>
                         </div>
@@ -1862,7 +1924,8 @@ const AdminSettings = () => {
             dynamicShipping: {
                 enabled: settings?.shippingCharges?.dynamicShipping?.enabled ?? false,
                 perKgCharge: settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,
-                startKg: settings?.shippingCharges?.dynamicShipping?.startKg ?? 0
+                startKg: settings?.shippingCharges?.dynamicShipping?.startKg ?? 0,
+                discrete: settings?.shippingCharges?.dynamicShipping?.discrete ?? false
             },
             insideDhaka: settings?.shippingCharges?.insideDhaka,
             outsideDhaka: settings?.shippingCharges?.outsideDhaka
@@ -2274,6 +2337,27 @@ const AdminSettings = () => {
                                                 className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
                                             />
                                         </div>
+                                        <label className="sm:col-span-2 flex items-start gap-3 p-4 bg-gray-50 border border-gray-200 rounded-2xl cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={localSettings.shippingCharges.dynamicShipping.discrete}
+                                                onChange={e => setLocalSettings({
+                                                    ...localSettings,
+                                                    shippingCharges: {
+                                                        ...localSettings.shippingCharges,
+                                                        dynamicShipping: {
+                                                            ...localSettings.shippingCharges.dynamicShipping,
+                                                            discrete: e.target.checked
+                                                        }
+                                                    }
+                                                })}
+                                                className="mt-0.5 w-5 h-5 accent-primary cursor-pointer"
+                                            />
+                                            <span>
+                                                <span className="block text-sm font-bold text-gray-800">Charge by whole kg (round up)</span>
+                                                <span className="block mt-1 text-xs text-gray-500">Any partial kg above the threshold is charged as a full kg. Turn off for proportional charging.</span>
+                                            </span>
+                                        </label>
                                     </div>
                                 )}
                             </div>

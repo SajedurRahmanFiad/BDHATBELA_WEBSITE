@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdmin } from '../AdminContext';
 import { ProductCard } from '../components/product/ProductCard';
 import { Filter, ChevronDown, Search as SearchIcon } from 'lucide-react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PaginatedProducts, ProductListing } from '../types';
 
 const PAGE_SIZE = 24;
@@ -26,6 +26,7 @@ const clamp = (value: number, lo: number, hi: number) => Math.min(hi, Math.max(l
 
 export const ProductList: React.FC = () => {
   const { categories, fetchProductListings } = useAdmin();
+  const navigate = useNavigate();
   const { categoryName } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
@@ -100,14 +101,23 @@ export const ProductList: React.FC = () => {
   }, [searchParams, setSearchParams]);
 
   // ── User Actions ──────────────────────────────────────────────────────────
+  const setCategoriesInURL = (nextCategories: string[]) => {
+    const params = new URLSearchParams(searchParams);
+    if (nextCategories.length > 0) {
+      params.set('categories', nextCategories.join(','));
+    } else {
+      params.delete('categories');
+    }
+    params.delete('category');
+    const queryString = params.toString();
+    navigate(`/products${queryString ? `?${queryString}` : ''}`, { replace: true });
+  };
+
   const toggleCategory = (catName: string) => {
     const next = selectedCategories.includes(catName)
       ? selectedCategories.filter(c => c !== catName)
       : [...selectedCategories, catName];
-    updateURLParams({
-      categories: next.length > 0 ? next.join(',') : null,
-      category: null, // Clear deprecated singular param if present
-    });
+    setCategoriesInURL(next);
   };
 
   const commitPrice = useCallback((rawMin: number, rawMax: number) => {
@@ -154,7 +164,11 @@ export const ProductList: React.FC = () => {
 
   const resetFilters = () => {
     setLocalSearchTerm('');
-    setSearchParams(new URLSearchParams(), { replace: true });
+    navigate('/products', { replace: true });
+  };
+
+  const clearCategories = () => {
+    setCategoriesInURL([]);
   };
 
   const handleSortChange = (newSort: string) => {
@@ -349,7 +363,7 @@ export const ProductList: React.FC = () => {
                 <h4 className="font-bold text-sm text-gray-800 mb-3 mt-4">Categories</h4>
                 <div className="flex flex-col gap-2">
                   <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
-                    <input type="checkbox" checked={selectedCategories.length === 0} onChange={() => resetFilters()} className="w-4 h-4 accent-primary rounded cursor-pointer" />
+                    <input type="checkbox" checked={selectedCategories.length === 0} onChange={clearCategories} className="w-4 h-4 accent-primary rounded cursor-pointer" />
                     <span className={selectedCategories.length === 0 ? 'font-bold text-primary' : 'text-gray-700'}>All Categories</span>
                   </label>
                   {categories.filter(c => !c.parentId).map(cat => {

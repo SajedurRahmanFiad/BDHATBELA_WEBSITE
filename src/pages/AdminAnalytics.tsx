@@ -3,6 +3,7 @@ import { useAdmin } from '../AdminContext';
 import { DateFilterBar, DateFilterResult } from '../components/DateFilterBar';
 import { OrderStatus, Order, StoreSettings } from '../types';
 import { toFiniteNumber } from '../utils/money';
+import { calculateDynamicShippingCharge } from '../utils/shipping';
 import {
     LineChart, Line, AreaChart, Area, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -32,10 +33,7 @@ const calculateOrderShippingCost = (order: Order, settings: StoreSettings) => {
         return sum + (w * toFiniteNumber(item.quantity));
     }, 0);
 
-    const dynamicStartKg = toFiniteNumber(settings.shippingCharges.dynamicShipping?.startKg ?? 1);
-    const extraWeightCharge = settings.shippingCharges.dynamicShipping?.enabled
-        ? Math.max(totalWeight - dynamicStartKg, 0) * toFiniteNumber(settings.shippingCharges.dynamicShipping?.perKgCharge ?? 0)
-        : 0;
+    const extraWeightCharge = calculateDynamicShippingCharge(totalWeight, settings.shippingCharges.dynamicShipping);
 
     return toFiniteNumber(districtShippingCost) + extraWeightCharge;
 };

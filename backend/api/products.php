@@ -34,7 +34,15 @@ function sanitizeProductListParams($params) {
 
 function getProductPriceExpression($pdo, $tableAlias = 'p') {
     $discountPriceColumn = productTableHasColumn($pdo, 'discountPrice');
-    return $discountPriceColumn ? "COALESCE(NULLIF({$tableAlias}.discountPrice, 0), {$tableAlias}.price)" : "{$tableAlias}.price";
+    $basePrice = $discountPriceColumn ? "COALESCE(NULLIF({$tableAlias}.discountPrice, 0), {$tableAlias}.price)" : "{$tableAlias}.price";
+
+    if ($tableAlias !== 'p' || !productTableHasColumn($pdo, 'product_type')) {
+        return $basePrice;
+    }
+
+    $variationOrder = variationTableHasIsDefault($pdo) ? 'is_default DESC, id ASC' : 'id ASC';
+    $variationPrice = "(SELECT COALESCE(NULLIF(pv.discount_price, 0), pv.price) FROM product_variations pv WHERE pv.product_id = {$tableAlias}.id ORDER BY {$variationOrder} LIMIT 1)";
+    return "CASE WHEN {$tableAlias}.product_type = 'variation' THEN COALESCE({$variationPrice}, {$basePrice}) ELSE {$basePrice} END";
 }
 
 function buildProductListWhere($pdo, $params, &$where, &$bind) {
@@ -85,9 +93,9 @@ function getProductListingSort($pdo, $sort) {
     $orderParts = [];
 
     if ($sort === 'low-to-high') {
-        $orderParts[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) ASC';
+        $orderParts[] = getProductPriceExpression($pdo) . ' ASC';
     } elseif ($sort === 'high-to-low') {
-        $orderParts[] = 'COALESCE(NULLIF(p.discountPrice, 0), p.price) DESC';
+        $orderParts[] = getProductPriceExpression($pdo) . ' DESC';
     } elseif ($sort === 'rating' && $hasRating) {
         $orderParts[] = 'p.rating DESC';
     }
@@ -96,11 +104,7 @@ function getProductListingSort($pdo, $sort) {
         $orderParts[] = 'p.created_at DESC';
     }
 
-    if (count($orderParts) === 0) {
-        $orderParts[] = 'p.id DESC';
-    } else {
-        $orderParts[] = 'p.id DESC';
-    }
+    $orderParts[] = 'p.id DESC';
 
     return implode(', ', $orderParts);
 }

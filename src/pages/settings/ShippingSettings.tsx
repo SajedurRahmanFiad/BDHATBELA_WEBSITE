@@ -16,7 +16,8 @@ export const ShippingSettings = () => {
             dynamicShipping: {
                 enabled: settings?.shippingCharges?.dynamicShipping?.enabled ?? false,
                 perKgCharge: settings?.shippingCharges?.dynamicShipping?.perKgCharge ?? 0,
-                startKg: settings?.shippingCharges?.dynamicShipping?.startKg ?? 0
+                startKg: settings?.shippingCharges?.dynamicShipping?.startKg ?? 0,
+                discrete: settings?.shippingCharges?.dynamicShipping?.discrete ?? false
             },
             insideDhaka: settings?.shippingCharges?.insideDhaka,
             outsideDhaka: settings?.shippingCharges?.outsideDhaka
@@ -200,6 +201,27 @@ export const ShippingSettings = () => {
                                     className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none border border-gray-200 focus:border-primary transition-all font-bold text-lg font-mono"
                                 />
                             </div>
+                            <label className="sm:col-span-2 flex items-start gap-3 p-4 bg-gray-50 border border-gray-200 rounded-2xl cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={localSettings.shippingCharges.dynamicShipping.discrete}
+                                    onChange={e => setLocalSettings({
+                                        ...localSettings,
+                                        shippingCharges: {
+                                            ...localSettings.shippingCharges,
+                                            dynamicShipping: {
+                                                ...localSettings.shippingCharges.dynamicShipping,
+                                                discrete: e.target.checked
+                                            }
+                                        }
+                                    })}
+                                    className="mt-0.5 w-5 h-5 accent-primary cursor-pointer"
+                                />
+                                <span>
+                                    <span className="block text-sm font-bold text-gray-800">Charge by whole kg (round up)</span>
+                                    <span className="block mt-1 text-xs text-gray-500">Any partial kg above the threshold is charged as a full kg. Turn off for proportional charging.</span>
+                                </span>
+                            </label>
                         </div>
                     )}
                 </div>

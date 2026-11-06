@@ -8,6 +8,7 @@ import { CheckCircle2, Truck, CreditCard, Wallet, Landmark, Phone, Tag, Percent,
 import { DISTRICTS } from '../constants';
 import { CartItem, OrderStatus, CouponApplicationResult } from '../types';
 import { formatMoney, toFiniteNumber } from '../utils/money';
+import { calculateDynamicShippingCharge } from '../utils/shipping';
 import { trackBeginCheckout } from '../utils/ga4';
 
 export const Checkout: React.FC = () => {
@@ -143,10 +144,7 @@ export const Checkout: React.FC = () => {
   const dynamicShipping = shippingCharges?.dynamicShipping;
   const dynamicEnabled = dynamicShipping?.enabled === true;
   const dynamicStartKg = toFiniteNumber(dynamicShipping?.startKg ?? 0);
-  const dynamicPerKg = toFiniteNumber(dynamicShipping?.perKgCharge ?? 0);
-  const extraWeightCharge = dynamicEnabled && dynamicPerKg > 0
-    ? Math.max(totalWeight - dynamicStartKg, 0) * dynamicPerKg
-    : 0;
+  const extraWeightCharge = calculateDynamicShippingCharge(totalWeight, dynamicShipping);
   const shippingCost = toFiniteNumber(districtShippingCost + extraWeightCharge);
   const totalAmount = discountedSubtotal + shippingCost;
   const orderTotalBeforeCoupon = checkoutSubtotal + shippingCost;
@@ -196,7 +194,7 @@ export const Checkout: React.FC = () => {
       items: mappedItems,
       total: orderTotalBeforeCoupon,
       status: OrderStatus.PENDING,
-      date: new Date().toLocaleDateString('en-US'),
+      date: new Date().toISOString(),
       paymentMethod: paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase(),
       note: formData.note + (transactionId ? ` | TrxID: ${transactionId}` : ''),
       couponCode: couponResult?.valid ? couponResult.coupon?.code : undefined,

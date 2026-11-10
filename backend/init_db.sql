@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS `reviews` (
   `comment` TEXT,
   `date` VARCHAR(50),
   `image` LONGTEXT,
+  `images` LONGTEXT,
   INDEX `idx_reviews_product_id` (`product_id`),
   CONSTRAINT `fk_reviews_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

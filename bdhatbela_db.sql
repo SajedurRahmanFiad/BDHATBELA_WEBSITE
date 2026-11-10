@@ -190,7 +190,8 @@ CREATE TABLE `reviews` (
   `rating` int(11) NOT NULL,
   `comment` text DEFAULT NULL,
   `date` varchar(50) DEFAULT NULL,
-  `image` longtext DEFAULT NULL
+  `image` longtext DEFAULT NULL,
+  `images` longtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

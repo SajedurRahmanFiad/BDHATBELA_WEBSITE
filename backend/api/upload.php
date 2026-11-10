@@ -52,13 +52,6 @@ function createOptimizedWebp($sourcePath, $targetPath) {
     return $result;
 }
 
-// Save uploads under the web server's document root so they are web-accessible.
-// In Apache/PHP-FPM, DOCUMENT_ROOT typically points to public/ or dist/.
-// Fallback to project root for CLI or unusual server configs.
-$documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\');
-$targetDir = $documentRoot . '/uploads/images/' . date('Y') . '/' . date('m') . '/';
-ensureDirectory($targetDir);
-
 if (!isset($_FILES['file'])) {
     http_response_code(400);
     echo json_encode(['error' => 'No file uploaded']);
@@ -75,6 +68,32 @@ if (!in_array($ext, $allowed)) {
     exit;
 }
 
+$isReviewImage = isset($_POST['purpose']) && $_POST['purpose'] === 'review';
+$imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+if ($isReviewImage && !in_array($ext, $imageExtensions, true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Review uploads must be images']);
+    exit;
+}
+if ($isReviewImage && (int)($file['size'] ?? 0) > 5 * 1024 * 1024) {
+    http_response_code(413);
+    echo json_encode(['error' => 'Review images must be smaller than 5 MB']);
+    exit;
+}
+
+$year = date('Y');
+$month = date('m');
+if ($isReviewImage) {
+    $targetDir = dirname(__DIR__, 2) . '/public/uploads/reviews/' . $year . '/' . $month . '/';
+    $urlDirectory = '/uploads/reviews/' . $year . '/' . $month;
+} else {
+    // Keep existing uploads under the web server's document root.
+    $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\');
+    $targetDir = $documentRoot . '/uploads/images/' . $year . '/' . $month . '/';
+    $urlDirectory = '/uploads/images/' . $year . '/' . $month;
+}
+ensureDirectory($targetDir);
+
 $filename = uniqid('media_', true) . '.webp';
 $targetFile = $targetDir . $filename;
 
@@ -83,7 +102,7 @@ if ($ext === 'mp4' || $ext === 'webm' || $ext === 'ogg' || $ext === 'mov') {
     $videoFileName = uniqid('media_', true) . '.' . $videoExt;
     $videoTargetFile = $targetDir . $videoFileName;
     if (move_uploaded_file($file['tmp_name'], $videoTargetFile)) {
-        $url = '/uploads/images/' . date('Y') . '/' . date('m') . '/' . $videoFileName;
+        $url = $urlDirectory . '/' . $videoFileName;
         echo json_encode(['url' => $url]);
         exit;
     }
@@ -102,7 +121,7 @@ if (!is_file($temporarySource)) {
 
 if (createOptimizedWebp($temporarySource, $targetFile)) {
     @unlink($temporarySource);
-    $url = '/uploads/images/' . date('Y') . '/' . date('m') . '/' . $filename;
+    $url = $urlDirectory . '/' . $filename;
     echo json_encode(['url' => $url]);
     exit;
 }

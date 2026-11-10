@@ -437,19 +437,24 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addReview = useCallback(async (productId: string, review: Review) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/products.php?action=review&id=${productId}`, {
+      const reviewUrl = `${API_BASE_URL}/products.php?action=review&id=${productId}`;
+      const res = await fetch(reviewUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(review)
       });
-      if (res.ok) {
-        const pRes = await fetch(`${API_BASE_URL}/products.php?id=${productId}`);
-        if (pRes.ok) {
-          const updatedProduct = await pRes.json();
-          setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
-        }
+      await readJsonResponse(res, reviewUrl);
+
+      const productUrl = `${API_BASE_URL}/products.php?id=${productId}`;
+      const pRes = await fetch(productUrl);
+      if (pRes.ok) {
+        const updatedProduct = await readJsonResponse(pRes, productUrl);
+        setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   }, [fetchProduct]);
 
   const value = useMemo(() => ({

@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 import { useCart } from '../CartContext';
 import { useAuth } from '../AuthContext';
-import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X, Play } from 'lucide-react';
+import { Star, ShoppingCart, Zap, Check, Plus, Minus, Share2, MessageSquare, X, Play, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ProductCard } from '../components/product/ProductCard';
 import { sanitizeRichText } from '../components/product/RichTextEditor';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackViewItem } from '../utils/ga4';
 import { normalizeMediaSrc } from '../utils/media';
+import { API_BASE_URL } from '../constants';
 
 const extractYouTubeId = (src?: string | null) => {
   if (!src || typeof src !== 'string') return null;
@@ -34,6 +35,10 @@ export const ProductDetail: React.FC = () => {
   const [activeVariationIndex, setActiveVariationIndex] = useState<number | null>(null);
   const [showLightbox, setShowLightbox] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const [isUploadingReviewImages, setIsUploadingReviewImages] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewGalleryIndexes, setReviewGalleryIndexes] = useState<Record<string, number>>({});
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     comment: '',
@@ -197,23 +202,73 @@ export const ProductDetail: React.FC = () => {
     addToCart(product, quantity, true, selectedVariation);
   };
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewForm.comment || !reviewForm.name || !reviewForm.phone) {
       alert('Please fill out all fields');
       return;
     }
 
-    addReview(product.id, {
-      id: `rev-${Date.now()}`,
-      userName: reviewForm.name,
-      rating: reviewForm.rating,
-      comment: reviewForm.comment,
-      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    });
+    setIsSubmittingReview(true);
+    try {
+      await addReview(product.id, {
+        id: `rev-${Date.now()}`,
+        userName: reviewForm.name,
+        rating: reviewForm.rating,
+        comment: reviewForm.comment,
+        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        image: reviewImages[0],
+        images: reviewImages
+      });
 
-    setShowReviewModal(false);
-    setReviewForm({ ...reviewForm, comment: '', rating: 5 });
+      setShowReviewModal(false);
+      setReviewForm({ ...reviewForm, comment: '', rating: 5 });
+      setReviewImages([]);
+    } catch (error) {
+      console.error('Review submission failed:', error);
+      alert('Could not submit your review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleReviewImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (Array.from(files).some(file => file.size > 5 * 1024 * 1024)) {
+      alert('Please choose images smaller than 5 MB each.');
+      e.target.value = '';
+      return;
+    }
+
+    setIsUploadingReviewImages(true);
+    const uploadedUrls: string[] = [];
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('purpose', 'review');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/upload.php`, { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok || !result.url) throw new Error(result.error || 'Image upload failed');
+        uploadedUrls.push(result.url);
+      } catch (error) {
+        console.error('Review image upload failed:', error);
+      }
+    }
+
+    if (uploadedUrls.length > 0) setReviewImages(prev => [...prev, ...uploadedUrls]);
+    if (uploadedUrls.length < files.length) alert('Some images could not be uploaded. Please try again.');
+    setIsUploadingReviewImages(false);
+    e.target.value = '';
+  };
+
+  const moveReviewGallery = (reviewId: string, delta: number, imageCount: number) => {
+    setReviewGalleryIndexes(prev => ({
+      ...prev,
+      [reviewId]: ((prev[reviewId] ?? 0) + delta + imageCount) % imageCount
+    }));
   };
 
   const relatedProductsToRender = relatedProducts.filter(p => p.id !== product.id).slice(0, 4);
@@ -420,7 +475,10 @@ export const ProductDetail: React.FC = () => {
             </div>
             {product.reviews.length > 0 ? (
               <div className="space-y-6">
-                {product.reviews.map(review => (
+                {product.reviews.map(review => {
+                  const images = review.images?.length ? review.images : review.image ? [review.image] : [];
+                  const imageIndex = images.length > 0 ? Math.min(reviewGalleryIndexes[review.id] ?? 0, images.length - 1) : 0;
+                  return (
                   <div key={review.id} className="border-b last:border-0 pb-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-primary">
@@ -439,8 +497,42 @@ export const ProductDetail: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 italic">"{review.comment}"</p>
+                    {images.length > 0 && (
+                      <div className="relative mt-4 w-fit max-w-full">
+                        <img
+                          src={images[imageIndex]}
+                          alt={`Customer photo ${imageIndex + 1} shared by ${review.userName}`}
+                          className="block max-h-80 max-w-full rounded-lg object-contain"
+                          loading="lazy"
+                        />
+                        {images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => moveReviewGallery(review.id, -1, images.length)}
+                              aria-label="Show previous review photo"
+                              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                            >
+                              <ChevronLeft size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveReviewGallery(review.id, 1, images.length)}
+                              aria-label="Show next review photo"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
+                            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-1 text-xs text-white">
+                              {imageIndex + 1} / {images.length}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-center py-10 text-gray-400 italic">No reviews written yet.</p>
@@ -530,13 +622,52 @@ export const ProductDetail: React.FC = () => {
                           placeholder="Write your review comments here..."
                         />
                       </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Photos (optional)</label>
+                        <div className="flex flex-wrap gap-3">
+                          {reviewImages.map((image, index) => (
+                            <div key={`${image}-${index}`} className="group relative h-24 w-24 overflow-hidden rounded-xl border bg-gray-50">
+                              <img src={image} alt={`Review photo ${index + 1}`} className="h-full w-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setReviewImages(prev => prev.filter((_, imageIndex) => imageIndex !== index))}
+                                aria-label={`Remove review photo ${index + 1}`}
+                                className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="relative flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400 hover:border-primary">
+                            {isUploadingReviewImages ? (
+                              <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+                            ) : (
+                              <>
+                                <ImagePlus size={20} />
+                                <span className="mt-1 text-[10px] font-bold uppercase tracking-widest">Add photo</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handleReviewImageChange}
+                              disabled={isUploadingReviewImages || isSubmittingReview}
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-400">Images up to 5 MB each</p>
+                      </div>
                     </div>
 
                     <button 
                       type="submit"
-                      className="w-full bg-primary text-white py-4 rounded-2xl font-black shadow-xl shadow-red-100 hover-primary-dark transition-all"
+                      disabled={isSubmittingReview || isUploadingReviewImages}
+                      className="w-full bg-primary text-white py-4 rounded-2xl font-black shadow-xl shadow-red-100 hover-primary-dark transition-all disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Submit Review
+                      {isUploadingReviewImages ? 'Uploading photos...' : isSubmittingReview ? 'Submitting...' : 'Submit Review'}
                     </button>
                  </form>
                </motion.div>

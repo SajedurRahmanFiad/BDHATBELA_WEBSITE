@@ -18,6 +18,16 @@ function productTableHasColumn($pdo, $column) {
     return (bool)$stmt->fetch();
 }
 
+function reviewTableHasImagesColumn($pdo) {
+    static $hasImagesColumn = null;
+    if ($hasImagesColumn === null) {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM reviews LIKE 'images'");
+        $stmt->execute();
+        $hasImagesColumn = (bool)$stmt->fetch();
+    }
+    return $hasImagesColumn;
+}
+
 function sanitizeProductListParams($params) {
     $page = max(1, (int)($params['page'] ?? 1));
     $limit = min(100, max(1, (int)($params['limit'] ?? 24)));
@@ -204,13 +214,15 @@ function getProductFullDetails($pdo, $product_id) {
     $product['features'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     // Get reviews
-    $stmt = $pdo->prepare("SELECT id, userName, rating, comment, date, image, images FROM reviews WHERE product_id = ?");
+    $hasReviewImagesColumn = reviewTableHasImagesColumn($pdo);
+    $reviewImageColumn = $hasReviewImagesColumn ? ', images' : '';
+    $stmt = $pdo->prepare("SELECT id, userName, rating, comment, date, image{$reviewImageColumn} FROM reviews WHERE product_id = ?");
     $stmt->execute([$product_id]);
     $product['reviews'] = $stmt->fetchAll();
     foreach ($product['reviews'] as &$review) {
         $review['rating'] = (int)$review['rating'];
-        $storedImages = json_decode((string)($review['images'] ?? ''), true);
-        if (!is_array($storedImages)) {
+        $storedImages = $hasReviewImagesColumn ? json_decode((string)($review['images'] ?? ''), true) : null;
+        if (!is_array($storedImages) || count($storedImages) === 0) {
             $storedImages = !empty($review['image']) ? [$review['image']] : [];
         }
         $review['images'] = array_values(array_filter($storedImages, 'is_string'));
@@ -394,7 +406,6 @@ try {
         if (isset($_GET['action']) && $_GET['action'] === 'review') {
             $product_id = $_GET['id'];
             $review_id = 'r-' . time() . rand(100, 999);
-            $stmt = $pdo->prepare("INSERT INTO reviews (id, product_id, userName, rating, comment, date, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $date = date('Y-m-d');
             $images = [];
             if (isset($data['images']) && is_array($data['images'])) {
@@ -408,7 +419,14 @@ try {
             }
             $image = $images[0] ?? null;
             $imagesJson = count($images) > 0 ? json_encode($images, JSON_UNESCAPED_SLASHES) : null;
-            if ($stmt->execute([$review_id, $product_id, $data['userName'], $data['rating'], $data['comment'], $date, $image, $imagesJson])) {
+            if (reviewTableHasImagesColumn($pdo)) {
+                $stmt = $pdo->prepare("INSERT INTO reviews (id, product_id, userName, rating, comment, date, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $reviewSaved = $stmt->execute([$review_id, $product_id, $data['userName'], $data['rating'], $data['comment'], $date, $image, $imagesJson]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO reviews (id, product_id, userName, rating, comment, date, image) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $reviewSaved = $stmt->execute([$review_id, $product_id, $data['userName'], $data['rating'], $data['comment'], $date, $image]);
+            }
+            if ($reviewSaved) {
                 
                 // Update product average rating
                 $stmt = $pdo->prepare("SELECT AVG(rating) as avg_rating FROM reviews WHERE product_id = ?");

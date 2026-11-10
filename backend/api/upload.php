@@ -83,12 +83,12 @@ if ($isReviewImage && (int)($file['size'] ?? 0) > 5 * 1024 * 1024) {
 
 $year = date('Y');
 $month = date('m');
+$documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\');
 if ($isReviewImage) {
-    $targetDir = dirname(__DIR__, 2) . '/public/uploads/reviews/' . $year . '/' . $month . '/';
+    $targetDir = $documentRoot . '/uploads/reviews/' . $year . '/' . $month . '/';
     $urlDirectory = '/uploads/reviews/' . $year . '/' . $month;
 } else {
     // Keep existing uploads under the web server's document root.
-    $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 2), '/\\');
     $targetDir = $documentRoot . '/uploads/images/' . $year . '/' . $month . '/';
     $urlDirectory = '/uploads/images/' . $year . '/' . $month;
 }
